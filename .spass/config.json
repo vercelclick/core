@@ -17,6 +17,11 @@
           "name": "DATABASE_URL",
           "data_type": "Text",
           "description": "You can now secure your database url"
+        },
+        {
+          "name": "HOMEBREW_TAP_TOKEN",
+          "data_type": "Text",
+          "description": "The details here"
         }
       ]
     },
