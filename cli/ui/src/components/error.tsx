@@ -1,4 +1,4 @@
-import { Alert } from "@heroui/react";
+import { Alert, toast } from "@heroui/react";
 import { Activity, useCallback, useState } from "react";
 import { useAnalytics } from "@/features/analytics/provider";
 
@@ -9,6 +9,11 @@ export type UnsafeEvaluationResult<T> =
   | { ok: true; result: T }
   | { ok: false; error: unknown };
 
+interface CatchOptions {
+  capture?: string;
+  toast?: boolean;
+}
+
 export function useError() {
   const [value, setValue] = useState<ErrorValue | null>(null);
   const [is_pending, setIsPending] = useState<boolean>(false);
@@ -17,19 +22,34 @@ export function useError() {
     async <T,>(
       title: string,
       unsafe: UnsafeFunction<T>,
-      action?: string,
+      options?: CatchOptions,
     ): Promise<UnsafeEvaluationResult<T>> => {
       setIsPending(true);
       try {
         const result = await unsafe();
         setValue(null);
+        if (options?.capture) {
+          analytics?.capture(options.capture, { success: true });
+        }
+
         return {
           ok: true,
           result,
         };
       } catch (error) {
         setValue({ title, content: String(error) });
-        analytics?.captureException(error, { action });
+        if (options?.capture) {
+          analytics?.capture(options.capture, { success: true });
+          analytics?.captureException(error, { source: options.capture });
+        }
+
+        if (options?.toast) {
+          toast(title, {
+            variant: "danger",
+            description: String(error),
+          });
+        }
+
         return {
           ok: false,
           error,

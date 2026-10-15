@@ -10,6 +10,7 @@ import {
 import { ErrorDisplay, useError } from "@/components";
 import { LoadingBar } from "@/components/loader";
 import type { CommandInstanceDetails, LogItem } from "@/core/web";
+import { useVisibleAction } from "@/hooks/useVisible";
 import { resolveRequest } from "@/utils";
 
 export function InstanceLogs({
@@ -27,8 +28,6 @@ export function InstanceLogs({
     cursor: number;
   }>({ logs: [], cursor: 0 });
   const bottom_ref = useRef<HTMLDivElement>(null);
-
-  const [bottom_visible, setBottomVisible] = useState<boolean>(false);
 
   const fetchLatestLogs = useCallback(async () => {
     const result = await error.catch("Error fetching logs", () =>
@@ -54,21 +53,7 @@ export function InstanceLogs({
     });
   }, [cursor, instance.id, error.catch, buffer_size]);
 
-  useEffect(() => {
-    if (!ref?.current || !bottom_ref?.current) {
-      return;
-    }
-
-    const scrollObserver = new IntersectionObserver(
-      (entries) => {
-        setBottomVisible(entries[0].intersectionRatio >= 0);
-      },
-      { root: ref.current },
-    );
-
-    scrollObserver.observe(bottom_ref.current);
-    return () => scrollObserver.disconnect();
-  }, [ref]);
+  const bottom_visible = useVisibleAction(bottom_ref, ref);
 
   useEffect(() => {
     if (!bottom_visible) {

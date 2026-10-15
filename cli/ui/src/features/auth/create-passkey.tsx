@@ -39,7 +39,7 @@ export function CreatePasskeyScreen() {
         );
         setDecodedConfig(result);
       },
-      "user_passkey_config_decode",
+      { capture: "user_passkey_config_decode" },
     );
   }, [config, error.catch, error]);
 
@@ -66,7 +66,7 @@ export function CreatePasskeyScreen() {
         analytics?.capture("user_passkey_registration");
         setPublicKeyConfig(pk_config);
       },
-      "user_passkey_registration",
+      { capture: "user_passkey_registration" },
     );
   }, [name, config, error.catch, decoded_config, analytics]);
 

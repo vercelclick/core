@@ -14,15 +14,16 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import clsx from "clsx";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { ErrorDisplay, useError } from "@/components";
 import {
   authorize_operation,
   type DecryptSecretParams,
   decrypt_secret,
-  type LoginParams,
   type SecretDefinition,
   type SecretpassEnvironment,
 } from "@/core/web";
+import { useVisibleAction } from "@/hooks/useVisible";
 import { useSecretManager } from "@/manager/provider";
 import { resolveRequest } from "@/utils";
 import { useCreateOrUpdateSecret } from "./shared";
@@ -34,6 +35,7 @@ interface ViewSecretProps {
 
 export function ViewSecret({ environment, secret }: ViewSecretProps) {
   const manager = useSecretManager();
+  const error = useError();
   const [is_locked, setIsLocked] = useState(true);
 
   const [decrypted_value, setDecryptedValue] = useState<string>("");
@@ -44,11 +46,23 @@ export function ViewSecret({ environment, secret }: ViewSecretProps) {
     [value, decrypted_value],
   );
 
+  const ref = useRef<HTMLDivElement | null>(null);
+
   const reset = useCallback(() => {
     setIsLocked(true);
     setSecretValue("");
     setDecryptedValue("");
   }, []);
+
+  const onVisibilityChange = useCallback(
+    (visible: boolean) => {
+      // Lock only - allowing the user to resume where they left off
+      if (!visible) reset();
+    },
+    [reset],
+  );
+
+  useVisibleAction(ref, undefined, onVisibilityChange);
 
   const onComplete = useCallback(() => {
     setDecryptedValue(value);
@@ -57,10 +71,19 @@ export function ViewSecret({ environment, secret }: ViewSecretProps) {
 
   const updateSecret = useCreateOrUpdateSecret(environment);
 
-  const unlock = useCallback(() => {
+  const unlock = useCallback(async () => {
     const encrypted_value =
       manager.lock_package[environment.name]?.encrypted_secrets?.[secret.name];
     if (!encrypted_value) {
+      const result = await error.catch(
+        "Error unlocking secret",
+        () => authorize_operation(JSON.stringify(manager.login_params)),
+        { capture: "authorize_edit_empty_secret", toast: true },
+      );
+      if (!result.ok) {
+        return;
+      }
+
       setIsLocked(false);
       setSecretValue("");
       setDecryptedValue("");
@@ -68,43 +91,58 @@ export function ViewSecret({ environment, secret }: ViewSecretProps) {
     }
 
     const params: DecryptSecretParams = {
-      login_params: {
-        user: manager.user,
-        project: manager.config.project,
-        public_keys: [manager.public_key],
-      },
+      login_params: manager.login_params,
       encrypted_secret: encrypted_value,
     };
 
-    decrypt_secret(JSON.stringify(params))
-      .then((plain_secret) => {
-        setSecretValue(plain_secret);
-        setDecryptedValue(plain_secret);
-        setIsLocked(false);
-      })
-      .catch((err) => toast(String(err), { variant: "danger" }));
-  }, [manager, manager.lock_package, environment.name, secret.name]);
+    const decrypt_result = await error.catch(
+      "Error unlocking encrypted secret",
+      () => decrypt_secret(JSON.stringify(params)),
+      { capture: "decrypt_single_secret", toast: true },
+    );
+    if (!decrypt_result.ok) {
+      return;
+    }
 
-  const deleteSecret = useCallback(() => {
-    const params: LoginParams = {
-      user: manager.user,
-      project: manager.config.project,
-      public_keys: [manager.public_key],
-    };
-    authorize_operation(JSON.stringify(params))
-      .then(() =>
+    setSecretValue(decrypt_result.result);
+    setDecryptedValue(decrypt_result.result);
+    setIsLocked(false);
+  }, [
+    manager,
+    manager.lock_package,
+    environment.name,
+    secret.name,
+    error.catch,
+  ]);
+
+  const deleteSecret = useCallback(async () => {
+    const auth_result = await error.catch(
+      "Error authorizing secret deletion",
+      () => authorize_operation(JSON.stringify(manager.login_params)),
+      {
+        capture: "authorize_secret_delete",
+      },
+    );
+    if (!auth_result.ok) {
+      return;
+    }
+
+    const delete_result = await error.catch(
+      "Error deleting secret",
+      () =>
         resolveRequest(`/api/secrets/${environment.name}/${secret.name}`, {
           method: "DELETE",
         }),
-      )
-      .then(() => manager.refreshState(`${secret.name} deleted`))
-      .then(onComplete)
-      .catch((err) =>
-        toast(`Error deleting secret: ${err}`, {
-          variant: "danger",
-        }),
-      );
-  }, [manager, environment.name, secret.name, onComplete]);
+      { capture: "api_secret_delete" },
+    );
+    if (!delete_result.ok) {
+      return;
+    }
+
+    await manager.refreshState(`${secret.name} deleted`);
+
+    onComplete();
+  }, [manager, environment.name, secret.name, onComplete, error.catch]);
 
   return (
     <div
@@ -129,7 +167,7 @@ export function ViewSecret({ environment, secret }: ViewSecretProps) {
                 className="text-muted hover:text-danger"
                 onDoubleClick={deleteSecret}
               >
-                <IconTrash className="size-6" />
+                <IconTrash className="size-5" />
               </Button>
               <Tooltip.Content>Double click to delete</Tooltip.Content>
             </Tooltip>
@@ -161,6 +199,9 @@ export function ViewSecret({ environment, secret }: ViewSecretProps) {
               onChange={(evt) => setSecretValue(evt.currentTarget.value)}
             />
           </TextField>
+
+          <ErrorDisplay value={error.value} />
+
           {value !== decrypted_value && (
             <div className="flex justify-end mb-4">
               <Button

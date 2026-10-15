@@ -54,7 +54,7 @@ export function CompletionScreen({
     const reg_result = await error.catch(
       "Error registering your passkey",
       () => register_user(state.key_name, params),
-      "new_project_register_passkey",
+      { capture: "new_project_register_passkey" },
     );
     if (!reg_result.ok) {
       return;
@@ -74,7 +74,7 @@ export function CompletionScreen({
             public_key,
           }),
         }),
-      "create_new_project",
+      { capture: "create_new_project" },
     );
 
     if (!create_result.ok) {

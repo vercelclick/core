@@ -34,7 +34,7 @@ export function LoginScreen({
     const login_details_result = await error.catch(
       "Error fetching login details",
       () => resolveRequest<LoginParams>(url),
-      "fetch_login_details",
+      { capture: "fetch_login_details" },
     );
 
     if (!login_details_result.ok) {
@@ -45,7 +45,7 @@ export function LoginScreen({
     const auth_result = await error.catch(
       "Error authorizing login",
       () => authorize_operation(JSON.stringify(lock_package)),
-      "authorize_login",
+      { capture: "authorize_login" },
     );
     if (!auth_result.ok) {
       return;

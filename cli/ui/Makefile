@@ -3,7 +3,7 @@
 # ==============================================================================
 
 # Default target when running `make`
-all: help
+all: install build
 
 
 install:
@@ -13,12 +13,3 @@ install:
 build:
 	echo "==> Build bundled UI"
 	bun run build
-
-
-# ------------------------------------------------------------------------------
-# Help
-# ------------------------------------------------------------------------------
-help:
-	@echo "Usage:"
-	@echo "  install      Install npm packages"
-	@echo "  build        Build bundled UI"
