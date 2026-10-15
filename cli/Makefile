@@ -3,13 +3,13 @@
 # ==============================================================================
 
 # Default target when running `make`
-all: install build
+all: dev
 
 
-install:
-	echo "==> Install npm packages"
-	bun install
+dev:
+	echo "==> Run cli dev"
+	RUST_BACKTRACE=1 cargo run -- --project-dir ../
 
 build:
-	echo "==> Build bundled UI"
-	bun run build
+	echo "==> Build Cli"
+	cargo build --release

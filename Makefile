@@ -2,8 +2,6 @@
 # Packaging make file
 # ==============================================================================
 
-.PHONY: all
-
 # Default target when running `make`
 all: help
 
@@ -25,14 +23,17 @@ ui-build:
 
 bundle: web-local ui-install ui-build
 
-cli:
+cli-build:
 	@echo "==> Building cli app"
-	cd cli && \
-	cargo build --release
+	$(MAKE) -C ./cli build
 
 
 build:
 	RUSTFLAGS='--cfg web_sys_unstable_apis' dist build
+
+cli-dev:
+	@echo "==> Running cli dev"
+	$(MAKE) -C ./cli dev
 
 # ------------------------------------------------------------------------------
 # Clean
