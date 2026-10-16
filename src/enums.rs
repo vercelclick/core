@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use sqlx::Type as SqlxType;
 use strum::{Display, EnumString};
 use tsify::Tsify;
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -78,4 +79,12 @@ pub enum CommandStatus {
         environment: String,
         message: String,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify, SqlxType)]
+#[tsify(namespace)]
+#[sqlx(type_name = "ChallengeKind")]
+pub enum ChallengeKind {
+    User,
+    PublicKey,
 }

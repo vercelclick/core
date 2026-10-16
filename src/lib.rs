@@ -1,8 +1,8 @@
 mod config;
-mod enums;
+pub mod enums;
 mod keys;
 mod project;
-mod types;
+pub mod types;
 mod user;
 pub mod utils;
 

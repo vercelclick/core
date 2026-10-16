@@ -1,13 +1,13 @@
 import { Toast } from "@heroui/react";
 import { useEffect, useMemo, useState } from "react";
+import { CWD_HEADER } from "@/constants";
 import initCore, { type SecretpassProject } from "@/core/web";
+import { useAnalytics } from "@/features/analytics/provider.tsx";
+import { LoginDashboard } from "@/features/auth/dash.tsx";
 import { Navbar } from "@/features/navigation";
 import { NewProjectSetup } from "@/features/setup";
 import { SecretManagerProvider, SecretManagerView } from "@/manager";
-import { CWD_HEADER } from "./constants";
-import { useAnalytics } from "./features/analytics/provider";
-import { LoginDashboard } from "./features/auth/dash";
-import { makeRequest, useComplexState } from "./utils";
+import { makeRequest, useComplexState } from "@/utils.ts";
 
 export function App() {
   const state = useComplexState<{

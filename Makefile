@@ -16,10 +16,10 @@ web-cloud:
 	$(MAKE) -C ./web cloud
 
 ui-install:
-	$(MAKE) -C ./cli/ui install
+	$(MAKE) -C ./web-app install
 
 ui-build:
-	$(MAKE) -C ./cli/ui build
+	$(MAKE) -C ./web-app build
 
 bundle: web-local ui-install ui-build
 
@@ -42,6 +42,10 @@ clean:
 	@echo "==> Cleaning generated WASM packages and target directory..."
 	rm -rf web/pkg web/pkg-local web/pkg-sandbox
 	cargo clean
+
+infra:
+	@echo "==> Starting docker for DB and Cache"
+	docker compose .
 
 # ------------------------------------------------------------------------------
 # Help

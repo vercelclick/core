@@ -1,6 +1,6 @@
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
-use rand::SeedableRng;
 use rand::rngs::ChaCha12Rng;
+use rand::{RngExt, SeedableRng};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use sha2::{Digest, Sha256};
@@ -11,6 +11,11 @@ static RNG: OnceLock<Mutex<ChaCha12Rng>> = OnceLock::new();
 
 pub fn get_global_rng() -> &'static Mutex<ChaCha12Rng> {
     RNG.get_or_init(|| Mutex::new(ChaCha12Rng::from_seed(Default::default())))
+}
+
+pub fn fill_random_bytes(bytes: &mut [u8]) {
+    let mut rng = get_global_rng().lock().unwrap();
+    rng.fill(bytes);
 }
 
 pub fn sha256_digest(items: &[String]) -> String {

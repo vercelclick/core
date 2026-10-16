@@ -3,6 +3,7 @@ use crate::project::setup_working_directory;
 use clap::Parser;
 
 mod api;
+mod backend;
 pub mod command;
 mod machine;
 mod manager;

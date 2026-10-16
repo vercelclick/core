@@ -14,7 +14,7 @@ use port_check::free_local_ipv4_port_in_range;
 use rust_embed::RustEmbed;
 
 #[derive(Debug, Clone, RustEmbed)]
-#[folder = "ui/dist/"]
+#[folder = "../web-app/dist/"]
 struct WebAssets;
 
 pub async fn serve_local_server(cloud: bool, cloud_origin: String, no_support: bool) {

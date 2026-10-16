@@ -1,10 +1,11 @@
 use crate::passkeys::types::*;
 use coset::cbor::value::Value;
 use coset::{CborSerializable, CoseKey, Label};
+use getrandom::rand_core::TryRng;
 use p256::Sec1Point;
 use p256::ecdsa::signature::Verifier;
 use p256::ecdsa::{Signature, VerifyingKey};
-use secretpass_core::utils::{bin_decode, bin_encode};
+use secretpass_core::utils::{bin_decode, bin_encode, fill_random_bytes};
 use secretpass_core::{Passkey, PasskeyResidency, SecretpassProject, SecretpassUser};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
@@ -44,8 +45,7 @@ struct AuthData {
 
 fn generate_challenge() -> anyhow::Result<Vec<u8>> {
     let mut buf = [0u8; CHALLENGE_LEN];
-    getrandom::fill(&mut buf)
-        .map_err(|e| anyhow::format_err!("Failed to generate random challenge: {e}"))?;
+    fill_random_bytes(&mut buf);
     Ok(buf.to_vec())
 }
 

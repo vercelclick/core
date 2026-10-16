@@ -1,6 +1,6 @@
 [workspace]
-members = [
-    "cli",
+members = ["api",
+    "cli", "cloud",
     "web",
 ]
 resolver = "2"
@@ -38,6 +38,7 @@ fips203 = { version = "0.4.3", features = ["ml-kem-768"] }
 rand = { version = "0.10.2", default-features = false, features = ["chacha"] }
 serde = { version = "1.0.229", features = ["derive"] }
 sha2 = { version = "0.11.0" }
+sqlx = { version = "0.9.0", features = ["macros", "chrono", "postgres", "runtime-tokio", "derive"] }
 strum = { version = "0.28.0", features = ["derive", "strum_macros"] }
 tsify = { version = "0.5.8", features = ["wasm-bindgen"] }
 wasm-bindgen = { version = "0.2.128" }

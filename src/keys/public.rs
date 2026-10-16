@@ -103,7 +103,7 @@ impl PublicKey {
         let encryptor_secret = StaticSecret::random_from_rng(&mut rng);
 
         let encryptor_public = EccPublicKey::from(&encryptor_secret);
-        let shared_secret = encryptor_secret.diffie_hellman(&target_public_key);
+        let shared_secret = encryptor_secret.diffie_hellman(target_public_key);
 
         (
             Some(encryptor_public.to_bytes().to_vec()),

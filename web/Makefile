@@ -2,10 +2,9 @@
 # Packaging make file
 # ==============================================================================
 
-.PHONY: all
-
 # Default target when running `make`
 all: help
+
 
 
 add-target:
@@ -26,7 +25,7 @@ local:
 	wasm-bindgen \
       ../target/wasm32-unknown-unknown/release/web.wasm \
       --target web \
-      --out-dir ../cli/ui/src/core
+      --out-dir ../web-app/src/core
 
 
 
@@ -35,16 +34,16 @@ local:
 # ------------------------------------------------------------------------------
 cloud:
 	$(MAKE) add-target
-	@echo "==> Building WASM for cli server usage"
-	WEBAUTH_RP_ID="secretpass.cloud" \
-	WEBAUTH_RP_ORIGIN="https://secretpass.cloud" \
+	@echo "==> Building WASM for cloud server usage"
+	WEBAUTH_RP_ID="app.secretpass.cloud" \
+	WEBAUTH_RP_ORIGIN="https://app.secretpass.cloud" \
 	WEBAUTH_RP_ENTITY="Secretpass Cloud" \
 	RUSTFLAGS='--cfg=web_sys_unstable_apis' \
 	cargo rustc -p web --release --crate-type cdylib --target wasm32-unknown-unknown
 	wasm-bindgen \
 	  ../target/wasm32-unknown-unknown/release/web.wasm \
 	  --target web \
-	  --out-dir ../target/dist
+	  --out-dir ../web-app/src/core
 
 
 # ------------------------------------------------------------------------------
@@ -52,5 +51,5 @@ cloud:
 # ------------------------------------------------------------------------------
 help:
 	@echo "Usage:"
-	@echo "  local      Build WASM package for cli local storage usage (web/pkg-local/)"
-	@echo "  cloud      Build WASM package for cloud service usage (web/pkg-cloud/)"
+	@echo "  local      Build WASM package for cli local storage usage"
+	@echo "  cloud      Build WASM package for cloud service usage"
