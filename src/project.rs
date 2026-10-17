@@ -4,7 +4,7 @@ use tsify::Tsify;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify)]
 pub struct SecretpassProject {
-    pub id: String, // Fixed - invalidates keys if changed
+    pub id: String, // Fixed - invalidates keys if changed - uuid v4 local, uuid v7 cloud
     pub name: String,
     #[serde(skip_serializing_if = "String::is_empty", default)]
     pub description: String,

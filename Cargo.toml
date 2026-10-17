@@ -1,9 +1,6 @@
 [workspace]
-members = ["api",
-    "cli", "cloud",
-    "web",
-]
 resolver = "2"
+members = ["api", "cli", "cloud", "web"]
 
 [workspace.package]
 version = "0.1.0-prerelease.2"

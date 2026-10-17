@@ -9,7 +9,11 @@ homepage.workspace = true
 
 [[bin]]
 name = "spass"
-path = "src/main.rs"
+path = "src/bin/spass.rs"
+
+[[bin]]
+name = "spass-service"
+path = "src/bin/spass-service.rs"
 
 [package.metadata.dist]
 dist = true
@@ -23,10 +27,12 @@ eula = false
 [dependencies]
 anyhow = "1.0.104"
 async-trait = "0.1.92"
-axum = { version = "0.8.9", features = ["macros"] }
+axum = { version = "0.8.9", features = ["tokio", "macros", "json", "query", "ws"] }
 axum-embed = "0.1.0"
 chrono = "0.4.45"
 clap = { version = "4.6.6", features = ["derive"] }
+daemonize = "0.5.0"
+dirs = "7.0.0"
 home = "0.5.12"
 nix = { version = "0.31.3", features = ["signal"] }
 port_check = "0.3.0"

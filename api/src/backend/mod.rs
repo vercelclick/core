@@ -1,7 +1,9 @@
 mod challenge;
+mod config;
 mod provider;
 
 pub use challenge::PendingChallenge;
+pub use config::{AnalyticsConfig, BackendConfig};
 pub use provider::BackendProvider;
 use std::sync::Arc;
 

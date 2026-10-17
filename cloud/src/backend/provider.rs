@@ -1,5 +1,9 @@
-use crate::backend::challenge::{get_pending_challenge, insert_or_replace_challenge};
-use secretpass_api::{BackendProvider, PendingChallenge};
+use crate::backend::{
+    challenge::{get_pending_challenge, insert_or_replace_challenge},
+    config::CLOUD_CONFIG,
+};
+use anyhow::Ok;
+use secretpass_api::{BackendConfig, BackendProvider, PendingChallenge};
 use secretpass_core::enums::ChallengeKind;
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -18,6 +22,10 @@ impl CloudBackendProvider {
 
 #[async_trait::async_trait]
 impl BackendProvider for CloudBackendProvider {
+    async fn config(&self) -> anyhow::Result<BackendConfig> {
+        Ok(CLOUD_CONFIG.clone())
+    }
+
     async fn pending_challenge_record(
         &self,
         challenge: secretpass_api::PendingChallenge,
@@ -31,5 +39,17 @@ impl BackendProvider for CloudBackendProvider {
         challenge: String,
     ) -> anyhow::Result<PendingChallenge> {
         get_pending_challenge(&self.pool, kind, challenge).await
+    }
+
+    async fn projects_list(&self) -> anyhow::Result<()> {
+        todo!()
+    }
+
+    async fn projects_get(&self, _id: &str) -> anyhow::Result<()> {
+        todo!()
+    }
+
+    async fn workspaces_list(&self) -> anyhow::Result<()> {
+        todo!()
     }
 }

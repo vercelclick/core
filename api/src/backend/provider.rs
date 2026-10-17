@@ -1,4 +1,4 @@
-use crate::backend::challenge::PendingChallenge;
+use crate::backend::{challenge::PendingChallenge, config::BackendConfig};
 use secretpass_core::enums::ChallengeKind;
 
 #[async_trait::async_trait]
@@ -13,4 +13,13 @@ pub trait BackendProvider: Send + Sync + 'static {
         kind: ChallengeKind,
         challenge: String,
     ) -> anyhow::Result<PendingChallenge>;
+
+    async fn config(&self) -> anyhow::Result<BackendConfig>;
+
+    async fn projects_list(&self) -> anyhow::Result<()>;
+
+    // Get a project by ID
+    async fn projects_get(&self, id: &str) -> anyhow::Result<()>;
+
+    async fn workspaces_list(&self) -> anyhow::Result<()>;
 }

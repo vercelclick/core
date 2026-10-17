@@ -1,17 +1,9 @@
-use crate::api::{init_config, serve_local_server};
-use crate::project::setup_working_directory;
 use clap::Parser;
+use secretpass_cli::api::{init_config, serve_local_server};
+use secretpass_cli::project::setup_working_directory;
 
-mod api;
-mod backend;
-pub mod command;
-mod machine;
-mod manager;
-mod project;
-
-use crate::command::init_command_instances;
-use crate::machine::run_command;
-use machine::export_secrets;
+use secretpass_cli::command::init_command_instances;
+use secretpass_cli::machine::{export_secrets, run_command};
 
 #[derive(Debug, Parser)]
 #[command(author, version, about)]

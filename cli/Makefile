@@ -3,12 +3,16 @@
 # ==============================================================================
 
 # Default target when running `make`
-all: dev
+all: api-dev
 
 
-dev:
+cli-dev:
 	echo "==> Run cli dev"
-	RUST_BACKTRACE=1 cargo run -- --project-dir ../
+	RUST_BACKTRACE=1 cargo run --bin spass
+
+local-service-dev:
+	echo "==> Run api dev"
+	RUST_BACKTRACE=1 cargo run --bin spass-service
 
 build:
 	echo "==> Build Cli"
