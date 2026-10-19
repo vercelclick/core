@@ -1,26 +1,10 @@
-import {
-  Description,
-  Input,
-  Label,
-  Link,
-  TextArea,
-  TextField,
-} from "@heroui/react";
-import { IconExternalLink } from "@tabler/icons-react";
+import { Description, Input, Label, TextArea, TextField } from "@heroui/react";
 import { useMemo } from "react";
-import { ENCRYPTION_ALGORITHMS, PASSKEY_RESIDENCIES } from "@/constants";
+import { ENCRYPTION_ALGORITHMS } from "@/constants";
 import { useSecretManager } from "@/manager/provider";
 
 export function ProjectOverview() {
   const manager = useSecretManager();
-
-  const residency = useMemo(
-    () =>
-      PASSKEY_RESIDENCIES.find(
-        (res) => res.value === manager.config.project.residency,
-      ),
-    [manager.config.project.residency],
-  );
 
   const algorithm = useMemo(
     () =>
@@ -81,53 +65,6 @@ export function ProjectOverview() {
         />
         <Description className="font-semibold mb-1">
           {algorithm?.description}
-        </Description>
-      </TextField>
-
-      <TextField className="mt-6" aria-label="Passkey Residency">
-        <Label>Passkey Residency</Label>
-        <Input
-          disabled
-          name="name"
-          variant="secondary"
-          placeholder="My Top Secret Project"
-          value={residency?.label}
-        />
-        <Description className="font-semibold mb-1">
-          {residency?.description}
-        </Description>
-        <Description>
-          <p>
-            Passkeys can be stored on the user's device, hardware security key,
-            or in synced password managers/keychains.
-          </p>
-          <ul className="list-disc list-inside mt-1">
-            <li>
-              Apple Devices -
-              <Link
-                target="_blank"
-                href="https://support.apple.com/en-ae/guide/security/sec59b0b31ff/web"
-              >
-                The Secure Enclave <IconExternalLink className="size-4" />
-              </Link>
-            </li>
-            <li>
-              Windows Linux and other platforms -
-              <Link
-                target="_blank"
-                href="https://learn.microsoft.com/en-us/windows/security/hardware-security/tpm/trusted-platform-module-overview"
-              >
-                Trusted Platform Module (TPM) chip{" "}
-                <IconExternalLink className="size-4" />
-              </Link>
-            </li>
-            <li>
-              Hardware Security Keys -{" "}
-              <Link target="_blank" href="https://fidoalliance.org/passkeys/">
-                Fido2 Protocol Compliant <IconExternalLink className="size-4" />
-              </Link>
-            </li>
-          </ul>
         </Description>
       </TextField>
     </div>

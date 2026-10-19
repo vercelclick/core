@@ -1,8 +1,9 @@
-use crate::auth::login_user_bounded;
-use secretpass_core::{LoginParams, PrivateKey, PrivateKeySeed, PublicKeyType, StoredPublicKey};
+use crate::auth::{LoginParams, login_user_bounded};
+use crate::passkeys::types::LoginResponse;
+use secretpass_core::{PrivateKey, PrivateKeySeed, PublicKeyEncrypt};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tsify::Tsify;
+use tsify::{Ts, Tsify};
 use wasm_bindgen::JsError;
 use wasm_bindgen::prelude::wasm_bindgen;
 
@@ -14,23 +15,31 @@ pub struct GenerateMachineKeyParams {
 
 #[derive(Serialize, Tsify)]
 pub struct GenerateMachineKeyResult {
-    private_key: String,
-    public_key: StoredPublicKey,
+    passkey_id: String,
+    login_response: LoginResponse,
+    id: String,
+    kem_key: Option<String>,
+    ecc_key: Option<String>,
+    machine_key: String,
     secrets_package: HashMap<String, HashMap<String, String>>,
 }
 
 #[wasm_bindgen]
-pub async fn generate_machine_key(name: String, params: String) -> Result<String, JsError> {
-    let params: GenerateMachineKeyParams = serde_json::from_str(&params)
-        .map_err(|err| JsError::new(&format!("Error deserializing params: {}", err)))?;
+pub async fn generate_machine_key(
+    params: Ts<GenerateMachineKeyParams>,
+) -> Result<Ts<GenerateMachineKeyResult>, JsError> {
+    let params: GenerateMachineKeyParams = params.to_rust()?;
 
-    let (_, session) = login_user_bounded(&params.login_params)
+    let (passkey, login_response, session) = login_user_bounded(&params.login_params)
         .await
         .map_err(|err| JsError::new(&format!("Error authorizing user: {}", err)))?;
 
-    let (machine_key, seed) =
-        PrivateKeySeed::generate_machine_key(params.login_params.project.algorithm)
-            .map_err(|err| JsError::new(&format!("Error generating machine key: {}", err)))?;
+    let session = session
+        .ok_or_else(|| JsError::new("Secure session not attained - please report this issue"))?;
+
+    let (machine_key, seed) = PrivateKeySeed::generate_machine_key(session.algorithm)
+        .map_err(|err| JsError::new(&format!("Error generating machine key: {}", err)))?;
+
     let private_key = PrivateKey::from_seed(seed)
         .map_err(|err| JsError::new(&format!("Error getting private key from seed: {}", err)))?;
 
@@ -50,21 +59,16 @@ pub async fn generate_machine_key(name: String, params: String) -> Result<String
         output.insert(env.clone(), encrypted_package);
     }
 
-    let public_key = StoredPublicKey {
-        id: public_key.calculate_id(PublicKeyType::Machine),
-        ecc: public_key.ecc(),
-        kem: public_key.kem(),
-        passkey: None,
-        name,
-        type_: PublicKeyType::Machine,
-    };
-
     let result = GenerateMachineKeyResult {
-        private_key: machine_key,
-        public_key,
+        passkey_id: passkey.id,
+        login_response,
+        id: public_key.machine_key_id(),
+        ecc_key: public_key.ecc(),
+        kem_key: public_key.kem(),
+        machine_key,
         secrets_package: output,
-    };
+    }
+    .into_ts()?;
 
-    serde_json::to_string(&result)
-        .map_err(|err| JsError::new(&format!("Error serializing result: {}", err)))
+    Ok(result)
 }

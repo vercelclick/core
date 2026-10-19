@@ -17,15 +17,6 @@ impl LocalBackendProvider {
 
 #[async_trait::async_trait]
 impl BackendProvider for LocalBackendProvider {
-    async fn config(&self) -> anyhow::Result<BackendConfig> {
-        let analytics = self.support.then_some(ANALYTICS_CONFIG.clone());
-
-        return Ok(BackendConfig {
-            analytics,
-            mode: OperationMode::Local,
-        });
-    }
-
     async fn pending_challenge_record(&self, challenge: PendingChallenge) -> anyhow::Result<()> {
         save_pending_challenge(challenge).await;
         Ok(())
@@ -39,6 +30,15 @@ impl BackendProvider for LocalBackendProvider {
         get_pending_challenge(kind, challenge)
             .await
             .ok_or_else(|| anyhow::anyhow!("Pending challenge not found"))
+    }
+
+    async fn config(&self) -> anyhow::Result<BackendConfig> {
+        let analytics = self.support.then_some(ANALYTICS_CONFIG.clone());
+
+        Ok(BackendConfig {
+            analytics,
+            mode: OperationMode::Local,
+        })
     }
 
     async fn projects_list(&self) -> anyhow::Result<()> {

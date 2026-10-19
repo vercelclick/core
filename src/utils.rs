@@ -18,7 +18,7 @@ pub fn fill_random_bytes(bytes: &mut [u8]) {
     rng.fill(bytes);
 }
 
-pub fn sha256_digest(items: &[String]) -> String {
+pub fn sha256_raw(items: &[String]) -> [u8; 32] {
     let mut hash = Sha256::new();
     for value in items {
         hash.update(value.as_bytes());
@@ -26,7 +26,12 @@ pub fn sha256_digest(items: &[String]) -> String {
 
     let result = hash.finalize();
 
-    hex::encode(result.as_slice())
+    let output: [u8; 32] = result.as_slice().try_into().unwrap();
+    output
+}
+
+pub fn sha256_digest(items: &[String]) -> String {
+    hex::encode(sha256_raw(items))
 }
 
 pub fn bin_encode(payload: &[u8]) -> String {

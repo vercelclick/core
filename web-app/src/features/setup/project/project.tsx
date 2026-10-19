@@ -8,7 +8,6 @@ import { EncryptionAlgorithmSelector } from "./algorithms";
 import { EnvironmentDefinitions } from "./environment";
 import { ProjectOverview } from "./overview";
 import { AdminProfile } from "./profile";
-import { PasskeyResidencySelector } from "./residency";
 import { useProjectStepper } from "./steps";
 
 export function CreateProject({
@@ -70,16 +69,6 @@ export function CreateProject({
           }
         >
           <EncryptionAlgorithmSelector state={state} stepper={stepper} />
-        </Activity>
-
-        <Activity
-          mode={
-            stepper.active === "residency" && !stepper.completed
-              ? "visible"
-              : "hidden"
-          }
-        >
-          <PasskeyResidencySelector state={state} stepper={stepper} />
         </Activity>
 
         <Activity

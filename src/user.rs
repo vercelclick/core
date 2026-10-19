@@ -1,25 +1,38 @@
-use crate::UserLevel;
+use crate::lock::HashedLock;
+use crate::{SecretpassEnvironment, SecretpassProject, UserLevel};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify)]
 pub struct SecretpassUser {
-    pub id: String, // Fixed - invalidates keys if changed
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub username: Option<String>, // Fixed - invalidates keys if changed
+    pub id: String,    // Fixed - invalidates keys if changed, UUID v7
+    pub email: String, // Fixed - invalidates keys if changed
     pub name: String,
-    pub level: UserLevel, // Fixed - invalidates keys if changed
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub access: Vec<String>,
     pub created_at: String, // Fixed - invalidates keys if changed
 }
 
-impl SecretpassUser {
-    pub fn prf_salt(&self) -> String {
-        format!("{}-{:?}-{}", self.id, self.username, self.created_at)
+impl HashedLock for SecretpassUser {
+    fn salt(&self) -> Vec<String> {
+        vec![self.id.clone(), self.email.clone(), self.created_at.clone()]
     }
+}
 
-    pub fn has_access(&self, env_name: String) -> bool {
-        self.level == UserLevel::Admin || self.access.contains(&env_name)
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify)]
+pub struct SecretpassProjectUser {
+    pub id: String,
+    pub user: SecretpassUser,
+    pub project: SecretpassProject,
+    pub level: UserLevel,
+    pub environments: Vec<SecretpassEnvironment>,
+    pub created_at: String,
+}
+
+impl HashedLock for SecretpassProjectUser {
+    fn salt(&self) -> Vec<String> {
+        let mut salt = vec![self.id.clone(), self.created_at.clone()];
+        salt.append(&mut self.user.salt());
+        salt.append(&mut self.project.salt());
+
+        salt
     }
 }

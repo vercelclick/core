@@ -1,4 +1,6 @@
-use crate::enums::{EncryptionAlgorithm, PasskeyResidency};
+use crate::enums::EncryptionAlgorithm;
+use crate::lock::HashedLock;
+use crate::workspace::SecretpassWorkspace;
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 
@@ -6,18 +8,23 @@ use tsify::Tsify;
 pub struct SecretpassProject {
     pub id: String, // Fixed - invalidates keys if changed - uuid v4 local, uuid v7 cloud
     pub name: String,
-    #[serde(skip_serializing_if = "String::is_empty", default)]
     pub description: String,
-    pub residency: PasskeyResidency, // Fixed - invalidates keys if changed
     pub algorithm: EncryptionAlgorithm, // Fixed - invalidates keys if changed
-    pub created_at: String,          // Fixed - invalidates keys if changed
+    pub created_at: String,             // Fixed - invalidates keys if changed
+    pub workspace: Option<SecretpassWorkspace>,
 }
 
-impl SecretpassProject {
-    pub fn prf_salt(&self) -> String {
-        format!(
-            "{}-{}-{}-{}",
-            self.id, self.residency, self.algorithm, self.created_at
-        )
+impl HashedLock for SecretpassProject {
+    fn salt(&self) -> Vec<String> {
+        let mut salt = vec![
+            self.id.clone(),
+            self.algorithm.to_string(),
+            self.created_at.clone(),
+        ];
+        if let Some(workspace) = &self.workspace {
+            salt.append(&mut workspace.salt());
+        }
+
+        salt
     }
 }

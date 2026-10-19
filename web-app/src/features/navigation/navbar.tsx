@@ -80,7 +80,7 @@ export function Navbar() {
   const toggleMenu = () => setIsOpen(!isOpen);
 
   return (
-    <nav className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
+    <nav className="sticky top-0 z-50 w-full bg-background backdrop-blur supports-backdrop-filter:bg-background/60">
       <header className="container mx-auto">
         <div className="flex grow h-16 items-center justify-between">
           <Link href="/" className="flex items-center space-x-2 no-underline">

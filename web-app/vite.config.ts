@@ -7,8 +7,12 @@ export default defineConfig({
   plugins: [tailwindcss(), react()],
   server: {
     proxy: {
-      "/api": {
-        target: "http://secretpass.localhost:20206",
+      "/api/local": {
+        target: "http://localhost:20206",
+        changeOrigin: true,
+      },
+      "/api/cloud": {
+        target: "http://localhost:8080",
         changeOrigin: true,
       },
     },

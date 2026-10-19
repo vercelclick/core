@@ -1,11 +1,10 @@
 use crate::passkeys::types::PrfResults;
-use secretpass_core::{
-    EncryptionAlgorithm, Passkey, PrivateKey, PrivateKeySeed, PublicKeyType, StoredPublicKey,
-};
+use secretpass_core::{EncryptionAlgorithm, PrivateKey, PrivateKeySeed};
 use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct SecureSession {
+    pub algorithm: EncryptionAlgorithm,
     private_key: PrivateKey,
 }
 
@@ -19,7 +18,10 @@ impl SecureSession {
 
         let private_key = PrivateKey::from_seed(seed)?;
 
-        Ok(Self { private_key })
+        Ok(Self {
+            algorithm,
+            private_key,
+        })
     }
 
     pub fn decrypt(&self, cipher: &str) -> anyhow::Result<Vec<u8>> {
@@ -33,16 +35,9 @@ impl SecureSession {
         self.private_key.decrypt_package(secrets_package)
     }
 
-    pub fn build_public_key(&self, name: String, passkey: &Passkey) -> StoredPublicKey {
+    pub fn encode_public_key(&self) -> (Option<String>, Option<String>) {
         let public_key = self.private_key.public_key();
 
-        StoredPublicKey {
-            id: public_key.calculate_id(PublicKeyType::User),
-            name,
-            type_: PublicKeyType::User,
-            ecc: public_key.ecc(),
-            kem: public_key.kem(),
-            passkey: Some(passkey.clone()),
-        }
+        (public_key.ecc(), public_key.kem())
     }
 }

@@ -11,6 +11,24 @@ add-target:
 	@echo "==> add wasm target"
 	rustup target add wasm32-unknown-unknown
 
+
+# ------------------------------------------------------------------------------
+# Library Local Build
+# ------------------------------------------------------------------------------
+dev:
+	$(MAKE) add-target
+	@echo "==> Building WASM for dev server usage"
+	WEBAUTH_RP_ID="secretpass.localhost" \
+	WEBAUTH_RP_ORIGIN="http://secretpass.localhost:5173" \
+	WEBAUTH_RP_ENTITY="Secretpass Dev" \
+	RUSTFLAGS='--cfg=web_sys_unstable_apis' \
+	cargo rustc -p web --release --crate-type cdylib --target wasm32-unknown-unknown
+	wasm-bindgen \
+      ../target/wasm32-unknown-unknown/release/web.wasm \
+      --target web \
+      --out-dir ../web-app/src/core
+
+
 # ------------------------------------------------------------------------------
 # Library Local Build
 # ------------------------------------------------------------------------------
@@ -18,7 +36,7 @@ local:
 	$(MAKE) add-target
 	@echo "==> Building WASM for cli server usage"
 	WEBAUTH_RP_ID="secretpass.localhost" \
-	WEBAUTH_RP_ORIGIN="http://secretpass.localhost" \
+	WEBAUTH_RP_ORIGIN="http://secretpass.localhost:20206" \
 	WEBAUTH_RP_ENTITY="Secretpass Local" \
 	RUSTFLAGS='--cfg=web_sys_unstable_apis' \
 	cargo rustc -p web --release --crate-type cdylib --target wasm32-unknown-unknown

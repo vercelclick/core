@@ -56,33 +56,15 @@ export function App() {
   );
 
   return (
-    <main className="min-h-screen min-w-screen">
+    <main className="min-h-screen min-w-screen bg-background">
       <Toast.Provider />
       <Navbar />
 
-      {state.loading && (
-        <div className="grow flex justify-center items-center text-xl">
-          Loading...
-        </div>
-      )}
-      {is_new_project && (
-        <NewProjectSetup
-          directory={state.directory as string}
-          onAuthComplete={setPublicKeyId}
-        />
-      )}
-      {is_logged_in && (
-        <SecretManagerProvider public_key_id={public_key_id as string}>
-          <SecretManagerView />
-        </SecretManagerProvider>
-      )}
-      {is_pending_login && (
-        <LoginDashboard
-          directory={state.directory as string}
-          project={state.project as SecretpassProject}
-          onAuthComplete={setPublicKeyId}
-        />
-      )}
+      <LoginDashboard
+        directory={state.directory as string}
+        project={state.project as SecretpassProject}
+        onAuthComplete={setPublicKeyId}
+      />
     </main>
   );
 }

@@ -1,6 +1,7 @@
-import { Alert, toast } from "@heroui/react";
+import { toast } from "@heroui/react";
 import { Activity, useCallback, useState } from "react";
 import { useAnalytics } from "@/features/analytics/provider";
+import { Alert } from "./alert";
 
 export type ErrorValue = { title: string; content: string };
 
@@ -71,14 +72,8 @@ export function useError() {
 export function ErrorDisplay({ value }: { value: ErrorValue | null }) {
   return (
     <Activity mode={value ? "visible" : "hidden"}>
-      <Alert status="danger" className="max-w-full">
-        <Alert.Indicator />
-        <Alert.Content className="max-w-full">
-          <Alert.Title>{value?.title}</Alert.Title>
-          <Alert.Description className="max-w-full overflow-x-auto">
-            {value?.content}
-          </Alert.Description>
-        </Alert.Content>
+      <Alert title={value?.title} className="max-w-full" status="danger">
+        {value?.content}
       </Alert>
     </Activity>
   );

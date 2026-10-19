@@ -13,13 +13,6 @@ export function useProjectStepper() {
       label: "Encryption Algorithm",
       status: StepperStepStatus.Pending,
       previous: "overview",
-      next: "residency",
-    },
-    {
-      id: "residency",
-      label: "Passkey Residency",
-      status: StepperStepStatus.Pending,
-      previous: "encryption",
       next: "environments",
     },
     {

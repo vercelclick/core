@@ -1,12 +1,11 @@
 use crate::passkeys::types::*;
 use coset::cbor::value::Value;
 use coset::{CborSerializable, CoseKey, Label};
-use getrandom::rand_core::TryRng;
 use p256::Sec1Point;
 use p256::ecdsa::signature::Verifier;
 use p256::ecdsa::{Signature, VerifyingKey};
-use secretpass_core::utils::{bin_decode, bin_encode, fill_random_bytes};
-use secretpass_core::{Passkey, PasskeyResidency, SecretpassProject, SecretpassUser};
+use secretpass_core::SecretpassPasskey;
+use secretpass_core::utils::{bin_decode, bin_encode};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use wasm_bindgen::throw_str;
@@ -31,22 +30,14 @@ impl ClientData {
     }
 }
 
-static CONFIG: PasskeyConfig = PasskeyConfig {
-    rp_id: env!("WEBAUTH_RP_ID"),
-    rp_name: env!("WEBAUTH_RP_ENTITY"),
-    origin: env!("WEBAUTH_RP_ORIGIN"),
-};
+pub const RP_ORIGIN: &str = env!("WEBAUTH_RP_ORIGIN");
+pub const RP_ENTITY_ID: &str = env!("WEBAUTH_RP_ID");
+pub const RP_ENTITY_NAME: &str = env!("WEBAUTH_RP_ENTITY");
 
 #[derive(Clone, Debug)]
 struct AuthData {
-    rp_id_hash: Vec<u8>,
+    flags: PasskeyFlags,
     credential_data: Option<Vec<u8>>,
-}
-
-fn generate_challenge() -> anyhow::Result<Vec<u8>> {
-    let mut buf = [0u8; CHALLENGE_LEN];
-    fill_random_bytes(&mut buf);
-    Ok(buf.to_vec())
 }
 
 fn verify_client_data(
@@ -61,13 +52,14 @@ fn verify_client_data(
     }
 
     // Due to dynamic port configuration
-    if !data.origin.as_str().starts_with(CONFIG.origin) {
+    if data.origin != RP_ORIGIN {
         return Err(anyhow::format_err!(
             "Origin mismatch, expected: {}, got: {}",
-            CONFIG.origin,
+            RP_ORIGIN,
             data.origin
         ));
     }
+
     if data.type_ != expected_type {
         return Err(anyhow::format_err!(
             "Invalid operation type: {}",
@@ -77,49 +69,49 @@ fn verify_client_data(
     Ok(())
 }
 
-fn check_flags(flags: u8, project: &SecretpassProject) -> anyhow::Result<()> {
-    let user_present = (flags & 0x01) != 0;
-    let user_verified = (flags & 0x04) != 0;
-    if !user_present || !user_verified {
+fn parse_flags(flags: u8) -> anyhow::Result<PasskeyFlags> {
+    let output = PasskeyFlags {
+        user_present: (flags & 0x01) != 0,
+        user_verified: (flags & 0x04) != 0,
+        backup_eligible: (flags & 0x08) != 0,
+        backup_completed: (flags & 0x10) != 0,
+        attested_data: (flags & 0x40) != 0,
+        extension_data: (flags & 0x80) != 0,
+    };
+
+    if !output.user_present || !output.user_verified {
         return Err(anyhow::anyhow!(
             "User presence and authorization cannot be verified"
         ));
     }
 
-    if project.residency != PasskeyResidency::SyncedAllowed {
-        let backup_eligible = (flags & 0x08) != 0;
-        let backup_completed = (flags & 0x10) != 0;
-
-        if backup_eligible || backup_completed {
-            return Err(anyhow::anyhow!("Synced passkeys are not allowed"));
-        }
-    }
-
-    Ok(())
+    Ok(output)
 }
 
-fn parse_auth_data(raw: &[u8], project: &SecretpassProject) -> anyhow::Result<AuthData> {
+fn parse_auth_data(raw: &[u8]) -> anyhow::Result<AuthData> {
     if raw.len() < 37 {
         return Err(anyhow::anyhow!("authData too short"));
     }
     let rp_id_hash = raw[0..32].to_vec();
-    let flags = raw[32];
 
-    check_flags(flags, project)?;
+    verify_rp_id_hash(&rp_id_hash)?;
 
-    let credential_data = if (flags & 0x40) != 0 {
+    let flags = parse_flags(raw[32])?;
+
+    let credential_data = if flags.attested_data {
         Some(raw[37..].to_vec())
     } else {
         None
     };
+
     Ok(AuthData {
-        rp_id_hash,
+        flags,
         credential_data,
     })
 }
 
 fn verify_rp_id_hash(hash: &[u8]) -> anyhow::Result<()> {
-    let expected = Sha256::digest(CONFIG.rp_id.as_bytes());
+    let expected = Sha256::digest(RP_ENTITY_ID.as_bytes());
     if hash != expected.as_ref() as &[u8] {
         return Err(anyhow::anyhow!("RP ID hash mismatch"));
     }
@@ -130,7 +122,7 @@ fn extract_credential(data: &[u8]) -> anyhow::Result<(&[u8], &[u8])> {
     if data.len() < 18 {
         return Err(anyhow::anyhow!("Credential Data too short"));
     }
-    let cred_id_len = u16::from_be_bytes(data[16..18].try_into().unwrap()) as usize;
+    let cred_id_len = u16::from_be_bytes(data[16..18].try_into()?) as usize;
     if data.len() < 18 + cred_id_len {
         return Err(anyhow::anyhow!("Credential ID incomplete"));
     }
@@ -178,61 +170,19 @@ fn verify_p256_signature(
 }
 
 // Core WebAuthn Flows
-
-/// Initiates a new passkey registration.
-///
-/// Returns the options that must be sent to the WebAuthn client (`navigator.credentials.create`).
-/// It also saves the registration session state to the provided `store`.
-pub async fn start_registration(
-    project: &SecretpassProject,
-    user: &SecretpassUser,
-) -> anyhow::Result<PasskeyCreationOptions> {
-    let challenge = generate_challenge()?;
-
-    let options = PasskeyCreationOptions {
-        rp: RpEntity {
-            name: format!("{} - {}", CONFIG.rp_name, project.name),
-            id: CONFIG.rp_id.to_string(),
-        },
-        user: UserEntity {
-            id: user.id.clone(),
-            name: user
-                .username
-                .clone()
-                .ok_or_else(|| anyhow::format_err!("Username is required"))?,
-            display_name: user.name.clone(),
-        },
-        challenge,
-        pub_key_cred_params: vec![PubKeyCredParam {
-            type_: "public-key".into(),
-            alg: -7, // ES256
-        }],
-        timeout: Some(60000),
-        exclude_credentials: None,
-        authenticator_selection: Some(AuthenticatorSelection {
-            authenticator_attachment: None,
-            require_resident_key: Some(false),
-            resident_key: Some("preferred".into()),
-            user_verification: Some("preferred".into()),
-        }),
-        attestation: Some("none".into()),
-    };
-
-    Ok(options)
-}
-
 /// Completes a passkey registration.
 ///
 /// Validates the client response against the stored challenge and RP configuration.
 /// On success, a new [`Passkey`](crate::types::Passkey) is created via the `store`.
 pub fn finish_registration(
-    project: &SecretpassProject,
-    options: &PasskeyCreationOptions,
-    response: RegistrationResponse,
-) -> anyhow::Result<Passkey> {
+    passkey_name: String,
+    user_id: String,
+    challenge: Vec<u8>,
+    response: &RegistrationResponse,
+) -> anyhow::Result<SecretpassPasskey> {
     verify_client_data(
         &response.response.client_data_json,
-        &options.challenge,
+        &challenge,
         "webauthn.create",
     )?;
 
@@ -254,13 +204,12 @@ pub fn finish_registration(
         .ok_or_else(|| anyhow::anyhow!("authData not bytes"))?;
 
     // Verify authData
-    let auth_data = parse_auth_data(auth_data_bytes, project)?;
-    verify_rp_id_hash(&auth_data.rp_id_hash)?;
+    let auth_data = parse_auth_data(auth_data_bytes)?;
 
     // Extract credential
-    let cred_bytes = auth_data
-        .credential_data
-        .ok_or_else(|| anyhow::anyhow!("Attested Credential Data missing"))?;
+    let cred_bytes = auth_data.credential_data.ok_or_else(|| {
+        anyhow::anyhow!("Attestation data is missing from the credential returned")
+    })?;
     let (cred_id, pub_key_cbor) = extract_credential(&cred_bytes)?;
     // Validate the public key parses
     CoseKey::from_slice(pub_key_cbor)
@@ -270,33 +219,15 @@ pub fn finish_registration(
     let cred_id_b64 = bin_encode(cred_id);
     let pub_key_b64 = bin_encode(pub_key_cbor);
 
-    let passkey = Passkey {
+    let passkey = SecretpassPasskey {
         id: cred_id_b64,
+        name: passkey_name,
         public_key: pub_key_b64,
-        user_id: options.user.id.clone(),
-        username: options.user.name.clone(),
+        user_id,
         created_at: chrono::Utc::now().to_rfc3339(),
     };
 
     Ok(passkey)
-}
-
-/// Initiates a passkey login flow.
-///
-/// Returns the options that must be sent to the WebAuthn client (`navigator.credentials.get`).
-/// It saves a login session state keyed by the challenge.
-pub fn start_login() -> anyhow::Result<PasskeyRequestOptions> {
-    let challenge = generate_challenge()?;
-
-    let options = PasskeyRequestOptions {
-        challenge,
-        timeout: Some(60000),
-        rp_id: CONFIG.rp_id.to_string(),
-        allow_credentials: None,
-        user_verification: Some("preferred".into()),
-    };
-
-    Ok(options)
 }
 
 /// Completes a passkey login flow.
@@ -304,10 +235,9 @@ pub fn start_login() -> anyhow::Result<PasskeyRequestOptions> {
 /// Validates the client response, signature, and counter.
 /// On success, returns the `user_id` of the authenticated user and updates the counter in the `store`.
 pub async fn finish_login(
-    project: &SecretpassProject,
-    passkey: &Passkey,
+    passkey: &SecretpassPasskey,
     challenge: &Vec<u8>,
-    response: LoginResponse,
+    response: &LoginResponse,
 ) -> anyhow::Result<()> {
     // Full clientDataJSON verification
     verify_client_data(
@@ -317,13 +247,17 @@ pub async fn finish_login(
     )?;
 
     // Parse & verify authenticator data
-    let auth_data = parse_auth_data(&response.response.authenticator_data, project)?;
-    verify_rp_id_hash(&auth_data.rp_id_hash)?;
+    let auth_data = parse_auth_data(&response.response.authenticator_data)?;
+    if auth_data.credential_data.is_some() {
+        return Err(anyhow::anyhow!(
+            "Invalid credential result - login object should not hold attestation data"
+        ));
+    }
 
     // Verify user handle if present
-    if let Some(uh_bytes) = response.response.user_handle {
-        let uid_str =
-            String::from_utf8(uh_bytes).map_err(|_| anyhow::anyhow!("Invalid userHandle utf8"))?;
+    if let Some(uh_bytes) = &response.response.user_handle {
+        let uid_str = String::from_utf8(uh_bytes.clone())
+            .map_err(|_| anyhow::anyhow!("Invalid userHandle utf8"))?;
         if uid_str != passkey.user_id {
             return Err(anyhow::anyhow!("User Handle mismatch"));
         }
@@ -340,6 +274,5 @@ pub async fn finish_login(
         &response.response.signature,
     )?;
 
-    // Return PRF results
     Ok(())
 }

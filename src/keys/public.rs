@@ -1,4 +1,3 @@
-use crate::PublicKeyType;
 use crate::keys::derive::{EccPublicKey, KemPublicKey};
 use crate::types::EncryptedPackage;
 use crate::utils::{bin_decode, bin_encode, bin_serialize, get_global_rng, sha256_digest};
@@ -8,15 +7,8 @@ use aes_gcm::{
 };
 use fips203::traits::{Encaps, SerDes};
 use rand::TryRng;
-use serde::Serialize;
 use std::collections::HashMap;
 use x25519_dalek::StaticSecret;
-
-#[derive(Clone, Serialize)]
-pub struct PublicKeyDto {
-    pub kem: Option<String>,
-    pub ecc: Option<String>,
-}
 
 #[derive(Clone)]
 pub struct PublicKey {
@@ -61,36 +53,6 @@ impl PublicKey {
         self.kem
             .as_ref()
             .map(|value| bin_encode(&value.clone().into_bytes()))
-    }
-
-    pub fn encrypt(&self, payload: Vec<u8>) -> anyhow::Result<String> {
-        let nonce_bytes = generate_nonce_bytes()?;
-
-        let (ecc_public_key, ecc_shared_secret) = self.get_ecc_aes_keys();
-        let (kem_ciphertext, kem_shared_secret) = self.get_kem_aes_keys();
-        let mut payload = payload.clone();
-
-        // Order of events - ECC encrypts first decrypts last, KEM encrypts last decrypts first
-        for shared_secret in [ecc_shared_secret, kem_shared_secret].into_iter().flatten() {
-            payload = Self::aes_encrypt_payload(nonce_bytes, shared_secret, &payload)?
-        }
-
-        let encrypted_package =
-            EncryptedPackage(ecc_public_key, kem_ciphertext, nonce_bytes, payload);
-
-        bin_serialize(&encrypted_package)
-    }
-
-    pub fn encrypt_package(
-        &self,
-        decrypted_package: HashMap<String, Vec<u8>>,
-    ) -> anyhow::Result<HashMap<String, String>> {
-        let mut encrypted_package = HashMap::new();
-        for (name, value) in decrypted_package {
-            let encrypted_value = self.encrypt(value)?;
-            encrypted_package.insert(name, encrypted_value);
-        }
-        Ok(encrypted_package)
     }
 
     fn get_ecc_aes_keys(&self) -> (Option<Vec<u8>>, Option<[u8; 32]>) {
@@ -138,8 +100,9 @@ impl PublicKey {
         Ok(ciphertext)
     }
 
-    pub fn calculate_id(&self, key_type: PublicKeyType) -> String {
-        let mut data = vec![key_type.to_string()];
+    // Only applies to machine keys
+    pub fn machine_key_id(&self) -> String {
+        let mut data = vec![];
         for value in [self.ecc(), self.kem()].iter().flatten() {
             data.push(value.to_string());
         }
@@ -155,4 +118,44 @@ fn generate_nonce_bytes() -> anyhow::Result<[u8; 12]> {
     rng.try_fill_bytes(&mut nonce_bytes)?;
 
     Ok(nonce_bytes)
+}
+
+pub trait PublicKeyEncrypt {
+    fn encrypt(&self, payload: Vec<u8>) -> anyhow::Result<String>;
+    fn encrypt_package(
+        &self,
+        decrypted_package: HashMap<String, Vec<u8>>,
+    ) -> anyhow::Result<HashMap<String, String>>;
+}
+
+impl PublicKeyEncrypt for PublicKey {
+    fn encrypt(&self, payload: Vec<u8>) -> anyhow::Result<String> {
+        let nonce_bytes = generate_nonce_bytes()?;
+
+        let (ecc_public_key, ecc_shared_secret) = self.get_ecc_aes_keys();
+        let (kem_ciphertext, kem_shared_secret) = self.get_kem_aes_keys();
+        let mut payload = payload.clone();
+
+        // Order of events - ECC encrypts first decrypts last, KEM encrypts last decrypts first
+        for shared_secret in [ecc_shared_secret, kem_shared_secret].into_iter().flatten() {
+            payload = Self::aes_encrypt_payload(nonce_bytes, shared_secret, &payload)?
+        }
+
+        let encrypted_package =
+            EncryptedPackage(ecc_public_key, kem_ciphertext, nonce_bytes, payload);
+
+        bin_serialize(&encrypted_package)
+    }
+
+    fn encrypt_package(
+        &self,
+        decrypted_package: HashMap<String, Vec<u8>>,
+    ) -> anyhow::Result<HashMap<String, String>> {
+        let mut encrypted_package = HashMap::new();
+        for (name, value) in decrypted_package {
+            let encrypted_value = self.encrypt(value)?;
+            encrypted_package.insert(name, encrypted_value);
+        }
+        Ok(encrypted_package)
+    }
 }

@@ -1,9 +1,8 @@
 use crate::passkeys::types::{
     AssertionResponse, AttestationResponse, LoginResponse, PrfResults, RegistrationResponse,
 };
-use secretpass_core::utils::bin_decode;
-use secretpass_core::{SecretpassProject, SecretpassUser, StoredPublicKey};
-use sha2::{Digest, Sha256};
+use secretpass_core::SecretpassPasskey;
+use secretpass_core::utils::{bin_decode, sha256_raw};
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::js_sys::{
     Array as JsArray, ArrayBuffer, Object as JsObject, Reflect as JsReflect, Uint8Array,
@@ -20,7 +19,9 @@ fn prf_error(id: &str) -> anyhow::Error {
     )
 }
 
-fn get_prf_value(outputs: AuthenticationExtensionsClientOutputs) -> anyhow::Result<JsValue> {
+fn get_prf_value(
+    outputs: AuthenticationExtensionsClientOutputs,
+) -> anyhow::Result<Option<JsValue>> {
     let prf_key = JsValue::from_str("prf");
 
     let prf_result = match JsReflect::get(&outputs, &prf_key) {
@@ -28,25 +29,24 @@ fn get_prf_value(outputs: AuthenticationExtensionsClientOutputs) -> anyhow::Resu
         Err(_) => return Err(prf_error("01")),
     };
     if prf_result.is_undefined() || prf_result.is_null() {
-        return Err(prf_error("02"));
+        return Ok(None);
     }
 
-    Ok(prf_result)
+    Ok(Some(prf_result))
 }
 
 pub fn map_browser_passkey_registration_response(
     pk_credential: PublicKeyCredential,
-) -> anyhow::Result<(PrfResults, RegistrationResponse)> {
+) -> anyhow::Result<RegistrationResponse> {
     let ext_outputs = pk_credential.get_client_extension_results();
-    let prf_result = parse_prf_result(ext_outputs)?;
+    verify_prf_enabled(ext_outputs)?;
 
-    let attestation_response = match pk_credential
+    let attestation_response = pk_credential
         .response()
         .dyn_into::<AuthenticatorAttestationResponse>()
-    {
-        Ok(attestation_response) => attestation_response,
-        Err(_) => return Err(anyhow::anyhow!("Error parsing attestation response")),
-    };
+        .map_err(|err| {
+            anyhow::format_err!("Error parsing attestation response: {}", err.to_string())
+        })?;
 
     let attestation_response = AttestationResponse {
         attestation_object: Uint8Array::new(&attestation_response.attestation_object()).to_vec(),
@@ -59,13 +59,36 @@ pub fn map_browser_passkey_registration_response(
         response: attestation_response,
     };
 
-    Ok((prf_result, response))
+    Ok(response)
+}
+
+pub fn verify_prf_enabled(outputs: AuthenticationExtensionsClientOutputs) -> anyhow::Result<()> {
+    let prf_result = get_prf_value(outputs)?.ok_or_else(|| {
+        anyhow::anyhow!(
+            "Pseudo Random function not supported, please use a different passkey provider"
+        )
+    })?;
+
+    let enabled = match JsReflect::get(&prf_result, &JsValue::from_str("enabled")) {
+        Ok(value) => value,
+        Err(_) => return Err(prf_error("09")),
+    }
+    .as_bool();
+
+    if Some(true) != enabled {
+        return Err(prf_error("10"));
+    }
+
+    Ok(())
 }
 
 pub fn parse_prf_result(
     outputs: AuthenticationExtensionsClientOutputs,
-) -> anyhow::Result<PrfResults> {
-    let prf_result = get_prf_value(outputs)?;
+) -> anyhow::Result<Option<PrfResults>> {
+    let prf_result = match get_prf_value(outputs)? {
+        Some(results) => results,
+        None => return Ok(None),
+    };
 
     let results = match JsReflect::get(&prf_result, &JsValue::from_str("results")) {
         Ok(value) => value,
@@ -84,17 +107,19 @@ pub fn parse_prf_result(
     let first = parse_prf_value(first)?;
     let second = parse_prf_value(second)?;
 
-    Ok(PrfResults { first, second })
+    Ok(Some(PrfResults { first, second }))
 }
 
 pub fn map_browser_passkey_authentication(
     pk_credential: PublicKeyCredential,
-    public_keys: &[StoredPublicKey],
-) -> anyhow::Result<(StoredPublicKey, PrfResults, LoginResponse)> {
-    let public_key = public_keys
+    public_keys: &[SecretpassPasskey],
+) -> anyhow::Result<(SecretpassPasskey, LoginResponse, Option<PrfResults>)> {
+    let cred_id = pk_credential.id();
+    let passkey = public_keys
         .iter()
-        .find(|pk| pk.passkey.clone().unwrap().id == pk_credential.id())
-        .ok_or_else(|| anyhow::anyhow!("Passkey did not match known passkeys"))?;
+        .find(|pk| pk.id == cred_id)
+        .ok_or_else(|| anyhow::anyhow!("Passkey did not match known passkeys"))?
+        .clone();
 
     let ext_outputs = pk_credential.get_client_extension_results();
     let prf_results = parse_prf_result(ext_outputs)?;
@@ -121,7 +146,7 @@ pub fn map_browser_passkey_authentication(
         response,
     };
 
-    Ok((public_key.clone(), prf_results, login_response))
+    Ok((passkey, login_response, prf_results))
 }
 
 pub fn parse_prf_value(buffer: JsValue) -> anyhow::Result<[u8; 32]> {
@@ -134,13 +159,9 @@ pub fn parse_prf_value(buffer: JsValue) -> anyhow::Result<[u8; 32]> {
     Ok(value)
 }
 
-pub fn allowed_credentials(public_keys: &[StoredPublicKey]) -> anyhow::Result<JsValue> {
+pub fn allowed_credentials(passkeys: &[SecretpassPasskey]) -> anyhow::Result<JsValue> {
     let credentials = JsArray::new();
-    for pk in public_keys {
-        let passkey = pk
-            .passkey
-            .clone()
-            .ok_or_else(|| anyhow::format_err!("Missing passkey in public key {}", pk.id))?;
+    for passkey in passkeys {
         let id = Uint8Array::new_from_slice(&passkey.id_bytes()?);
 
         let object = JsObject::new();
@@ -178,20 +199,27 @@ pub fn exclude_credentials(public_keys: &[String]) -> anyhow::Result<JsValue> {
     Ok(JsValue::from(credentials))
 }
 
-fn encode_prf_salt(value: String) -> Uint8Array {
-    Uint8Array::new_from_slice(&Sha256::digest(value.as_bytes()))
+fn encode_prf_salt(value: Vec<String>) -> Uint8Array {
+    Uint8Array::new_from_slice(&sha256_raw(&value))
+}
+
+pub fn build_prf_eval_values(
+    user_salt: Vec<String>,
+    entity_salt: Vec<String>,
+) -> AuthenticationExtensionsPrfValues {
+    let prf_value =
+        AuthenticationExtensionsPrfValues::new_with_u8_array(&encode_prf_salt(entity_salt));
+    prf_value.set_second_u8_array(&encode_prf_salt(user_salt));
+    prf_value
 }
 
 pub fn build_credential_request_extensions(
-    project: &SecretpassProject,
-    user: &SecretpassUser,
+    prf_value: Option<AuthenticationExtensionsPrfValues>,
 ) -> AuthenticationExtensionsClientInputs {
-    let prf_value =
-        AuthenticationExtensionsPrfValues::new_with_u8_array(&encode_prf_salt(project.prf_salt()));
-    prf_value.set_second_u8_array(&encode_prf_salt(user.prf_salt()));
-
     let prf_extension = AuthenticationExtensionsPrfInputs::new();
-    prf_extension.set_eval(&prf_value);
+    if let Some(prf_value) = prf_value {
+        prf_extension.set_eval(&prf_value);
+    }
 
     let extensions = AuthenticationExtensionsClientInputs::new();
     extensions.set_prf(&prf_extension);

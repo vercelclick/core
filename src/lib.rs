@@ -1,23 +1,19 @@
 mod config;
 pub mod enums;
 mod keys;
+mod lock;
 mod project;
 pub mod types;
 mod user;
 pub mod utils;
+mod workspace;
 
 pub use config::{SecretManagerConfig, SecretManagerConfigLock};
-pub use enums::{
-    CommandStatus, EncryptionAlgorithm, LogSource, OperationMode, PasskeyResidency, PublicKeyType,
-    SecretDataType, UserLevel,
-};
+pub use enums::{EncryptionAlgorithm, OperationMode, SecretDataType, UserLevel};
 pub use keys::{
-    Passkey, PrivateKey, PrivateKeySeed, PublicKey, PublicKeyDto, StoredPublicKey,
-    StoredPublicKeysLock,
+    PrivateKey, PrivateKeySeed, PublicKey, PublicKeyEncrypt, SecretpassPasskey,
+    SecretpassProjectMachinePublicKey, SecretpassProjectUserPublicKey,
 };
 pub use project::SecretpassProject;
-pub use types::{
-    CommandInstanceDetails, EnvironmentLockPackage, LogItem, LoginParams,
-    MultiEnvironmentLockPackage, SecretDefinition, SecretpassEnvironment, UserApplicationState,
-};
+pub use types::{EncryptedPackage, SecretDefinition, SecretpassEnvironment};
 pub use user::SecretpassUser;

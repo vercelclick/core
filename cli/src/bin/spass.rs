@@ -1,9 +1,4 @@
 use clap::Parser;
-use secretpass_cli::api::{init_config, serve_local_server};
-use secretpass_cli::project::setup_working_directory;
-
-use secretpass_cli::command::init_command_instances;
-use secretpass_cli::machine::{export_secrets, run_command};
 
 #[derive(Debug, Parser)]
 #[command(author, version, about)]
@@ -60,47 +55,20 @@ async fn main() {
         return;
     }
 
-    setup_working_directory(args.project_dir);
-
-    init_config(args.cloud, args.private_key.is_some())
-        .map_err(|err| anyhow::format_err!("Error initializing from project config {}", err))
-        .unwrap();
-
-    if let Some(private_key) = args.private_key {
+    if let Some(_private_key) = args.private_key {
         if let Some(format) = args.export {
             if !args.target.is_empty() {
                 panic!("You cannot export secrets and run a command at the same time");
             }
-            export_secrets(private_key, args.env, format).unwrap();
-            return;
+            todo!("Implement secrets export for {format}")
         }
 
         if args.target.is_empty() {
             panic!("You must specify a command to run");
         }
 
-        let command = args.target.join(" ");
-        run_command(private_key, args.env, command, args.command_dir).unwrap();
+        todo!("Implement command run")
     } else {
-        if args.export.is_some() {
-            panic!(
-                "Exporting secrets not supported under non-human mode. Use the UI to export the secrets."
-            );
-        }
-
-        let command = if args.target.is_empty() {
-            None
-        } else {
-            Some(args.target.join(" "))
-        };
-
-        init_command_instances(args.command_dir, command).unwrap();
-        tokio::spawn(serve_local_server(
-            args.cloud,
-            args.cloud_origin.clone(),
-            args.no_support,
-        ))
-        .await
-        .unwrap()
+        todo!("Implement browser launch for authentication, must be within a project directory")
     }
 }
