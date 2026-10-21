@@ -30,16 +30,17 @@ anyhow = "1.0.104"
 argon2 = { version = "0.6.0" }
 base64 = "0.23.1"
 ciborium = { version = "0.2.2" }
+chrono = { version = "0.4.45", features = ["serde", "wasm-bindgen"] }
 hex = "0.4.3"
 fips203 = { version = "0.4.3", features = ["ml-kem-768"] }
 rand = { version = "0.10.2", default-features = false, features = ["chacha"] }
 serde = { version = "1.0.229", features = ["derive"] }
 sha2 = { version = "0.11.0" }
-sqlx = { version = "0.9.0", features = ["macros", "chrono", "postgres", "runtime-tokio", "derive"] }
 strum = { version = "0.28.0", features = ["derive", "strum_macros"] }
 tsify = { version = "0.5.8", features = ["wasm-bindgen"] }
 wasm-bindgen = { version = "0.2.128" }
 x25519-dalek = { version = "3.0.0", features = ["static_secrets"] }
+ml-kem = "0.3.3"
 
 # The profile that 'dist' will build with
 [profile.dist]

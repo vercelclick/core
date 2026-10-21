@@ -1,10 +1,8 @@
-use crate::backend::{
-    challenge::{get_pending_challenge, insert_or_replace_challenge},
-    config::CLOUD_CONFIG,
-};
-use anyhow::Ok;
-use secretpass_api::{BackendConfig, BackendProvider, PendingChallenge};
+use crate::backend::auth::challenge::{get_pending_challenge, insert_or_replace_challenge};
+use crate::backend::auth::register::create_user;
+use secretpass_api::{BackendProvider, CreateUserParams, PendingChallenge, SessionResponse};
 use secretpass_core::enums::ChallengeKind;
+use secretpass_core::{SecretpassUser, SecretpassUserSession};
 use sqlx::PgPool;
 use std::sync::Arc;
 
@@ -22,10 +20,6 @@ impl CloudBackendProvider {
 
 #[async_trait::async_trait]
 impl BackendProvider for CloudBackendProvider {
-    async fn config(&self) -> anyhow::Result<BackendConfig> {
-        Ok(CLOUD_CONFIG.clone())
-    }
-
     async fn pending_challenge_record(
         &self,
         challenge: secretpass_api::PendingChallenge,
@@ -50,6 +44,24 @@ impl BackendProvider for CloudBackendProvider {
     }
 
     async fn workspaces_list(&self) -> anyhow::Result<()> {
+        todo!()
+    }
+
+    async fn create_user(&self, params: CreateUserParams) -> anyhow::Result<SessionResponse> {
+        create_user(&self.pool, params).await
+    }
+
+    async fn record_session(
+        &self,
+        _user: SecretpassUser,
+        _session: SecretpassUserSession,
+    ) -> anyhow::Result<()> {
+        Err(anyhow::anyhow!(
+            "Cloud provider shouldn't call record session!"
+        ))
+    }
+
+    async fn get_session(&self, id: String) -> anyhow::Result<Option<SessionResponse>> {
         todo!()
     }
 }

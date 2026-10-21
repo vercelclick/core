@@ -1,17 +1,15 @@
 use crate::auth::helpers::{get_credentials_container, parse_promise};
 use crate::auth::mapping::{
-    build_credential_request_extensions, exclude_credentials,
+    build_credential_request_extensions, build_credentials_array,
     map_browser_passkey_registration_response,
 };
-use crate::passkeys::finish_registration;
-use crate::passkeys::protocol::RP_ENTITY_ID;
-use crate::passkeys::types::RegistrationResponse;
-use secretpass_core::SecretpassPasskey;
-use secretpass_core::utils::bin_decode;
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
+
+use crate::passkeys::protocol::{RP_ENTITY_ID, RP_ENTITY_NAME};
+use crate::passkeys::registration::RegistrationResponse;
+use secretpass_core::utils::bin_decode;
 use wasm_bindgen::JsValue;
-use wasm_bindgen::prelude::wasm_bindgen;
 use web_sys::js_sys::{Array as JsArray, Object as JsObject, Reflect as JsReflect};
 use web_sys::{
     AttestationConveyancePreference, AuthenticatorSelectionCriteria, CredentialCreationOptions,
@@ -20,8 +18,7 @@ use web_sys::{
 };
 
 #[derive(Debug, Serialize, Deserialize, Tsify)]
-pub struct RegistrationParams {
-    pub key_name: String,
+pub struct RegistrationRequest {
     pub exclude_keys: Vec<String>,
     pub email: String,
     pub full_name: String,
@@ -29,28 +26,14 @@ pub struct RegistrationParams {
     pub challenge: String,
 }
 
-impl RegistrationParams {
-    fn challenge(&self) -> anyhow::Result<Vec<u8>> {
-        bin_decode(&self.challenge)
+impl RegistrationRequest {
+    pub(crate) async fn attempt(&self) -> anyhow::Result<RegistrationResponse> {
+        register_user(self).await
     }
 }
 
-pub async fn register_user_bounded(
-    params: RegistrationParams,
-) -> anyhow::Result<(SecretpassPasskey, RegistrationResponse)> {
-    let challenge = params.challenge()?;
-
-    let reg_response = browser_user_registration(&params).await?;
-
-    let passkey = finish_registration(params.key_name, params.user_id, challenge, &reg_response)?;
-
-    Ok((passkey, reg_response))
-}
-
-async fn browser_user_registration(
-    params: &RegistrationParams,
-) -> anyhow::Result<RegistrationResponse> {
-    let rp = PublicKeyCredentialRpEntity::new(RP_ENTITY_ID);
+async fn register_user(params: &RegistrationRequest) -> anyhow::Result<RegistrationResponse> {
+    let rp = PublicKeyCredentialRpEntity::new(RP_ENTITY_NAME);
     rp.set_id(RP_ENTITY_ID);
 
     let user_id = params.user_id.clone();
@@ -64,7 +47,7 @@ async fn browser_user_registration(
     // Request PRF extension during key creation, this is a dealbreaker if not supported
     let extensions = build_credential_request_extensions(None);
 
-    let mut challenge = params.challenge()?;
+    let mut challenge = bin_decode(&params.challenge)?;
     let pk_options = PublicKeyCredentialCreationOptions::new_with_u8_slice(
         &mut challenge,
         &build_credential_params(),
@@ -78,7 +61,7 @@ async fn browser_user_registration(
     pk_options.set_attestation(AttestationConveyancePreference::Indirect);
 
     if !params.exclude_keys.is_empty() {
-        pk_options.set_exclude_credentials(&exclude_credentials(&params.exclude_keys)?)
+        pk_options.set_exclude_credentials(&build_credentials_array(&params.exclude_keys)?)
     }
 
     let selection = AuthenticatorSelectionCriteria::new();

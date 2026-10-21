@@ -1,16 +1,7 @@
 use serde::{Deserialize, Serialize};
-use sqlx::Type as SqlxType;
 use strum::{Display, EnumString};
 use tsify::Tsify;
 use wasm_bindgen::prelude::wasm_bindgen;
-
-#[wasm_bindgen(skip_typescript)]
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify)]
-#[tsify(namespace)]
-pub enum OperationMode {
-    Local,
-    Cloud,
-}
 
 #[wasm_bindgen(skip_typescript)]
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify)]
@@ -39,18 +30,32 @@ pub enum SecretDataType {
     Url,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify, SqlxType)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify)]
 #[tsify(namespace)]
-#[sqlx(type_name = "ChallengeKind")]
 pub enum ChallengeKind {
-    User,
-    PublicKey,
+    WebauthUser,
+    WebauthPasskey,
+    EmailSignup,
+    EmailSignIn,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify, SqlxType)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify)]
 #[tsify(namespace)]
-#[sqlx(type_name = "ChallengeKind")]
 pub enum AccessGrant {
     Pending,
     Granted,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify)]
+#[tsify(namespace)]
+pub enum PasskeyType {
+    Local,
+    Cloud,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify)]
+#[tsify(namespace)]
+pub enum OperationMode {
+    Local,
+    Cloud,
 }

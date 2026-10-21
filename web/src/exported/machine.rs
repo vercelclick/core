@@ -1,5 +1,5 @@
-use crate::auth::{LoginParams, login_user_bounded};
-use crate::passkeys::types::LoginResponse;
+use crate::auth::DecryptionAuthorizationRequest;
+use crate::passkeys::authorize::AuthorizationResponse;
 use secretpass_core::{PrivateKey, PrivateKeySeed, PublicKeyEncrypt};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -8,15 +8,14 @@ use wasm_bindgen::JsError;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 #[derive(Deserialize, Tsify)]
-pub struct GenerateMachineKeyParams {
-    login_params: LoginParams,
+pub struct GenerateMachineKeyRequest {
+    auth_request: DecryptionAuthorizationRequest,
     secrets_package: HashMap<String, HashMap<String, String>>,
 }
 
 #[derive(Serialize, Tsify)]
 pub struct GenerateMachineKeyResult {
-    passkey_id: String,
-    login_response: LoginResponse,
+    auth_response: AuthorizationResponse,
     id: String,
     kem_key: Option<String>,
     ecc_key: Option<String>,
@@ -26,16 +25,15 @@ pub struct GenerateMachineKeyResult {
 
 #[wasm_bindgen]
 pub async fn generate_machine_key(
-    params: Ts<GenerateMachineKeyParams>,
+    request: Ts<GenerateMachineKeyRequest>,
 ) -> Result<Ts<GenerateMachineKeyResult>, JsError> {
-    let params: GenerateMachineKeyParams = params.to_rust()?;
+    let request: GenerateMachineKeyRequest = request.to_rust()?;
 
-    let (passkey, login_response, session) = login_user_bounded(&params.login_params)
+    let (auth_response, session) = request
+        .auth_request
+        .authorize()
         .await
         .map_err(|err| JsError::new(&format!("Error authorizing user: {}", err)))?;
-
-    let session = session
-        .ok_or_else(|| JsError::new("Secure session not attained - please report this issue"))?;
 
     let (machine_key, seed) = PrivateKeySeed::generate_machine_key(session.algorithm)
         .map_err(|err| JsError::new(&format!("Error generating machine key: {}", err)))?;
@@ -46,7 +44,7 @@ pub async fn generate_machine_key(
     let public_key = private_key.public_key();
 
     let mut output: HashMap<String, HashMap<String, String>> = Default::default();
-    for (env, encrypted_package) in &params.secrets_package {
+    for (env, encrypted_package) in &request.secrets_package {
         let decrypted_package = session.decrypt_package(encrypted_package).map_err(|err| {
             JsError::new(&format!("Error decrypting secrets from {}: {}", env, err))
         })?;
@@ -60,8 +58,7 @@ pub async fn generate_machine_key(
     }
 
     let result = GenerateMachineKeyResult {
-        passkey_id: passkey.id,
-        login_response,
+        auth_response,
         id: public_key.machine_key_id(),
         ecc_key: public_key.ecc(),
         kem_key: public_key.kem(),

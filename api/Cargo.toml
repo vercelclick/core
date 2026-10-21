@@ -10,8 +10,14 @@ homepage.workspace = true
 [dependencies]
 anyhow = "1.0.104"
 async-trait = "0.1.92"
-axum = { version = "0.8.9", features = ["tokio", "macros", "json", "query", "ws"] }
-chrono = { version = "0.4.45", features = ["serde"] }
+axum = { version = "0.8.9", features = ["tokio", "macros", "json", "query"] }
+chrono = { version = "0.4.45", features = ["serde", "wasm-bindgen"] }
 secretpass-core = { path = ".." }
 serde = { version = "1.0.229", features = ["derive"] }
 sqlx = { version = "0.9.0", features = ["macros", "chrono"] }
+rand = { version = "0.10.3" }
+reqwest = { version = "0.13.5", features = ["json"] }
+tower-http = { version = "0.7.1", features = ["cors"] }
+tower-cookies = { version = "0.11.0" }
+tsify = { version = "0.5.8", features = ["wasm-bindgen"] }
+wasm-bindgen = { version = "0.2.128" }

@@ -3,7 +3,7 @@ pub mod db;
 
 use backend::CloudBackendProvider;
 use secretpass_api::{ApiState, create_backend_app};
-use secretpass_core::OperationMode;
+use secretpass_core::enums::OperationMode;
 use std::env;
 use std::sync::Arc;
 
@@ -15,10 +15,11 @@ async fn main() {
     let provider = CloudBackendProvider::new(pool);
 
     let state = ApiState {
+        mode: OperationMode::Cloud,
         backend: Arc::new(provider),
     };
 
-    let app = create_backend_app(OperationMode::Cloud).with_state(state);
+    let app = create_backend_app().with_state(state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
 

@@ -2,7 +2,6 @@ use daemonize::Daemonize;
 use secretpass_api::{ApiState, create_backend_app};
 use secretpass_cli::backend::LocalBackendProvider;
 use secretpass_cli::config::{CONFIG_DIR, DATA_DIR, HOME_DIR};
-use secretpass_core::OperationMode;
 use std::fs;
 use std::fs::OpenOptions;
 use std::sync::Arc;
@@ -17,7 +16,7 @@ async fn run_server() {
         backend: Arc::new(backend),
     };
 
-    let app = create_backend_app(OperationMode::Local).with_state(state);
+    let app = create_backend_app().with_state(state);
 
     let listener = tokio::net::TcpListener::bind(API_HOST)
         .await

@@ -1,5 +1,5 @@
-use crate::auth::{LoginParams, login_user_bounded};
-use crate::passkeys::types::LoginResponse;
+use crate::auth::{AuthorizationRequest, DecryptionAuthorizationRequest};
+use crate::passkeys::authorize::AuthorizationResponse;
 use secretpass_core::{
     PublicKeyEncrypt, SecretpassProjectMachinePublicKey, SecretpassProjectUserPublicKey,
 };
@@ -10,8 +10,8 @@ use wasm_bindgen::JsError;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 #[derive(Deserialize, Tsify)]
-pub struct EncryptSecretParams {
-    login_params: LoginParams,
+pub struct EncryptSecretRequest {
+    auth_request: AuthorizationRequest,
     user_keys: Vec<SecretpassProjectUserPublicKey>,
     machine_keys: Vec<SecretpassProjectMachinePublicKey>,
     secret_value: String,
@@ -19,43 +19,43 @@ pub struct EncryptSecretParams {
 
 #[derive(Serialize, Tsify)]
 pub struct EncryptSecretResult {
-    passkey_id: String,
-    login_response: LoginResponse,
+    auth_response: AuthorizationResponse,
     user_values: HashMap<String, String>,
     machine_values: HashMap<String, String>,
 }
 
 #[wasm_bindgen]
 pub async fn encrypt_secret(
-    params: Ts<EncryptSecretParams>,
+    ts_request: Ts<EncryptSecretRequest>,
 ) -> Result<Ts<EncryptSecretResult>, JsError> {
-    let params: EncryptSecretParams = params.to_rust()?;
+    let request: EncryptSecretRequest = ts_request.to_rust()?;
 
-    let (passkey, login_response, _) = login_user_bounded(&params.login_params)
+    let auth_response = request
+        .auth_request
+        .authorize()
         .await
         .map_err(|err| JsError::new(&format!("Error authorizing user: {}", err)))?;
 
     let mut user_values: HashMap<String, String> = HashMap::new();
-    for pk in params.user_keys {
+    for pk in request.user_keys {
         let key_id = pk.id.clone();
         let encrypted_value = pk
-            .encrypt(params.secret_value.clone().into_bytes())
+            .encrypt(request.secret_value.clone().into_bytes())
             .map_err(|err| JsError::new(&format!("Error encrypting secret: {}", err)))?;
         user_values.insert(key_id, encrypted_value);
     }
 
     let mut machine_values: HashMap<String, String> = HashMap::new();
-    for pk in params.machine_keys {
+    for pk in request.machine_keys {
         let key_id = pk.id.clone();
         let encrypted_value = pk
-            .encrypt(params.secret_value.clone().into_bytes())
+            .encrypt(request.secret_value.clone().into_bytes())
             .map_err(|err| JsError::new(&format!("Error encrypting secret: {}", err)))?;
         machine_values.insert(key_id, encrypted_value);
     }
 
     let result = EncryptSecretResult {
-        passkey_id: passkey.id,
-        login_response,
+        auth_response,
         user_values,
         machine_values,
     }
@@ -65,22 +65,23 @@ pub async fn encrypt_secret(
 }
 
 #[derive(Deserialize, Tsify)]
-pub struct DecryptSecretParams {
-    login_params: LoginParams,
+pub struct DecryptSecretRequest {
+    auth_request: DecryptionAuthorizationRequest,
     encrypted_secret: String,
 }
 
 #[wasm_bindgen]
-pub async fn decrypt_secret(params: Ts<DecryptSecretParams>) -> Result<String, JsError> {
-    let params: DecryptSecretParams = params.to_rust()?;
+pub async fn decrypt_secret(ts_request: Ts<DecryptSecretRequest>) -> Result<String, JsError> {
+    let request: DecryptSecretRequest = ts_request.to_rust()?;
 
-    let (_, _, session) = login_user_bounded(&params.login_params)
+    let (_, session) = request
+        .auth_request
+        .authorize()
         .await
         .map_err(|err| JsError::new(&format!("Error authorizing user: {}", err)))?;
 
     let plain_value = session
-        .ok_or_else(|| JsError::new("Secure session not attained - please report this issue"))?
-        .decrypt(&params.encrypted_secret)
+        .decrypt(&request.encrypted_secret)
         .map_err(|err| JsError::new(&format!("Error decrypting secret: {}", err)))?;
 
     String::from_utf8(plain_value)
@@ -94,34 +95,32 @@ enum TargetKey {
 }
 
 #[derive(Deserialize, Tsify)]
-pub struct ReEncryptPackageParams {
-    login_params: LoginParams,
+pub struct ReEncryptPackageRequest {
+    auth_request: DecryptionAuthorizationRequest,
     target_key: TargetKey,
     secrets_package: HashMap<String, HashMap<String, HashMap<String, String>>>,
 }
 
 #[derive(Serialize, Tsify)]
 pub struct ReEncryptPackageResult {
-    passkey_id: String,
-    login_response: LoginResponse,
+    auth_response: AuthorizationResponse,
     secrets_package: HashMap<String, HashMap<String, HashMap<String, String>>>,
 }
 
 #[wasm_bindgen]
 pub async fn reencrypt_package(
-    params: Ts<ReEncryptPackageParams>,
+    ts_request: Ts<ReEncryptPackageRequest>,
 ) -> Result<Ts<ReEncryptPackageResult>, JsError> {
-    let params: ReEncryptPackageParams = params.to_rust()?;
+    let request: ReEncryptPackageRequest = ts_request.to_rust()?;
 
-    let (passkey, login_response, session) = login_user_bounded(&params.login_params)
+    let (auth_response, session) = request
+        .auth_request
+        .authorize()
         .await
         .map_err(|err| JsError::new(&format!("Error authorizing user: {}", err)))?;
 
-    let session = session
-        .ok_or_else(|| JsError::new("Secure session not attained - please report this issue"))?;
-
     let mut output: HashMap<String, HashMap<String, HashMap<String, String>>> = Default::default();
-    for (workspace, workspace_package) in &params.secrets_package {
+    for (workspace, workspace_package) in &request.secrets_package {
         let mut workspace_output: HashMap<String, HashMap<String, String>> = HashMap::new();
 
         for (env, encrypted_package) in workspace_package {
@@ -129,7 +128,7 @@ pub async fn reencrypt_package(
                 JsError::new(&format!("Error decrypting secrets from {}: {}", env, err))
             })?;
 
-            let encrypted_package = match &params.target_key {
+            let encrypted_package = match &request.target_key {
                 TargetKey::User(user_key) => user_key.encrypt_package(decrypted_package),
                 TargetKey::Machine(machine_key) => machine_key.encrypt_package(decrypted_package),
             }
@@ -142,8 +141,7 @@ pub async fn reencrypt_package(
     }
 
     let result = ReEncryptPackageResult {
-        passkey_id: passkey.id,
-        login_response,
+        auth_response,
         secrets_package: output,
     }
     .into_ts()?;
@@ -152,32 +150,32 @@ pub async fn reencrypt_package(
 }
 
 #[derive(Deserialize, Tsify)]
-pub struct DecryptEnvPackageParams {
-    login_params: LoginParams,
+pub struct DecryptEnvPackageRequest {
+    auth_request: DecryptionAuthorizationRequest,
     secrets_package: HashMap<String, String>,
 }
 
 #[derive(Serialize, Tsify)]
 pub struct DecryptEnvPackageResult {
-    passkey_id: String,
-    login_response: LoginResponse,
+    auth_response: AuthorizationResponse,
     secrets_package: HashMap<String, String>,
 }
 
 #[wasm_bindgen]
 pub async fn decrypt_env_package(
-    params: Ts<DecryptEnvPackageParams>,
+    request: Ts<DecryptEnvPackageRequest>,
 ) -> Result<Ts<DecryptEnvPackageResult>, JsError> {
-    let params: DecryptEnvPackageParams = params.to_rust()?;
+    let request: DecryptEnvPackageRequest = request.to_rust()?;
 
-    let (passkey, login_response, session) = login_user_bounded(&params.login_params)
+    let (auth_response, session) = request
+        .auth_request
+        .authorize()
         .await
         .map_err(|err| JsError::new(&format!("Error authorizing user: {}", err)))?;
 
     let mut output: HashMap<String, String> = Default::default();
     let decrypted_package = session
-        .ok_or_else(|| JsError::new("Secure session not attained - please report this issue"))?
-        .decrypt_package(&params.secrets_package)
+        .decrypt_package(&request.secrets_package)
         .map_err(|err| JsError::new(&format!("Error decrypting secrets: {}", err)))?;
     for (env, decrypted_secret) in decrypted_package {
         output.insert(
@@ -192,8 +190,7 @@ pub async fn decrypt_env_package(
     }
 
     let result = DecryptEnvPackageResult {
-        passkey_id: passkey.id,
-        login_response,
+        auth_response,
         secrets_package: output,
     }
     .into_ts()?;

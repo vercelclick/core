@@ -1,7 +1,6 @@
-use crate::passkeys::types::{
-    AssertionResponse, AttestationResponse, LoginResponse, PrfResults, RegistrationResponse,
-};
-use secretpass_core::SecretpassPasskey;
+use crate::passkeys::authorize::{AssertionResponse, AuthorizationResponse};
+use crate::passkeys::prf::PrfResults;
+use crate::passkeys::registration::{AttestationResponse, RegistrationResponse};
 use secretpass_core::utils::{bin_decode, sha256_raw};
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::js_sys::{
@@ -112,15 +111,7 @@ pub fn parse_prf_result(
 
 pub fn map_browser_passkey_authentication(
     pk_credential: PublicKeyCredential,
-    public_keys: &[SecretpassPasskey],
-) -> anyhow::Result<(SecretpassPasskey, LoginResponse, Option<PrfResults>)> {
-    let cred_id = pk_credential.id();
-    let passkey = public_keys
-        .iter()
-        .find(|pk| pk.id == cred_id)
-        .ok_or_else(|| anyhow::anyhow!("Passkey did not match known passkeys"))?
-        .clone();
-
+) -> anyhow::Result<(AuthorizationResponse, Option<PrfResults>)> {
     let ext_outputs = pk_credential.get_client_extension_results();
     let prf_results = parse_prf_result(ext_outputs)?;
 
@@ -140,13 +131,13 @@ pub fn map_browser_passkey_authentication(
         user_handle: user_handle.map(|value| Uint8Array::new(&value).to_vec()),
     };
 
-    let login_response = LoginResponse {
+    let login_response = AuthorizationResponse {
         id: pk_credential.id(),
         type_: pk_credential.type_(),
         response,
     };
 
-    Ok((passkey, login_response, prf_results))
+    Ok((login_response, prf_results))
 }
 
 pub fn parse_prf_value(buffer: JsValue) -> anyhow::Result<[u8; 32]> {
@@ -159,30 +150,10 @@ pub fn parse_prf_value(buffer: JsValue) -> anyhow::Result<[u8; 32]> {
     Ok(value)
 }
 
-pub fn allowed_credentials(passkeys: &[SecretpassPasskey]) -> anyhow::Result<JsValue> {
+pub fn build_credentials_array(credential_ids: &[String]) -> anyhow::Result<JsValue> {
     let credentials = JsArray::new();
-    for passkey in passkeys {
-        let id = Uint8Array::new_from_slice(&passkey.id_bytes()?);
-
-        let object = JsObject::new();
-        JsReflect::set(
-            &object,
-            &JsValue::from_str("type"),
-            &JsValue::from_str("public-key"),
-        )
-        .unwrap();
-        JsReflect::set(&object, &JsValue::from_str("id"), &id).unwrap();
-
-        credentials.push(&object);
-    }
-
-    Ok(JsValue::from(credentials))
-}
-
-pub fn exclude_credentials(public_keys: &[String]) -> anyhow::Result<JsValue> {
-    let credentials = JsArray::new();
-    for pk_id in public_keys {
-        let id = Uint8Array::new_from_slice(&bin_decode(pk_id)?);
+    for cred_id in credential_ids {
+        let id = Uint8Array::new_from_slice(&bin_decode(cred_id)?);
 
         let object = JsObject::new();
         JsReflect::set(

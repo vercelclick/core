@@ -1,5 +1,6 @@
 use crate::lock::HashedLock;
-use crate::{SecretpassEnvironment, SecretpassProject, UserLevel};
+use crate::UserLevel;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 
@@ -20,19 +21,29 @@ impl HashedLock for SecretpassUser {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify)]
 pub struct SecretpassProjectUser {
     pub id: String,
-    pub user: SecretpassUser,
-    pub project: SecretpassProject,
+    pub user_id: String,
+    pub project_id: String,
     pub level: UserLevel,
-    pub environments: Vec<SecretpassEnvironment>,
+    pub environments: Vec<String>,
     pub created_at: String,
 }
 
 impl HashedLock for SecretpassProjectUser {
     fn salt(&self) -> Vec<String> {
-        let mut salt = vec![self.id.clone(), self.created_at.clone()];
-        salt.append(&mut self.user.salt());
-        salt.append(&mut self.project.salt());
-
-        salt
+        vec![
+            self.id.clone(),
+            self.user_id.clone(),
+            self.project_id.clone(),
+            self.created_at.clone(),
+        ]
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify)]
+pub struct SecretpassUserSession {
+    pub id: String,
+    pub user_id: String,
+    pub last_seen: DateTime<Utc>,
+    pub created_on: DateTime<Utc>,
+    pub expires_on: DateTime<Utc>,
 }

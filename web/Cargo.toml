@@ -1,5 +1,5 @@
 [package]
-name = "web"
+name = "secretpass-web"
 version = { workspace = true }
 edition = { workspace = true }
 repository = { workspace = true }
@@ -13,7 +13,6 @@ getrandom_v2 = { package = "getrandom", version = "0.2", features = ["js"] }
 
 [dependencies]
 anyhow = { version = "1.0.104", features = ["backtrace"] }
-chrono = { version = "0.4.45", features = ["wasm-bindgen"] }
 ciborium = "0.2.2"
 coset = "0.4.2"
 p256 = "0.14.0"

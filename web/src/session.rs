@@ -1,4 +1,4 @@
-use crate::passkeys::types::PrfResults;
+use crate::passkeys::prf::PrfResults;
 use secretpass_core::{EncryptionAlgorithm, PrivateKey, PrivateKeySeed};
 use std::collections::HashMap;
 

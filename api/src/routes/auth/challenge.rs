@@ -18,9 +18,19 @@ pub async fn generate_challenge_handler(
     State(state): State<ApiState>,
     Json(params): Json<GenerateChallengePrams>,
 ) -> HttpResponse<String> {
-    let pending_challenge = PendingChallenge::generate(params.owner, params.kind);
-
-    let challenge = pending_challenge.value.clone();
+    let (challenge, pending_challenge) = match params.kind {
+        ChallengeKind::WebauthUser => {
+            PendingChallenge::generate_webauthn(params.kind.clone(), params.owner).await
+        }
+        ChallengeKind::WebauthPasskey => {
+            PendingChallenge::generate_webauthn(params.kind.clone(), params.owner).await
+        }
+        _ => PendingChallenge::send_email_code(params.kind.clone(), params.owner).await,
+    }
+    .map_err(error_mapper(
+        StatusCode::INTERNAL_SERVER_ERROR,
+        &format!("Error generating {} challenge", params.kind),
+    ))?;
 
     state
         .backend

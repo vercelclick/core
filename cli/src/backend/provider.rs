@@ -1,9 +1,6 @@
-use crate::backend::{
-    challenge::{get_pending_challenge, save_pending_challenge},
-    config::ANALYTICS_CONFIG,
-};
-use secretpass_api::{BackendConfig, BackendProvider, PendingChallenge};
-use secretpass_core::{OperationMode, enums::ChallengeKind};
+use crate::backend::challenge::{get_pending_challenge, save_pending_challenge};
+use secretpass_api::{BackendProvider, PendingChallenge};
+use secretpass_core::enums::ChallengeKind;
 
 pub struct LocalBackendProvider {
     support: bool,
@@ -30,15 +27,6 @@ impl BackendProvider for LocalBackendProvider {
         get_pending_challenge(kind, challenge)
             .await
             .ok_or_else(|| anyhow::anyhow!("Pending challenge not found"))
-    }
-
-    async fn config(&self) -> anyhow::Result<BackendConfig> {
-        let analytics = self.support.then_some(ANALYTICS_CONFIG.clone());
-
-        Ok(BackendConfig {
-            analytics,
-            mode: OperationMode::Local,
-        })
     }
 
     async fn projects_list(&self) -> anyhow::Result<()> {

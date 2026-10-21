@@ -1,5 +1,7 @@
-use crate::backend::{challenge::PendingChallenge, config::BackendConfig};
+use crate::backend::auth::{CreateUserParams, SessionResponse};
+use crate::backend::challenge::PendingChallenge;
 use secretpass_core::enums::ChallengeKind;
+use secretpass_core::{SecretpassUser, SecretpassUserSession};
 
 #[async_trait::async_trait]
 pub trait BackendProvider: Send + Sync + 'static {
@@ -11,10 +13,8 @@ pub trait BackendProvider: Send + Sync + 'static {
     async fn pending_challenge_retrieve(
         &self,
         kind: ChallengeKind,
-        challenge: String,
+        owner: String,
     ) -> anyhow::Result<PendingChallenge>;
-
-    async fn config(&self) -> anyhow::Result<BackendConfig>;
 
     async fn projects_list(&self) -> anyhow::Result<()>;
 
@@ -22,4 +22,15 @@ pub trait BackendProvider: Send + Sync + 'static {
     async fn projects_get(&self, id: &str) -> anyhow::Result<()>;
 
     async fn workspaces_list(&self) -> anyhow::Result<()>;
+
+    async fn create_user(&self, params: CreateUserParams) -> anyhow::Result<SessionResponse>;
+
+    // Only called for local
+    async fn record_session(
+        &self,
+        user: SecretpassUser,
+        session: SecretpassUserSession,
+    ) -> anyhow::Result<()>;
+
+    async fn get_session(&self, id: String) -> anyhow::Result<Option<SessionResponse>>;
 }

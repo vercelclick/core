@@ -1,3 +1,4 @@
+use crate::enums::PasskeyType;
 use crate::utils::bin_decode;
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
@@ -5,8 +6,10 @@ use tsify::Tsify;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify)]
 pub struct SecretpassPasskey {
     pub id: String, // Credential ID
-    pub name: String,
     pub user_id: String,
+    pub name: String,
+    #[serde(rename = "type")]
+    pub type_: PasskeyType,
     pub public_key: String, // Base64url-encoded COSE key
     pub created_at: String,
 }

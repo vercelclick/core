@@ -1,4 +1,5 @@
+pub mod authorize;
+pub mod flags;
+pub mod prf;
 pub mod protocol;
-pub mod types;
-
-pub use protocol::{finish_login, finish_registration};
+pub mod registration;
