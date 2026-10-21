@@ -32,7 +32,6 @@ base64 = "0.23.1"
 ciborium = { version = "0.2.2" }
 chrono = { version = "0.4.45", features = ["serde", "wasm-bindgen"] }
 hex = "0.4.3"
-fips203 = { version = "0.4.3", features = ["ml-kem-768"] }
 rand = { version = "0.10.2", default-features = false, features = ["chacha"] }
 serde = { version = "1.0.229", features = ["derive"] }
 sha2 = { version = "0.11.0" }

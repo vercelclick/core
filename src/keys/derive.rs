@@ -1,13 +1,13 @@
 use crate::enums::EncryptionAlgorithm;
 use crate::utils::{bin_deserialize, bin_serialize, get_global_rng};
 use argon2::Argon2;
-pub use fips203::ml_kem_768::{
-    DecapsKey as KemPrivateKey, EncapsKey as KemPublicKey, KG as KemKeygen,
+pub(crate) use ml_kem::ml_kem_768::{
+    DecapsulationKey as KemPrivateKey, EncapsulationKey as KemPublicKey,
 };
-use fips203::traits::KeyGen;
+use ml_kem::{FromSeed, MlKem768, Seed};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-pub use x25519_dalek::{PublicKey as EccPublicKey, StaticSecret as EccPrivateKey};
+pub(crate) use x25519_dalek::{PublicKey as EccPublicKey, StaticSecret as EccPrivateKey};
 
 #[derive(Clone, Serialize, Deserialize)]
 struct MachineKey([u8; 32], [u8; 32]);
@@ -32,7 +32,13 @@ impl PrivateKeySeed {
     }
 
     pub fn derive_kem_keys(&self) -> anyhow::Result<(KemPublicKey, KemPrivateKey)> {
-        let (public_key, private_key) = KemKeygen::keygen_from_seed(self.first, self.second);
+        let mut seed_bytes = [0u8; 64];
+        seed_bytes[..32].copy_from_slice(&self.first);
+        seed_bytes[32..].copy_from_slice(&self.second);
+
+        let seed = Seed::try_from(seed_bytes)
+            .map_err(|_| anyhow::anyhow!("Error parsing KEM key seed"))?;
+        let (private_key, public_key) = MlKem768::from_seed(&seed);
 
         Ok((public_key, private_key))
     }

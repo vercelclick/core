@@ -8,9 +8,6 @@ description = { workspace = true }
 homepage = { workspace = true }
 
 
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom_v2 = { package = "getrandom", version = "0.2", features = ["js"] }
-
 [dependencies]
 anyhow = { version = "1.0.104", features = ["backtrace"] }
 ciborium = "0.2.2"

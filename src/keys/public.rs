@@ -5,7 +5,7 @@ use aes_gcm::{
     Aes256Gcm, Nonce,
     aead::{Aead, KeyInit},
 };
-use fips203::traits::{Encaps, SerDes};
+use ml_kem::{Encapsulate, KeyExport, TryKeyInit};
 use rand::TryRng;
 use std::collections::HashMap;
 use x25519_dalek::StaticSecret;
@@ -21,8 +21,7 @@ impl PublicKey {
         let kem = match kem {
             Some(value) => {
                 let bytes = bin_decode(&value)?;
-                let key_bytes: [u8; 1184] = bytes.as_slice().try_into()?;
-                let key = KemPublicKey::try_from_bytes(key_bytes).unwrap();
+                let key = KemPublicKey::new_from_slice(&bytes)?;
                 Some(key)
             }
             _ => None,
@@ -52,7 +51,7 @@ impl PublicKey {
     pub fn kem(&self) -> Option<String> {
         self.kem
             .as_ref()
-            .map(|value| bin_encode(&value.clone().into_bytes()))
+            .map(|value| bin_encode(&value.clone().to_bytes()))
     }
 
     fn get_ecc_aes_keys(&self) -> (Option<Vec<u8>>, Option<[u8; 32]>) {
@@ -78,13 +77,11 @@ impl PublicKey {
             return (None, None);
         }
 
+        let mut rng = get_global_rng().lock().unwrap();
         let target_public_key = self.kem.clone().unwrap();
-        let (shared_secret, ciphertext) = target_public_key.try_encaps().unwrap();
+        let (ciphertext, shared_secret) = target_public_key.encapsulate_with_rng(&mut rng);
 
-        (
-            Some(ciphertext.into_bytes().to_vec()),
-            Some(shared_secret.into_bytes()),
-        )
+        (Some(ciphertext.to_vec()), Some(shared_secret.into()))
     }
 
     fn aes_encrypt_payload(

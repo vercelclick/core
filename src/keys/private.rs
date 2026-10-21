@@ -6,9 +6,9 @@ use crate::utils::bin_deserialize;
 use aes_gcm::aead::Aead;
 use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
 use anyhow::anyhow;
-use fips203::ml_kem_768::CipherText;
-use fips203::traits::{Decaps, SerDes};
+use ml_kem::Decapsulate;
 use std::collections::HashMap;
+
 
 #[derive(Clone)]
 pub struct PrivateKey {
@@ -119,12 +119,12 @@ impl PrivateKey {
             return Err(anyhow!("Invalid payload/private key"));
         }
 
-        let ciphertext = CipherText::try_from_bytes(encrypted_package.kem_ciphertext()).unwrap();
+        let ciphertext = encrypted_package.kem_ciphertext();
 
         let secret_key = self.kem.clone().unwrap();
-        let shared_secret = secret_key.try_decaps(&ciphertext).unwrap();
+        let shared_secret = secret_key.decapsulate(&ciphertext.into());
 
-        Ok(Some(shared_secret.into_bytes()))
+        Ok(Some(shared_secret.into()))
     }
 
     pub fn public_key(&self) -> PublicKey {
