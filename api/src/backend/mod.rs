@@ -17,7 +17,7 @@ pub struct ApiState {
 }
 
 impl ApiState {
-    pub(crate) fn is_proxied(&self, headers: HeaderMap) -> bool {
+    pub(crate) fn is_proxied(&self, headers: &HeaderMap) -> bool {
         if let Some(is_proxied) = headers.get(PROXY_REQUEST_HEADER)
             && is_proxied == "true"
         {
@@ -27,7 +27,7 @@ impl ApiState {
         }
     }
 
-    pub(crate) fn get_rp_config(&self, headers: HeaderMap) -> &'static RpConfig {
+    pub(crate) fn get_rp_config(&self, headers: &HeaderMap) -> &'static RpConfig {
         if self.is_proxied(headers) {
             return &LOCAL_RP_CONFIG;
         }

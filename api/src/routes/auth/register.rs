@@ -50,17 +50,23 @@ async fn verify_registration_details(
     headers: HeaderMap,
     request: CreateUserRequest,
 ) -> HttpResponse<BackendCreateUserRequest> {
-    let rp_config = state.get_rp_config(headers);
+    let rp_config = state.get_rp_config(&headers);
     let email_challenge = state
         .backend
         .pop_pending_challenge(ChallengeKind::EmailSignup, request.email.clone())
         .await
         .map_err(error_mapper(
-            StatusCode::BAD_REQUEST,
+            StatusCode::INTERNAL_SERVER_ERROR,
             "Error reading email challenge",
-        ))?;
+        ))?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                "Email challenge not found".to_string(),
+            )
+        })?;
 
-    if email_challenge.verify_challenge(request.confirmation_code) {
+    if !email_challenge.verify_challenge(request.confirmation_code) {
         return Err((
             StatusCode::UNAUTHORIZED,
             "Invalid email confirmation code".to_string(),
@@ -72,14 +78,20 @@ async fn verify_registration_details(
         .pop_pending_challenge(ChallengeKind::PasskeySignup, request.email.clone())
         .await
         .map_err(error_mapper(
-            StatusCode::BAD_REQUEST,
+            StatusCode::INTERNAL_SERVER_ERROR,
             "Error reading passkey challenge",
-        ))?;
+        ))?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                "Passkey challenge not found".to_string(),
+            )
+        })?;
 
     let (passkey_cred_id, passkey_public_key) = request
         .passkey_response
         .validate(
-            passkey_challenge.value_hash,
+            passkey_challenge.value_hash.clone(),
             rp_config.id.to_string(),
             rp_config.origin.to_string(),
         )
@@ -88,11 +100,25 @@ async fn verify_registration_details(
             "Error validating passkey challenge",
         ))?;
 
+    request
+        .auth_response
+        .validate(
+            request.id.clone(),
+            passkey_public_key.clone(),
+            passkey_challenge.value_hash.clone(),
+            rp_config.id.to_string(),
+            rp_config.origin.to_string(),
+        )
+        .map_err(error_mapper(
+            StatusCode::UNAUTHORIZED,
+            "Error  validating passkey authorization",
+        ))?;
+
     let create_request = BackendCreateUserRequest {
         user_id: request.id,
         user_email: request.email,
         user_name: request.name,
-        passkey_type: rp_config.passkey_type.clone(),
+        passkey_type: rp_config.passkey_type,
         passkey_cred_id,
         passkey_public_key,
         passkey_name: request.passkey_name,

@@ -2516,6 +2516,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "ts-rs",
+ "uuid",
 ]
 
 [[package]]
@@ -2552,11 +2553,11 @@ dependencies = [
  "anyhow",
  "async-trait",
  "axum",
- "chrono",
  "secretpass-api",
  "secretpass-core",
  "sqlx",
  "tokio",
+ "uuid",
 ]
 
 [[package]]
@@ -2575,9 +2576,11 @@ dependencies = [
  "rand 0.10.3",
  "serde",
  "sha2 0.11.0",
+ "sqlx",
  "strum",
  "ts-rs",
  "tsify",
+ "uuid",
  "wasm-bindgen",
  "x25519-dalek",
 ]
@@ -2940,6 +2943,7 @@ dependencies = [
  "toml",
  "tracing",
  "url",
+ "uuid",
 ]
 
 [[package]]
@@ -3006,6 +3010,7 @@ dependencies = [
  "sqlx-core",
  "thiserror",
  "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -3041,6 +3046,7 @@ dependencies = [
  "stringprep",
  "thiserror",
  "tracing",
+ "uuid",
  "whoami",
 ]
 
@@ -3067,6 +3073,7 @@ dependencies = [
  "thiserror",
  "tracing",
  "url",
+ "uuid",
 ]
 
 [[package]]
@@ -3552,6 +3559,7 @@ dependencies = [
  "chrono",
  "thiserror",
  "ts-rs-macros",
+ "uuid",
 ]
 
 [[package]]
@@ -3688,12 +3696,13 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "uuid"
-version = "1.28.0"
+version = "1.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7cc1186384beb7dd8eedea376413fd654937285ea6c9cfbb928dc3043ea4b606"
+checksum = "4a0e2d11620c50695fe12bbbfde96b3477fe606e7284c22d505c12ce51214514"
 dependencies = [
  "getrandom 0.4.3",
  "js-sys",
+ "serde_core",
  "wasm-bindgen",
 ]
 

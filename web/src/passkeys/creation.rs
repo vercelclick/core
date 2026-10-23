@@ -14,14 +14,14 @@ pub struct AttestationResponse {
 
 // Client response types
 #[derive(Serialize, Deserialize, Debug, Clone, Tsify, TS)]
-pub struct RegistrationResponse {
+pub struct PasskeyCreationResponse {
     pub id: String,
     #[serde(rename = "type")]
     pub type_: String,
     pub response: AttestationResponse,
 }
 
-impl RegistrationResponse {
+impl PasskeyCreationResponse {
     /// Validates the client response against the stored challenge and RP configuration.
     /// On success, returns the credential ID and the public key
     pub fn validate(

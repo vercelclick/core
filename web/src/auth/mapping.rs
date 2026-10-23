@@ -1,6 +1,6 @@
 use crate::passkeys::authorize::{AssertionResponse, AuthorizationResponse};
+use crate::passkeys::creation::{AttestationResponse, PasskeyCreationResponse};
 use crate::passkeys::prf::PrfResults;
-use crate::passkeys::registration::{AttestationResponse, RegistrationResponse};
 use secretpass_core::utils::{bin_decode, sha256_raw};
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::js_sys::{
@@ -36,7 +36,7 @@ fn get_prf_value(
 
 pub fn map_browser_passkey_registration_response(
     pk_credential: PublicKeyCredential,
-) -> anyhow::Result<RegistrationResponse> {
+) -> anyhow::Result<PasskeyCreationResponse> {
     let ext_outputs = pk_credential.get_client_extension_results();
     verify_prf_enabled(ext_outputs)?;
 
@@ -52,7 +52,7 @@ pub fn map_browser_passkey_registration_response(
         client_data_json: Uint8Array::new(&attestation_response.client_data_json()).to_vec(),
     };
 
-    let response = RegistrationResponse {
+    let response = PasskeyCreationResponse {
         id: pk_credential.id(),
         type_: pk_credential.type_(),
         response: attestation_response,

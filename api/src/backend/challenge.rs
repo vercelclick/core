@@ -1,3 +1,7 @@
+use crate::ApiState;
+use crate::api_types::HttpError;
+use crate::utils::error_mapper;
+use axum::http::StatusCode;
 use chrono::{DateTime, Utc};
 use rand::RngExt;
 use secretpass_core::enums::ChallengeKind;
@@ -11,7 +15,7 @@ const CODE_POOL: &[u8] = b"ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 #[ts(export)]
 pub struct CheckChallengeResult {
     pub valid: bool,
-    pub attempts_left: i8,
+    pub attempts_left: i32,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -20,7 +24,7 @@ pub struct PendingChallenge {
     pub kind: ChallengeKind,
     pub value_hash: String,
     pub generated_on: DateTime<Utc>,
-    pub attempts_left: i8,
+    pub attempts_left: i32,
 }
 
 impl PendingChallenge {
@@ -84,5 +88,16 @@ impl PendingChallenge {
         let hash = sha256_digest(&[value]);
 
         hash == self.value_hash
+    }
+
+    pub(crate) async fn record(&self, state: &ApiState) -> Result<(), HttpError> {
+        state
+            .backend
+            .record_pending_challenge(self)
+            .await
+            .map_err(error_mapper(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Error recording pending challenge",
+            ))
     }
 }

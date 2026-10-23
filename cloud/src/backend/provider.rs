@@ -4,13 +4,16 @@ use crate::backend::auth::challenge::{
 use crate::backend::auth::passkey::retrieve_user_id_and_public_key;
 use crate::backend::auth::register::create_user;
 use crate::backend::auth::session::{
-    create_session_by_email, create_session_by_user_and_cred_id, get_session,
+    create_session_by_email, create_session_by_user_id, get_session,
 };
+use crate::backend::auth::user::retrieve_user_and_known_passkeys;
 use secretpass_api::auth::BackendCreateUserRequest;
 use secretpass_api::{BackendProvider, PendingChallenge, SessionPackage};
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
+use secretpass_core::{SecretpassPasskey, SecretpassUser};
 use sqlx::PgPool;
 use std::sync::Arc;
+use uuid::Uuid;
 
 pub struct CloudBackendProvider {
     pool: Arc<PgPool>,
@@ -26,7 +29,7 @@ impl CloudBackendProvider {
 
 #[async_trait::async_trait]
 impl BackendProvider for CloudBackendProvider {
-    async fn record_pending_challenge(&self, challenge: PendingChallenge) -> anyhow::Result<()> {
+    async fn record_pending_challenge(&self, challenge: &PendingChallenge) -> anyhow::Result<()> {
         insert_or_replace_challenge(&self.pool, challenge).await
     }
 
@@ -34,7 +37,7 @@ impl BackendProvider for CloudBackendProvider {
         &self,
         kind: ChallengeKind,
         owner: String,
-    ) -> anyhow::Result<PendingChallenge> {
+    ) -> anyhow::Result<Option<PendingChallenge>> {
         retrieve_pending_challenge_for_attempt(&self.pool, kind, owner).await
     }
 
@@ -42,7 +45,7 @@ impl BackendProvider for CloudBackendProvider {
         &self,
         kind: ChallengeKind,
         owner: String,
-    ) -> anyhow::Result<PendingChallenge> {
+    ) -> anyhow::Result<Option<PendingChallenge>> {
         pop_pending_challenge(&self.pool, kind, owner).await
     }
 
@@ -62,8 +65,8 @@ impl BackendProvider for CloudBackendProvider {
     async fn get_session(
         &self,
         passkey_type: PasskeyType,
-        id: String,
-    ) -> anyhow::Result<SessionPackage> {
+        id: Uuid,
+    ) -> anyhow::Result<Option<SessionPackage>> {
         get_session(&self.pool, passkey_type, id).await
     }
 
@@ -75,20 +78,27 @@ impl BackendProvider for CloudBackendProvider {
         create_session_by_email(&self.pool, passkey_type, email).await
     }
 
-    async fn create_session_by_user_and_cred_id(
+    async fn create_session_by_user_id(
         &self,
         passkey_type: PasskeyType,
-        user_id: String,
-        cred_id: String,
+        user_id: Uuid,
     ) -> anyhow::Result<SessionPackage> {
-        create_session_by_user_and_cred_id(&self.pool, passkey_type, user_id, cred_id).await
+        create_session_by_user_id(&self.pool, passkey_type, user_id).await
     }
 
     async fn retrieve_user_id_and_public_key(
         &self,
         passkey_type: PasskeyType,
         cred_id: String,
-    ) -> anyhow::Result<(String, String)> {
+    ) -> anyhow::Result<Option<(Uuid, String)>> {
         retrieve_user_id_and_public_key(&self.pool, passkey_type, cred_id).await
+    }
+
+    async fn retrieve_user_and_known_passkeys(
+        &self,
+        email: String,
+        passkey_type: PasskeyType,
+    ) -> anyhow::Result<Option<(SecretpassUser, Vec<SecretpassPasskey>)>> {
+        retrieve_user_and_known_passkeys(&self.pool, email, passkey_type).await
     }
 }

@@ -7,20 +7,20 @@ use sqlx::{PgPool, Row};
 const PENDING_CHALLENGE_INSERT: &str = r#"
     insert into "PendingChallenge"
         (owner, kind, value_hash, attempts_left)
-        values ($1, $2::"ChallengeKind", $3)
+        values ($1, $2, $3, $4)
     on conflict (owner, kind)
-        do update set value_hash = EXCLUDED.value_hash, generated_on = now()
+        do update set value_hash = EXCLUDED.value_hash, attempts_left = EXCLUDED.attempts_left, generated_on = now()
 "#;
 
 pub async fn insert_or_replace_challenge(
     pool: &PgPool,
-    challenge: PendingChallenge,
+    challenge: &PendingChallenge,
 ) -> anyhow::Result<()> {
     sqlx::query(PENDING_CHALLENGE_INSERT)
         .bind(&challenge.owner)
-        .bind(challenge.kind.to_string())
+        .bind(challenge.kind)
         .bind(&challenge.value_hash)
-        .bind(&challenge.attempts_left)
+        .bind(challenge.attempts_left)
         .execute(pool)
         .await?;
 
@@ -29,14 +29,14 @@ pub async fn insert_or_replace_challenge(
 
 // language=sql
 const PENDING_CHALLENGE_POP: &str = r#"
-    DELETE FROM "PendingChallenge" WHERE kind = $1::"ChallengeKind" AND owner = $2 RETURNING *
+    DELETE FROM "PendingChallenge" WHERE kind = $1 AND owner = $2 RETURNING *
 "#;
 
 // language=sql
 const PENDING_CHALLENGE_GET_ATTEMPT: &str = r#"
     UPDATE "PendingChallenge"
         SET attempts_left = (attempts_left - 1)
-        WHERE attempts_left > 0 AND kind = $1::"ChallengeKind" AND owner = $2 RETURNING *
+        WHERE attempts_left > 0 AND kind = $1 AND owner = $2 RETURNING *
 "#;
 
 async fn query_pending_challenge(
@@ -44,12 +44,17 @@ async fn query_pending_challenge(
     query: &'static str,
     kind: ChallengeKind,
     owner: String,
-) -> anyhow::Result<PendingChallenge> {
+) -> anyhow::Result<Option<PendingChallenge>> {
     let row = sqlx::query(query)
-        .bind(kind.to_string())
+        .bind(kind)
         .bind(&owner)
-        .fetch_one(pool)
+        .fetch_optional(pool)
         .await?;
+
+    let row = match row {
+        Some(row) => row,
+        None => return Ok(None),
+    };
 
     let challenge = PendingChallenge {
         kind,
@@ -59,14 +64,14 @@ async fn query_pending_challenge(
         attempts_left: row.get("attempts_left"),
     };
 
-    Ok(challenge)
+    Ok(Some(challenge))
 }
 
 pub async fn pop_pending_challenge(
     pool: &PgPool,
     kind: ChallengeKind,
     owner: String,
-) -> anyhow::Result<PendingChallenge> {
+) -> anyhow::Result<Option<PendingChallenge>> {
     query_pending_challenge(pool, PENDING_CHALLENGE_POP, kind, owner).await
 }
 
@@ -74,6 +79,6 @@ pub async fn retrieve_pending_challenge_for_attempt(
     pool: &PgPool,
     kind: ChallengeKind,
     owner: String,
-) -> anyhow::Result<PendingChallenge> {
+) -> anyhow::Result<Option<PendingChallenge>> {
     query_pending_challenge(pool, PENDING_CHALLENGE_GET_ATTEMPT, kind, owner).await
 }

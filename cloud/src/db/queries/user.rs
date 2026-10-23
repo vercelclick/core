@@ -10,5 +10,5 @@ pub const GET_USER_BY_EMAIL_QUERY: &str = r#"
 
 // language=sql
 pub const GET_USER_BY_EXTERNAL_ID_QUERY: &str = r#"
-    SELECT * FROM "Users" WHERE email=$1
+    SELECT * FROM "Users" WHERE external_id=$1
 "#;

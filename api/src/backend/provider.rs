@@ -2,22 +2,24 @@ use crate::auth::BackendCreateUserRequest;
 use crate::backend::auth::SessionPackage;
 use crate::backend::challenge::PendingChallenge;
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
+use secretpass_core::{SecretpassPasskey, SecretpassUser};
+use uuid::Uuid;
 
 #[async_trait::async_trait]
 pub trait BackendProvider: Send + Sync + 'static {
-    async fn record_pending_challenge(&self, challenge: PendingChallenge) -> anyhow::Result<()>;
+    async fn record_pending_challenge(&self, challenge: &PendingChallenge) -> anyhow::Result<()>;
 
     async fn retrieve_pending_challenge_for_attempt(
         &self,
         kind: ChallengeKind,
         owner: String,
-    ) -> anyhow::Result<PendingChallenge>;
+    ) -> anyhow::Result<Option<PendingChallenge>>;
 
     async fn pop_pending_challenge(
         &self,
         kind: ChallengeKind,
         owner: String,
-    ) -> anyhow::Result<PendingChallenge>;
+    ) -> anyhow::Result<Option<PendingChallenge>>;
 
     async fn create_user(
         &self,
@@ -30,8 +32,8 @@ pub trait BackendProvider: Send + Sync + 'static {
     async fn get_session(
         &self,
         passkey_type: PasskeyType,
-        id: String,
-    ) -> anyhow::Result<SessionPackage>;
+        id: Uuid,
+    ) -> anyhow::Result<Option<SessionPackage>>;
 
     async fn create_session_by_email(
         &self,
@@ -39,16 +41,21 @@ pub trait BackendProvider: Send + Sync + 'static {
         email: String,
     ) -> anyhow::Result<SessionPackage>;
 
-    async fn create_session_by_user_and_cred_id(
+    async fn create_session_by_user_id(
         &self,
         passkey_type: PasskeyType,
-        user_id: String,
-        cred_id: String,
+        user_id: Uuid,
     ) -> anyhow::Result<SessionPackage>;
 
     async fn retrieve_user_id_and_public_key(
         &self,
         passkey_type: PasskeyType,
         cred_id: String,
-    ) -> anyhow::Result<(String, String)>;
+    ) -> anyhow::Result<Option<(Uuid, String)>>;
+
+    async fn retrieve_user_and_known_passkeys(
+        &self,
+        email: String,
+        passkey_type: PasskeyType,
+    ) -> anyhow::Result<Option<(SecretpassUser, Vec<SecretpassPasskey>)>>;
 }

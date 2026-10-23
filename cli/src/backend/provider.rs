@@ -3,16 +3,11 @@ use crate::config::LocalServiceConfig;
 use secretpass_api::auth::BackendCreateUserRequest;
 use secretpass_api::{BackendProvider, PendingChallenge, SessionPackage};
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
+use secretpass_core::{SecretpassPasskey, SecretpassUser};
+use uuid::Uuid;
 
-pub struct LocalBackendProvider {
-    support: bool,
-}
-
-impl LocalBackendProvider {
-    pub fn new(support: bool) -> Self {
-        Self { support }
-    }
-}
+#[derive(Default)]
+pub struct LocalBackendProvider {}
 
 fn not_supported(title: &str) -> anyhow::Error {
     anyhow::format_err!(
@@ -22,7 +17,7 @@ fn not_supported(title: &str) -> anyhow::Error {
 
 #[async_trait::async_trait]
 impl BackendProvider for LocalBackendProvider {
-    async fn record_pending_challenge(&self, challenge: PendingChallenge) -> anyhow::Result<()> {
+    async fn record_pending_challenge(&self, challenge: &PendingChallenge) -> anyhow::Result<()> {
         save_pending_challenge(challenge).await;
         Ok(())
     }
@@ -31,7 +26,7 @@ impl BackendProvider for LocalBackendProvider {
         &self,
         _kind: ChallengeKind,
         _owner: String,
-    ) -> anyhow::Result<PendingChallenge> {
+    ) -> anyhow::Result<Option<PendingChallenge>> {
         Err(not_supported("Challenge attempts"))
     }
 
@@ -39,10 +34,9 @@ impl BackendProvider for LocalBackendProvider {
         &self,
         kind: ChallengeKind,
         owner: String,
-    ) -> anyhow::Result<PendingChallenge> {
-        get_pending_challenge(kind, owner)
-            .await
-            .ok_or_else(|| anyhow::anyhow!("Pending challenge not found"))
+    ) -> anyhow::Result<Option<PendingChallenge>> {
+        let challenge = get_pending_challenge(kind, owner).await;
+        Ok(challenge)
     }
 
     async fn create_user(
@@ -56,7 +50,7 @@ impl BackendProvider for LocalBackendProvider {
         let mut config = LocalServiceConfig::load()?;
         config
             .sessions
-            .insert(response.session.id.clone(), response);
+            .insert(response.session.id.to_string(), response);
 
         config.write()
     }
@@ -64,18 +58,15 @@ impl BackendProvider for LocalBackendProvider {
     async fn get_session(
         &self,
         passkey_type: PasskeyType,
-        id: String,
-    ) -> anyhow::Result<SessionPackage> {
+        id: Uuid,
+    ) -> anyhow::Result<Option<SessionPackage>> {
         if passkey_type != PasskeyType::Local {
             return Err(not_supported("Get session with cloud passkeys"));
         }
         let config = LocalServiceConfig::load()?;
 
-        let response = config
-            .sessions
-            .get(&id)
-            .ok_or_else(|| anyhow::anyhow!("Session not found"))?;
-        Ok(response.clone())
+        let response = config.sessions.get(&id.to_string());
+        Ok(response.cloned())
     }
 
     async fn create_session_by_email(
@@ -86,11 +77,10 @@ impl BackendProvider for LocalBackendProvider {
         Err(not_supported("Create session by email"))
     }
 
-    async fn create_session_by_user_and_cred_id(
+    async fn create_session_by_user_id(
         &self,
         _passkey_type: PasskeyType,
-        _user_id: String,
-        _cred_id: String,
+        _user_id: Uuid,
     ) -> anyhow::Result<SessionPackage> {
         Err(not_supported("Create session by passkey"))
     }
@@ -99,7 +89,15 @@ impl BackendProvider for LocalBackendProvider {
         &self,
         _passkey_type: PasskeyType,
         _cred_id: String,
-    ) -> anyhow::Result<(String, String)> {
+    ) -> anyhow::Result<Option<(Uuid, String)>> {
         Err(not_supported("Retrieve user id and public key"))
+    }
+
+    async fn retrieve_user_and_known_passkeys(
+        &self,
+        _email: String,
+        _passkey_type: PasskeyType,
+    ) -> anyhow::Result<Option<(SecretpassUser, Vec<SecretpassPasskey>)>> {
+        Err(not_supported("Retrieve user with passkeys"))
     }
 }

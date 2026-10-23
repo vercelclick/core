@@ -12,9 +12,9 @@ struct ChallengeStore {
 static CHALLENGE_STORE: LazyLock<Mutex<ChallengeStore>> =
     LazyLock::new(|| Mutex::new(ChallengeStore { challenge: None }));
 
-pub async fn save_pending_challenge(challenge: PendingChallenge) {
+pub async fn save_pending_challenge(challenge: &PendingChallenge) {
     let mut store = CHALLENGE_STORE.lock().await;
-    store.challenge = Some(challenge);
+    store.challenge = Some(challenge.clone());
 }
 
 pub async fn get_pending_challenge(kind: ChallengeKind, owner: String) -> Option<PendingChallenge> {

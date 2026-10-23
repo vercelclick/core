@@ -21,7 +21,7 @@ pub(crate) async fn record_session(
 }
 
 pub(crate) fn set_session_cookie(cookies: &Cookies, session: &SecretpassUserSession) {
-    let cookie = Cookie::build(("session_token", session.id.clone()))
+    let cookie = Cookie::build(("session_token", session.id.to_string()))
         .path("/")
         .http_only(true)
         .secure(true)

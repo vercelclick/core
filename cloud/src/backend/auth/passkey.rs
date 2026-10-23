@@ -1,5 +1,6 @@
 use secretpass_core::enums::PasskeyType;
 use sqlx::{PgPool, Row};
+use uuid::Uuid;
 
 // language=sql
 const PASSKEY_USER_ID_PUBLIC_KEY_QUERY: &str = r#"
@@ -13,15 +14,20 @@ pub async fn retrieve_user_id_and_public_key(
     pool: &PgPool,
     passkey_type: PasskeyType,
     cred_id: String,
-) -> anyhow::Result<(String, String)> {
+) -> anyhow::Result<Option<(Uuid, String)>> {
     let row = sqlx::query(PASSKEY_USER_ID_PUBLIC_KEY_QUERY)
-        .bind(passkey_type.to_string())
+        .bind(passkey_type)
         .bind(cred_id)
-        .fetch_one(pool)
+        .fetch_optional(pool)
         .await?;
 
-    let user_id: String = row.get("user_id");
+    let row = match row {
+        Some(row) => row,
+        None => return Ok(None),
+    };
+
+    let user_id: Uuid = row.get("user_id");
     let public_key: String = row.get("public_key");
 
-    Ok((user_id, public_key))
+    Ok(Some((user_id, public_key)))
 }

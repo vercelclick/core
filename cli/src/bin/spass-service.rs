@@ -11,7 +11,7 @@ use tokio::runtime::Runtime;
 const API_HOST: &str = env!("API_HOST");
 
 async fn run_server() {
-    let backend = LocalBackendProvider::new(true);
+    let backend = LocalBackendProvider::default();
 
     let state = ApiState {
         mode: OperationMode::Local,

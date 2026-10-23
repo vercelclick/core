@@ -6,8 +6,8 @@ use crate::auth::mapping::{
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 
+use crate::passkeys::creation::PasskeyCreationResponse;
 use crate::passkeys::protocol::{RP_ENTITY_ID, RP_ENTITY_NAME};
-use crate::passkeys::registration::RegistrationResponse;
 use secretpass_core::utils::bin_decode;
 use wasm_bindgen::JsValue;
 use web_sys::js_sys::{Array as JsArray, Object as JsObject, Reflect as JsReflect};
@@ -18,7 +18,7 @@ use web_sys::{
 };
 
 #[derive(Debug, Serialize, Deserialize, Tsify)]
-pub struct RegistrationRequest {
+pub struct PasskeyCreationRequest {
     pub exclude_keys: Vec<String>,
     pub email: String,
     pub full_name: String,
@@ -26,13 +26,13 @@ pub struct RegistrationRequest {
     pub challenge: String,
 }
 
-impl RegistrationRequest {
-    pub(crate) async fn attempt(&self) -> anyhow::Result<RegistrationResponse> {
+impl PasskeyCreationRequest {
+    pub(crate) async fn attempt(&self) -> anyhow::Result<PasskeyCreationResponse> {
         register_user(self).await
     }
 }
 
-async fn register_user(params: &RegistrationRequest) -> anyhow::Result<RegistrationResponse> {
+async fn register_user(params: &PasskeyCreationRequest) -> anyhow::Result<PasskeyCreationResponse> {
     let rp = PublicKeyCredentialRpEntity::new(RP_ENTITY_NAME);
     rp.set_id(RP_ENTITY_ID);
 

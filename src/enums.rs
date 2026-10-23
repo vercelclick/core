@@ -32,25 +32,36 @@ pub enum SecretDataType {
     Url,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify, TS)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    EnumString,
+    Display,
+    Tsify,
+    TS,
+    sqlx::Type,
+)]
 #[tsify(namespace)]
+#[sqlx(type_name = r#""ChallengeKind""#)]
 pub enum ChallengeKind {
     EmailSignup,
     EmailSignIn,
     PasskeySignup,
-    PasskeyLogin,
-    PasskeyRegister,
+    PasskeySignIn,
     PasskeyAuthorize,
 }
 
 impl ChallengeKind {
     pub fn is_cloud_only(&self) -> bool {
-        self.clone() != ChallengeKind::PasskeyAuthorize
+        *self != ChallengeKind::PasskeyAuthorize
     }
 
     pub fn is_checkable(&self) -> bool {
-        let value = self.clone();
-        value == ChallengeKind::EmailSignup || value == ChallengeKind::EmailSignIn
+        *self == ChallengeKind::EmailSignup || *self == ChallengeKind::EmailSignIn
     }
 }
 
@@ -61,8 +72,21 @@ pub enum AccessGrant {
     Granted,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify, TS)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    EnumString,
+    Display,
+    Tsify,
+    TS,
+    sqlx::Type,
+)]
 #[tsify(namespace)]
+#[sqlx(type_name = r#""PasskeyType""#)]
 pub enum PasskeyType {
     Local,
     Cloud,

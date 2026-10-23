@@ -4,4 +4,4 @@ mod mapping;
 mod registration;
 
 pub use authorize::{AuthorizationRequest, DecryptionAuthorizationRequest};
-pub use registration::RegistrationRequest;
+pub use registration::PasskeyCreationRequest;

@@ -1,11 +1,10 @@
-use secretpass_core::enums::PasskeyType;
 use secretpass_core::{SecretpassPasskey, SecretpassUser, SecretpassUserSession};
 use sqlx::Row;
 use sqlx::postgres::PgRow;
-use std::str::FromStr;
+use uuid::Uuid;
 
-pub fn parse_user_from_row(row: &PgRow) -> (i64, SecretpassUser) {
-    let internal_id: i64 = row.get("id");
+pub fn parse_user_from_row(row: &PgRow) -> (i32, SecretpassUser) {
+    let internal_id: i32 = row.get("id");
 
     let user = SecretpassUser {
         id: row.get("external_id"),
@@ -19,14 +18,12 @@ pub fn parse_user_from_row(row: &PgRow) -> (i64, SecretpassUser) {
 
 pub fn parse_passkey_from_row_with_user_id(
     row: &PgRow,
-    user_id: i64,
-    external_user_id: String,
-) -> anyhow::Result<(i64, SecretpassPasskey)> {
-    let internal_id: i64 = row.get("id");
+    user_id: i32,
+    external_user_id: Uuid,
+) -> anyhow::Result<(i32, SecretpassPasskey)> {
+    let internal_id: i32 = row.get("id");
 
-    let key_type: String = row.get("type");
-    let type_: PasskeyType = PasskeyType::from_str(&key_type)?;
-    let passkey_user_id: i64 = row.get("user_id");
+    let passkey_user_id: i32 = row.get("user_id");
     if passkey_user_id != user_id {
         return Err(anyhow::anyhow!("Passkey user id mismatch"));
     }
@@ -34,7 +31,7 @@ pub fn parse_passkey_from_row_with_user_id(
     let passkey = SecretpassPasskey {
         id: row.get("cred_id"),
         user_id: external_user_id,
-        type_,
+        type_: row.get("type"),
         name: row.get("name"),
         public_key: row.get("public_key"),
         created_at: row.get("created_at"),
@@ -45,10 +42,10 @@ pub fn parse_passkey_from_row_with_user_id(
 
 pub fn parse_session_from_row_with_user_id(
     row: &PgRow,
-    user_id: i64,
-    external_user_id: String,
+    user_id: i32,
+    external_user_id: Uuid,
 ) -> anyhow::Result<SecretpassUserSession> {
-    let session_user_id: i64 = row.get("user_id");
+    let session_user_id: i32 = row.get("user_id");
     if session_user_id != user_id {
         return Err(anyhow::anyhow!("Session user id mismatch"));
     }

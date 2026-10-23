@@ -9,13 +9,15 @@ use secretpass_core::enums::{ChallengeKind, OperationMode};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct GenerateChallengeRequest {
     pub kind: ChallengeKind,
     pub owner: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct GenerateChallengeResponse {
     pub challenge: String,
 }
@@ -36,27 +38,20 @@ pub async fn generate_challenge_handler(
     let (challenge, pending_challenge) = match request.kind {
         ChallengeKind::EmailSignup | ChallengeKind::EmailSignIn => {
             PendingChallenge::send_email_code(
-                request.kind.clone(),
+                request.kind,
                 request.owner,
-                state.is_proxied(headers),
+                state.is_proxied(&headers),
             )
             .await
         }
-        _ => PendingChallenge::generate_webauthn(request.kind.clone(), request.owner).await,
+        _ => PendingChallenge::generate_webauthn(request.kind, request.owner).await,
     }
     .map_err(error_mapper(
         StatusCode::INTERNAL_SERVER_ERROR,
         &format!("Error generating {} challenge", request.kind),
     ))?;
 
-    state
-        .backend
-        .record_pending_challenge(pending_challenge)
-        .await
-        .map_err(error_mapper(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Error recording pending challenge",
-        ))?;
+    pending_challenge.record(&state).await?;
 
     Ok(Json(GenerateChallengeResponse { challenge }))
 }
@@ -94,9 +89,11 @@ pub async fn check_challenge_handler(
         .retrieve_pending_challenge_for_attempt(request.kind, request.owner)
         .await
         .map_err(error_mapper(
-            StatusCode::BAD_REQUEST,
+            StatusCode::INTERNAL_SERVER_ERROR,
             "Error checking challenge",
-        ))?;
+        ))?
+        .ok_or_else(|| (StatusCode::NOT_FOUND, "Challenge not found".to_string()))?;
+
     let valid = result.verify_challenge(request.value);
 
     Ok(Json(CheckChallengeResult {
