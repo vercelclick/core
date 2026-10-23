@@ -3,16 +3,17 @@ use ciborium::Value;
 use coset::{CborSerializable, CoseKey};
 use secretpass_core::utils::bin_encode;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use tsify::Tsify;
 
-#[derive(Serialize, Deserialize, Debug, Clone, Tsify)]
+#[derive(Serialize, Deserialize, Debug, Clone, Tsify, TS)]
 pub struct AttestationResponse {
     pub client_data_json: Vec<u8>,
     pub attestation_object: Vec<u8>,
 }
 
 // Client response types
-#[derive(Serialize, Deserialize, Debug, Clone, Tsify)]
+#[derive(Serialize, Deserialize, Debug, Clone, Tsify, TS)]
 pub struct RegistrationResponse {
     pub id: String,
     #[serde(rename = "type")]

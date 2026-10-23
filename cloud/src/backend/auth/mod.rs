@@ -1,3 +1,4 @@
 pub mod challenge;
+pub mod passkey;
 pub mod register;
-mod session;
+pub mod session;

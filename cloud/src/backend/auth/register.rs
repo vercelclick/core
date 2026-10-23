@@ -1,6 +1,8 @@
+use crate::backend::auth::session::get_user_passkeys_by_type;
 use crate::db::queries::auth::{CREATE_PASSKEY_QUERY, CREATE_SESSION_QUERY};
 use crate::db::user::{parse_session_from_row_with_user_id, parse_user_from_row};
-use secretpass_api::{CreateUserParams, SessionResponse};
+use secretpass_api::SessionPackage;
+use secretpass_api::auth::BackendCreateUserRequest;
 use sqlx::PgPool;
 
 // language=sql
@@ -10,26 +12,25 @@ const CREATE_USER_QUERY: &str = r#"
 
 pub async fn create_user(
     pool: &PgPool,
-    params: CreateUserParams,
-) -> anyhow::Result<SessionResponse> {
+    request: BackendCreateUserRequest,
+) -> anyhow::Result<SessionPackage> {
     let mut tx = pool.begin().await?;
 
     let row = sqlx::query(CREATE_USER_QUERY)
-        .bind(&params.generated_id)
-        .bind(&params.name)
-        .bind(&params.email)
+        .bind(&request.user_id)
+        .bind(&request.user_name)
+        .bind(&request.user_email)
         .fetch_one(&mut *tx)
         .await?;
 
     let (user_id, user) = parse_user_from_row(&row);
 
-    let passkey = &params.passkey;
     sqlx::query(CREATE_PASSKEY_QUERY)
-        .bind(&passkey.id)
+        .bind(&request.passkey_cred_id)
         .bind(user_id)
-        .bind(&passkey.name)
-        .bind(passkey.type_.to_string())
-        .bind(&passkey.public_key)
+        .bind(&request.passkey_name)
+        .bind(request.passkey_type.to_string())
+        .bind(&request.passkey_public_key)
         .execute(&mut *tx)
         .await?;
 
@@ -39,6 +40,13 @@ pub async fn create_user(
         .await?;
     let session = parse_session_from_row_with_user_id(&row, user_id, user.id.clone())?;
 
-    let result = SessionResponse { user, session };
+    let passkeys =
+        get_user_passkeys_by_type(pool, request.passkey_type, user_id, user.id.clone()).await?;
+
+    let result = SessionPackage {
+        user,
+        session,
+        passkeys,
+    };
     Ok(result)
 }

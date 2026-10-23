@@ -1,10 +1,11 @@
-use crate::lock::HashedLock;
 use crate::UserLevel;
+use crate::lock::HashedLock;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use tsify::Tsify;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS)]
 pub struct SecretpassUser {
     pub id: String,    // Fixed - invalidates keys if changed, UUID v7
     pub email: String, // Fixed - invalidates keys if changed
@@ -18,7 +19,7 @@ impl HashedLock for SecretpassUser {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS)]
 pub struct SecretpassProjectUser {
     pub id: String,
     pub user_id: String,
@@ -39,7 +40,7 @@ impl HashedLock for SecretpassProjectUser {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS)]
 pub struct SecretpassUserSession {
     pub id: String,
     pub user_id: String,

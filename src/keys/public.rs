@@ -1,12 +1,13 @@
 use crate::keys::derive::{EccPublicKey, KemPublicKey};
 use crate::types::EncryptedPackage;
-use crate::utils::{bin_decode, bin_encode, bin_serialize, get_global_rng, sha256_digest};
+use crate::utils::{
+    bin_decode, bin_encode, bin_serialize, fill_random_bytes, get_global_rng, sha256_digest,
+};
 use aes_gcm::{
     Aes256Gcm, Nonce,
     aead::{Aead, KeyInit},
 };
 use ml_kem::{Encapsulate, KeyExport, TryKeyInit};
-use rand::TryRng;
 use std::collections::HashMap;
 use x25519_dalek::StaticSecret;
 
@@ -110,9 +111,7 @@ impl PublicKey {
 
 fn generate_nonce_bytes() -> anyhow::Result<[u8; 12]> {
     let mut nonce_bytes = [0u8; 12];
-
-    let mut rng = get_global_rng().lock().unwrap();
-    rng.try_fill_bytes(&mut nonce_bytes)?;
+    fill_random_bytes(&mut nonce_bytes);
 
     Ok(nonce_bytes)
 }

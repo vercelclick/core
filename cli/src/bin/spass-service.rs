@@ -2,6 +2,7 @@ use daemonize::Daemonize;
 use secretpass_api::{ApiState, create_backend_app};
 use secretpass_cli::backend::LocalBackendProvider;
 use secretpass_cli::config::{CONFIG_DIR, DATA_DIR, HOME_DIR};
+use secretpass_core::enums::OperationMode;
 use std::fs;
 use std::fs::OpenOptions;
 use std::sync::Arc;
@@ -13,6 +14,7 @@ async fn run_server() {
     let backend = LocalBackendProvider::new(true);
 
     let state = ApiState {
+        mode: OperationMode::Local,
         backend: Arc::new(backend),
     };
 

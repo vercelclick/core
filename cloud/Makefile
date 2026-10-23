@@ -23,7 +23,9 @@ migration-down:
 
 cloud-dev:
 	echo "==> Running local cloud server"
-	DATABASE_URL=$(LOCAL_DB_URL) RUST_BACKTRACE=1 cargo run
+	DATABASE_URL=$(LOCAL_DB_URL) \
+	UI_ORIGIN=http://secretpass-cloud.localhost:3002 \
+	RUST_BACKTRACE=1 cargo run
 
 build:
 	echo "==> Build Api"

@@ -1,11 +1,11 @@
 use crate::enums::EncryptionAlgorithm;
-use crate::utils::{bin_deserialize, bin_serialize, get_global_rng};
+use crate::utils::{bin_deserialize, bin_serialize, fill_random_bytes};
 use argon2::Argon2;
 pub(crate) use ml_kem::ml_kem_768::{
     DecapsulationKey as KemPrivateKey, EncapsulationKey as KemPublicKey,
 };
 use ml_kem::{FromSeed, MlKem768, Seed};
-use rand::Rng;
+
 use serde::{Deserialize, Serialize};
 pub(crate) use x25519_dalek::{PublicKey as EccPublicKey, StaticSecret as EccPrivateKey};
 
@@ -44,13 +44,11 @@ impl PrivateKeySeed {
     }
 
     pub fn generate_machine_key(algorithm: EncryptionAlgorithm) -> anyhow::Result<(String, Self)> {
-        let mut rng = get_global_rng().lock().unwrap();
-
         let mut first = [0u8; 32];
-        rng.fill_bytes(&mut first);
+        fill_random_bytes(&mut first);
 
         let mut second = [0u8; 32];
-        rng.fill_bytes(&mut second);
+        fill_random_bytes(&mut second);
 
         let machine_key = MachineKey(first, second);
         let encoded = bin_serialize(&machine_key)?;

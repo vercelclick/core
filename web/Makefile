@@ -19,10 +19,11 @@ dev-local:
 	WEBAUTH_RP_ORIGIN="http://secretpass-local.localhost:3001" \
 	WEBAUTH_RP_ENTITY="Secretpass Dev Local" \
 	RUSTFLAGS='--cfg=web_sys_unstable_apis' \
-	cargo rustc -p web --release --crate-type cdylib --target wasm32-unknown-unknown
+	cargo rustc -p secretpass-web --release --crate-type cdylib --target wasm32-unknown-unknown
 	wasm-bindgen \
-      ../target/wasm32-unknown-unknown/release/web.wasm \
-      --target web \
+      ../target/wasm32-unknown-unknown/release/secretpass_web.wasm \
+      --target bundler \
+      --out-name index \
       --out-dir ../../web-app/src/core
 
 
@@ -33,10 +34,11 @@ dev-cloud:
 	WEBAUTH_RP_ORIGIN="http://secretpass-cloud.localhost:3002" \
 	WEBAUTH_RP_ENTITY="Secretpass Dev Cloud" \
 	RUSTFLAGS='--cfg=web_sys_unstable_apis' \
-	cargo rustc -p web --release --crate-type cdylib --target wasm32-unknown-unknown
+	cargo rustc -p secretpass-web --release --crate-type cdylib --target wasm32-unknown-unknown
 	wasm-bindgen \
-      ../target/wasm32-unknown-unknown/release/web.wasm \
-      --target web \
+      ../target/wasm32-unknown-unknown/release/secretpass_web.wasm \
+      --target bundler \
+      --out-name index \
       --out-dir ../../web-app/src/core
 
 
@@ -47,24 +49,26 @@ prod-cloud:
 	WEBAUTH_RP_ORIGIN="https://cloud.secretpass.cloud" \
 	WEBAUTH_RP_ENTITY="Secretpass Cloud" \
 	RUSTFLAGS='--cfg=web_sys_unstable_apis' \
-	cargo rustc -p web --release --crate-type cdylib --target wasm32-unknown-unknown
+	cargo rustc -p secretpass-web --release --crate-type cdylib --target wasm32-unknown-unknown
 	wasm-bindgen \
-	  ../target/wasm32-unknown-unknown/release/web.wasm \
-	  --target web \
+	  ../target/wasm32-unknown-unknown/release/secretpass_web.wasm \
+	  --target bundler \
+      --out-name index \
 	  --out-dir ../web-app/src/core
 
 
-prod-cloud:
+prod-local:
 	$(MAKE) add-target
 	@echo "==> Building WASM for cloud usage"
 	WEBAUTH_RP_ID="local.secretpass.cloud" \
 	WEBAUTH_RP_ORIGIN="https://local.secretpass.cloud" \
 	WEBAUTH_RP_ENTITY="Secretpass Local" \
 	RUSTFLAGS='--cfg=web_sys_unstable_apis' \
-	cargo rustc -p web --release --crate-type cdylib --target wasm32-unknown-unknown
+	cargo rustc -p secretpass-web --release --crate-type cdylib --target wasm32-unknown-unknown
 	wasm-bindgen \
-	  ../target/wasm32-unknown-unknown/release/web.wasm \
-	  --target web \
+	  ../target/wasm32-unknown-unknown/release/secretpass_web.wasm \
+	  --target bundler \
+      --out-name index \
 	  --out-dir ../web-app/src/core
 
 

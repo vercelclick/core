@@ -4,12 +4,13 @@ use coset::{CborSerializable, CoseKey, Label};
 use p256::Sec1Point;
 use p256::ecdsa::signature::Verifier;
 use p256::ecdsa::{Signature, VerifyingKey};
-use secretpass_core::SecretpassPasskey;
+use secretpass_core::utils::bin_decode;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use ts_rs::TS;
 use tsify::Tsify;
 
-#[derive(Serialize, Deserialize, Debug, Clone, Tsify)]
+#[derive(Serialize, Deserialize, Debug, Clone, Tsify, TS)]
 pub struct AssertionResponse {
     #[serde(rename = "clientDataJSON")]
     pub client_data_json: Vec<u8>,
@@ -19,7 +20,7 @@ pub struct AssertionResponse {
     pub user_handle: Option<Vec<u8>>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Tsify)]
+#[derive(Serialize, Deserialize, Debug, Clone, Tsify, TS)]
 pub struct AuthorizationResponse {
     pub id: String,
     #[serde(rename = "type")]
@@ -28,7 +29,7 @@ pub struct AuthorizationResponse {
 }
 
 impl AuthorizationResponse {
-    pub fn partial_verification(
+    fn verify_challenge_and_config(
         &self,
         challenge_hash: String,
         rp_id: String,
@@ -62,15 +63,16 @@ impl AuthorizationResponse {
         }
     }
 
-    pub fn full_verification(
+    pub fn validate(
         &self,
-        passkey: SecretpassPasskey,
+        user_id: String,
+        public_key: String,
         challenge_hash: String,
         rp_id: String,
         rp_origin: String,
     ) -> anyhow::Result<()> {
-        let user_id = self.partial_verification(challenge_hash, rp_id, rp_origin)?;
-        if user_id != passkey.user_id {
+        let passkey_user_id = self.verify_challenge_and_config(challenge_hash, rp_id, rp_origin)?;
+        if user_id != passkey_user_id {
             return Err(anyhow::anyhow!("Invalid credential - user_id mismatch!"));
         }
 
@@ -80,7 +82,7 @@ impl AuthorizationResponse {
         signed_data.extend_from_slice(&client_data_hash);
 
         verify_p256_signature(
-            &passkey.public_key_bytes()?,
+            &bin_decode(&public_key)?,
             &signed_data,
             &self.response.signature,
         )?;

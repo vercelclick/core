@@ -34,10 +34,4 @@ impl SecureSession {
     ) -> anyhow::Result<HashMap<String, Vec<u8>>> {
         self.private_key.decrypt_package(secrets_package)
     }
-
-    pub fn encode_public_key(&self) -> (Option<String>, Option<String>) {
-        let public_key = self.private_key.public_key();
-
-        (public_key.ecc(), public_key.kem())
-    }
 }

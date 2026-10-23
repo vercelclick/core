@@ -1,4 +1,6 @@
+use secretpass_api::SessionPackage;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::LazyLock;
@@ -20,7 +22,8 @@ pub static DATA_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct LocalServiceConfig {
-    know_projects: Vec<String>,
+    pub know_projects: Vec<String>,
+    pub sessions: HashMap<String, SessionPackage>,
 }
 
 impl LocalServiceConfig {
@@ -38,5 +41,15 @@ impl LocalServiceConfig {
         let content = fs::read_to_string(config_file)?;
         let config: Self = serde_json::from_str(&content)?;
         Ok(config)
+    }
+
+    pub fn write(&self) -> anyhow::Result<()> {
+        let config_file = CONFIG_DIR.join("config.json");
+
+        let content = serde_json::to_string(self)?;
+
+        fs::write(config_file, content)?;
+
+        Ok(())
     }
 }

@@ -1,36 +1,54 @@
-use crate::backend::auth::{CreateUserParams, SessionResponse};
+use crate::auth::BackendCreateUserRequest;
+use crate::backend::auth::SessionPackage;
 use crate::backend::challenge::PendingChallenge;
-use secretpass_core::enums::ChallengeKind;
-use secretpass_core::{SecretpassUser, SecretpassUserSession};
+use secretpass_core::enums::{ChallengeKind, PasskeyType};
 
 #[async_trait::async_trait]
 pub trait BackendProvider: Send + Sync + 'static {
-    // Return the challenge to be used for authentication of a specific user
-    // The challenge must be stored to be retrieved later for
-    async fn pending_challenge_record(&self, challenge: PendingChallenge) -> anyhow::Result<()>;
+    async fn record_pending_challenge(&self, challenge: PendingChallenge) -> anyhow::Result<()>;
 
-    // Should return the user's email address given the challenge
-    async fn pending_challenge_retrieve(
+    async fn retrieve_pending_challenge_for_attempt(
         &self,
         kind: ChallengeKind,
         owner: String,
     ) -> anyhow::Result<PendingChallenge>;
 
-    async fn projects_list(&self) -> anyhow::Result<()>;
+    async fn pop_pending_challenge(
+        &self,
+        kind: ChallengeKind,
+        owner: String,
+    ) -> anyhow::Result<PendingChallenge>;
 
-    // Get a project by ID
-    async fn projects_get(&self, id: &str) -> anyhow::Result<()>;
-
-    async fn workspaces_list(&self) -> anyhow::Result<()>;
-
-    async fn create_user(&self, params: CreateUserParams) -> anyhow::Result<SessionResponse>;
+    async fn create_user(
+        &self,
+        request: BackendCreateUserRequest,
+    ) -> anyhow::Result<SessionPackage>;
 
     // Only called for local
-    async fn record_session(
-        &self,
-        user: SecretpassUser,
-        session: SecretpassUserSession,
-    ) -> anyhow::Result<()>;
+    async fn record_session(&self, response: SessionPackage) -> anyhow::Result<()>;
 
-    async fn get_session(&self, id: String) -> anyhow::Result<Option<SessionResponse>>;
+    async fn get_session(
+        &self,
+        passkey_type: PasskeyType,
+        id: String,
+    ) -> anyhow::Result<SessionPackage>;
+
+    async fn create_session_by_email(
+        &self,
+        passkey_type: PasskeyType,
+        email: String,
+    ) -> anyhow::Result<SessionPackage>;
+
+    async fn create_session_by_user_and_cred_id(
+        &self,
+        passkey_type: PasskeyType,
+        user_id: String,
+        cred_id: String,
+    ) -> anyhow::Result<SessionPackage>;
+
+    async fn retrieve_user_id_and_public_key(
+        &self,
+        passkey_type: PasskeyType,
+        cred_id: String,
+    ) -> anyhow::Result<(String, String)>;
 }

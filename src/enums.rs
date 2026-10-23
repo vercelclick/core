@@ -1,10 +1,12 @@
 use serde::{Deserialize, Serialize};
+use std::cmp::PartialEq;
 use strum::{Display, EnumString};
+use ts_rs::TS;
 use tsify::Tsify;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 #[wasm_bindgen(skip_typescript)]
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify, TS)]
 #[tsify(namespace)]
 pub enum EncryptionAlgorithm {
     ECC,    // X25519
@@ -13,7 +15,7 @@ pub enum EncryptionAlgorithm {
 }
 
 #[wasm_bindgen(skip_typescript)]
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify, TS)]
 #[tsify(namespace)]
 pub enum UserLevel {
     Admin,
@@ -22,7 +24,7 @@ pub enum UserLevel {
 }
 
 #[wasm_bindgen(skip_typescript)]
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify, TS)]
 #[tsify(namespace)]
 pub enum SecretDataType {
     Text,
@@ -30,30 +32,43 @@ pub enum SecretDataType {
     Url,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify, TS)]
 #[tsify(namespace)]
 pub enum ChallengeKind {
-    WebauthUser,
-    WebauthPasskey,
     EmailSignup,
     EmailSignIn,
+    PasskeySignup,
+    PasskeyLogin,
+    PasskeyRegister,
+    PasskeyAuthorize,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify)]
+impl ChallengeKind {
+    pub fn is_cloud_only(&self) -> bool {
+        self.clone() != ChallengeKind::PasskeyAuthorize
+    }
+
+    pub fn is_checkable(&self) -> bool {
+        let value = self.clone();
+        value == ChallengeKind::EmailSignup || value == ChallengeKind::EmailSignIn
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify, TS)]
 #[tsify(namespace)]
 pub enum AccessGrant {
     Pending,
     Granted,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify, TS)]
 #[tsify(namespace)]
 pub enum PasskeyType {
     Local,
     Cloud,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify, TS)]
 #[tsify(namespace)]
 pub enum OperationMode {
     Local,

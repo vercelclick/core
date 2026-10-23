@@ -7,6 +7,13 @@ UI_ORIGIN = ""
 WEBAUTH_RP_ID = ""
 WEBAUTH_RP_ENTITY = ""
 WEBAUTH_RP_ORIGIN = ""
-CLOUD_API_URL = ""
+CLOUD_PROXY_URL = ""
 SMTP_USER_NAME = ""
 SMTP_TOKEN = ""
+
+CLOUD_RP_ID = "secretpass-cloud.localhost"
+CLOUD_RP_ORIGIN = "http://secretpass-cloud.localhost:3002"
+LOCAL_RP_ID = "secretpass-local.localhost"
+LOCAL_RP_ORIGIN = "http://secretpass-local.localhost:3001"
+
+TS_RS_EXPORT_DIR = { value = "../web-app/src/api-types", relative = true }

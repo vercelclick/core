@@ -17,14 +17,12 @@ pub async fn save_pending_challenge(challenge: PendingChallenge) {
     store.challenge = Some(challenge);
 }
 
-pub async fn get_pending_challenge(
-    kind: ChallengeKind,
-    challenge: String,
-) -> Option<PendingChallenge> {
+pub async fn get_pending_challenge(kind: ChallengeKind, owner: String) -> Option<PendingChallenge> {
     let mut store = CHALLENGE_STORE.lock().await;
     if let Some(pending) = store.challenge.clone() {
         store.challenge = None;
-        if pending.kind != kind && pending.value != challenge {
+
+        if pending.kind != kind && pending.owner != owner {
             None
         } else {
             Some(pending)
