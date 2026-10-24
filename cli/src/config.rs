@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::LazyLock;
+use uuid::Uuid;
 
 pub static CONFIG_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
     dirs::config_local_dir()
@@ -22,7 +23,8 @@ pub static DATA_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct LocalServiceConfig {
-    pub know_projects: Vec<String>,
+    pub pending_projects: Vec<String>,
+    pub know_projects: Vec<(String, Uuid)>,
     pub sessions: HashMap<String, SessionPackage>,
 }
 

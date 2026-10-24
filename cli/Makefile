@@ -3,7 +3,7 @@
 # ==============================================================================
 
 # Default target when running `make`
-all: api-dev
+all: local-service-dev
 
 
 cli-dev:
@@ -12,6 +12,7 @@ cli-dev:
 
 local-service-dev:
 	echo "==> Run api dev"
+	UI_ORIGIN=http://secretpass-local.localhost:3001 \
 	RUST_BACKTRACE=1 cargo run --bin spass-service
 
 build:

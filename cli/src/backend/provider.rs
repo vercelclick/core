@@ -1,6 +1,7 @@
 use crate::backend::challenge::{get_pending_challenge, save_pending_challenge};
 use crate::config::LocalServiceConfig;
 use secretpass_api::auth::BackendCreateUserRequest;
+use secretpass_api::projects::ListProjectsResult;
 use secretpass_api::{BackendProvider, PendingChallenge, SessionPackage};
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
 use secretpass_core::{SecretpassPasskey, SecretpassUser};
@@ -77,6 +78,13 @@ impl BackendProvider for LocalBackendProvider {
         Err(not_supported("Create session by email"))
     }
 
+    async fn get_user_email(
+        &self,
+        _email: String,
+    ) -> anyhow::Result<Option<(i32, SecretpassUser)>> {
+        Err(not_supported("Retrieve user by email"))
+    }
+
     async fn create_session_by_user_id(
         &self,
         _passkey_type: PasskeyType,
@@ -99,5 +107,9 @@ impl BackendProvider for LocalBackendProvider {
         _passkey_type: PasskeyType,
     ) -> anyhow::Result<Option<(SecretpassUser, Vec<SecretpassPasskey>)>> {
         Err(not_supported("Retrieve user with passkeys"))
+    }
+
+    async fn list_projects(&self, user: &SecretpassUser) -> anyhow::Result<ListProjectsResult> {
+        todo!()
     }
 }

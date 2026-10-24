@@ -1,6 +1,7 @@
 use crate::auth::BackendCreateUserRequest;
 use crate::backend::auth::SessionPackage;
 use crate::backend::challenge::PendingChallenge;
+use crate::projects::ListProjectsResult;
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
 use secretpass_core::{SecretpassPasskey, SecretpassUser};
 use uuid::Uuid;
@@ -41,6 +42,8 @@ pub trait BackendProvider: Send + Sync + 'static {
         email: String,
     ) -> anyhow::Result<SessionPackage>;
 
+    async fn get_user_email(&self, email: String) -> anyhow::Result<Option<(i32, SecretpassUser)>>;
+
     async fn create_session_by_user_id(
         &self,
         passkey_type: PasskeyType,
@@ -58,4 +61,6 @@ pub trait BackendProvider: Send + Sync + 'static {
         email: String,
         passkey_type: PasskeyType,
     ) -> anyhow::Result<Option<(SecretpassUser, Vec<SecretpassPasskey>)>>;
+
+    async fn list_projects(&self, user: &SecretpassUser) -> anyhow::Result<ListProjectsResult>;
 }

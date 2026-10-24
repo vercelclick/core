@@ -63,6 +63,10 @@ impl ChallengeKind {
     pub fn is_checkable(&self) -> bool {
         *self == ChallengeKind::EmailSignup || *self == ChallengeKind::EmailSignIn
     }
+
+    pub fn is_new_user_only(&self) -> bool {
+        *self == ChallengeKind::EmailSignup || *self == ChallengeKind::PasskeySignup
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify, TS)]

@@ -1,5 +1,6 @@
 pub mod auth;
 mod challenge;
+pub mod projects;
 mod provider;
 
 use crate::constants::{CLOUD_RP_CONFIG, LOCAL_RP_CONFIG, PROXY_REQUEST_HEADER, RpConfig};

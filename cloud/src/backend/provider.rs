@@ -6,8 +6,9 @@ use crate::backend::auth::register::create_user;
 use crate::backend::auth::session::{
     create_session_by_email, create_session_by_user_id, get_session,
 };
-use crate::backend::auth::user::retrieve_user_and_known_passkeys;
+use crate::backend::auth::user::{retrieve_user_and_known_passkeys, retrieve_user_by_email};
 use secretpass_api::auth::BackendCreateUserRequest;
+use secretpass_api::projects::ListProjectsResult;
 use secretpass_api::{BackendProvider, PendingChallenge, SessionPackage};
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
 use secretpass_core::{SecretpassPasskey, SecretpassUser};
@@ -78,6 +79,10 @@ impl BackendProvider for CloudBackendProvider {
         create_session_by_email(&self.pool, passkey_type, email).await
     }
 
+    async fn get_user_email(&self, email: String) -> anyhow::Result<Option<(i32, SecretpassUser)>> {
+        retrieve_user_by_email(&self.pool, email).await
+    }
+
     async fn create_session_by_user_id(
         &self,
         passkey_type: PasskeyType,
@@ -100,5 +105,9 @@ impl BackendProvider for CloudBackendProvider {
         passkey_type: PasskeyType,
     ) -> anyhow::Result<Option<(SecretpassUser, Vec<SecretpassPasskey>)>> {
         retrieve_user_and_known_passkeys(&self.pool, email, passkey_type).await
+    }
+
+    async fn list_projects(&self, _user: &SecretpassUser) -> anyhow::Result<ListProjectsResult> {
+        todo!("Implement list projects")
     }
 }

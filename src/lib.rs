@@ -17,3 +17,4 @@ pub use keys::{
 pub use project::SecretpassProject;
 pub use types::{EncryptedPackage, SecretDefinition, SecretpassEnvironment};
 pub use user::{SecretpassProjectUser, SecretpassUser, SecretpassUserSession};
+pub use workspace::SecretpassWorkspace;

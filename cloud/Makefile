@@ -5,7 +5,7 @@
 RUN_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 
 # Default target when running `make`
-all: cloud-dev
+all: cloud-service-dev
 
 LOCAL_DB_URL=postgres://api:L0calApiPass@localhost:5432/secretpass
 
@@ -21,7 +21,7 @@ migration-down:
 	echo "==> Run migration"
 	DATABASE_URL=$(LOCAL_DB_URL) sqlx migrate revert
 
-cloud-dev:
+cloud-service-dev:
 	echo "==> Running local cloud server"
 	DATABASE_URL=$(LOCAL_DB_URL) \
 	UI_ORIGIN=http://secretpass-cloud.localhost:3002 \

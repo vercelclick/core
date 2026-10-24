@@ -3,10 +3,11 @@ use crate::enums::AccessGrant;
 use crate::keys::public::PublicKeyEncrypt;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use ts_rs::TS;
 use tsify::Tsify;
 use wasm_bindgen::prelude::wasm_bindgen;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS)]
 pub struct SecretpassProjectUserPublicKey {
     pub id: String,
     pub name: String,

@@ -35,6 +35,24 @@ pub async fn generate_challenge_handler(
         return Ok(Json(response));
     }
 
+    if request.kind.is_new_user_only() {
+        let user = state
+            .backend
+            .get_user_email(request.owner.clone())
+            .await
+            .map_err(error_mapper(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Error checking user exists",
+            ))?;
+        if user.is_some() {
+            return Err((
+                StatusCode::FORBIDDEN,
+                "You already have an account under this email address, login in instead."
+                    .to_string(),
+            ));
+        }
+    }
+
     let (challenge, pending_challenge) = match request.kind {
         ChallengeKind::EmailSignup | ChallengeKind::EmailSignIn => {
             PendingChallenge::send_email_code(
