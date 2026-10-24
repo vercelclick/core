@@ -1,12 +1,16 @@
-use secretpass_core::{SecretpassEnvironment, SecretpassProject};
+use secretpass_core::{
+    SecretpassEnvironment, SecretpassProject, SecretpassProjectUser, SecretpassUser,
+};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LocalProjectConfig {
     pub project: SecretpassProject,
     pub environments: Vec<SecretpassEnvironment>,
+    pub users: Vec<(SecretpassUser, SecretpassProjectUser)>,
 }
 
 impl LocalProjectConfig {
@@ -40,5 +44,15 @@ impl LocalProjectConfig {
         fs::write(config_file, content)?;
 
         Ok(())
+    }
+
+    pub fn user_has_access(&self, user_id: Uuid) -> bool {
+        for (user, project_user) in self.users.iter() {
+            if user.id == user_id && project_user.user_id == user_id {
+                return true;
+            }
+        }
+
+        false
     }
 }

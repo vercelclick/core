@@ -109,7 +109,7 @@ impl BackendProvider for LocalBackendProvider {
         Err(not_supported("Retrieve user with passkeys"))
     }
 
-    async fn list_projects(&self, user: &SecretpassUser) -> anyhow::Result<ListProjectsResult> {
+    async fn list_projects(&self, _user: &SecretpassUser) -> anyhow::Result<ListProjectsResult> {
         todo!()
     }
 }

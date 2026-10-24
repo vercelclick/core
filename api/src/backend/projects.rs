@@ -6,38 +6,38 @@ use ts_rs::TS;
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct ProjectPath {
-    path: String,
-    short_path: String,
+    pub path: String,
+    pub short_path: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct ProjectListItem {
-    project: SecretpassProject,
-    path: Option<ProjectPath>,
+    pub project: SecretpassProject,
+    pub path: Option<ProjectPath>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct WorkspaceProjectListItem {
-    workspace: SecretpassWorkspace,
-    projects: Vec<SecretpassProject>,
+    pub workspace: SecretpassWorkspace,
+    pub projects: Vec<SecretpassProject>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct ListProjectsResult {
-    pending: Vec<ProjectPath>,
-    projects: Vec<ProjectListItem>,
-    workspaces: Vec<WorkspaceProjectListItem>,
-    inaccessible: Vec<ProjectListItem>,
+    pub pending: Vec<ProjectPath>,
+    pub projects: Vec<ProjectListItem>,
+    pub workspaces: Vec<WorkspaceProjectListItem>,
+    pub inaccessible: Vec<ProjectListItem>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct CreateProjectRequest {
-    path: Option<String>,
-    project: SecretpassProject,
-    public_key: SecretpassProjectUserPublicKey,
-    auth_response: AuthorizationResponse,
+    pub path: Option<String>,
+    pub project: SecretpassProject,
+    pub public_key: SecretpassProjectUserPublicKey,
+    pub auth_response: AuthorizationResponse,
 }

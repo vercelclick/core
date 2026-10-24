@@ -23,8 +23,8 @@ pub static DATA_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct LocalServiceConfig {
-    pub pending_projects: Vec<String>,
-    pub know_projects: Vec<(String, Uuid)>,
+    pub known_projects: Vec<String>,
+    pub attached_projects: Vec<(String, Uuid)>,
     pub sessions: HashMap<String, SessionPackage>,
 }
 
@@ -41,7 +41,8 @@ impl LocalServiceConfig {
         }
 
         let content = fs::read_to_string(config_file)?;
-        let config: Self = serde_json::from_str(&content)?;
+        // Overwrite the config if there's an issue with the current config
+        let config: Self = serde_json::from_str(&content).unwrap_or(Default::default());
         Ok(config)
     }
 
@@ -53,5 +54,22 @@ impl LocalServiceConfig {
         fs::write(config_file, content)?;
 
         Ok(())
+    }
+
+    pub fn attach(&mut self, project_path: &String, project_id: Uuid) -> bool {
+        for attached in self.attached_projects.iter_mut() {
+            if *project_path == attached.0.clone() {
+                if attached.1 == project_id {
+                    return false;
+                }
+                attached.1 = project_id;
+                return true;
+            }
+        }
+
+        self.attached_projects
+            .push((project_path.clone(), project_id));
+
+        true
     }
 }

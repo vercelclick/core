@@ -1,10 +1,13 @@
 mod auth;
 pub mod types;
+pub mod utils;
 
 use crate::ApiState;
 use crate::routes::auth::auth_router;
+use crate::routes::utils::{health_endpoint, ping_endpoint};
 use axum::http::header;
 use axum::http::{HeaderValue, Method};
+use axum::routing::{get, post};
 use axum::{Router, http};
 use tower_cookies::CookieManagerLayer;
 use tower_http::cors::CorsLayer;
@@ -58,6 +61,8 @@ pub fn create_backend_app() -> Router<ApiState> {
 
     Router::new()
         .nest("/api/auth", auth_router())
+        .route("/health", get(health_endpoint))
+        .route("/ping", post(ping_endpoint))
         .layer(CookieManagerLayer::new())
         .layer(cors)
         .layer(trace_layer)
