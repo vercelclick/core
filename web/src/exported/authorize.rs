@@ -1,5 +1,5 @@
 use crate::auth::AuthorizationRequest;
-use crate::passkeys::authorize::AuthorizationResponse;
+use crate::passkeys::authorize::PasskeyAuthorizationResponse;
 use tsify::{Ts, Tsify};
 use wasm_bindgen::JsError;
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -7,7 +7,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 #[wasm_bindgen]
 pub async fn authorize_operation(
     params: Ts<AuthorizationRequest>,
-) -> Result<Ts<AuthorizationResponse>, JsError> {
+) -> Result<Ts<PasskeyAuthorizationResponse>, JsError> {
     let params: AuthorizationRequest = params.to_rust()?;
 
     let result = params

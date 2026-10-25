@@ -1,38 +1,60 @@
 use crate::api_types::HttpResponse;
 use crate::auth::BackendCreateUserRequest;
+use crate::constants::RpConfig;
 use crate::routes::auth::shared::{record_session, set_session_cookie};
 use crate::utils::{CloudProxy, error_mapper};
 use crate::{ApiState, CreateUserRequest, SessionPackage};
-use axum::Json;
-use axum::extract::{OriginalUri, State};
-use axum::http::{HeaderMap, Method, StatusCode};
+use axum::extract::State;
+use axum::http::StatusCode;
+use axum::{Extension, Json};
 use secretpass_core::enums::{ChallengeKind, OperationMode};
+use secretpass_web::{PasskeyAuthorizationResponse, PasskeyCreationResponse};
 use tower_cookies::Cookies;
+use uuid::Uuid;
 
 #[axum::debug_handler]
 pub async fn create_user(
     State(state): State<ApiState>,
     cookies: Cookies,
-    method: Method,
-    headers: HeaderMap,
-    OriginalUri(uri): OriginalUri,
+    Extension(proxy): Extension<CloudProxy>,
     Json(request): Json<CreateUserRequest>,
 ) -> HttpResponse<Json<SessionPackage>> {
     // No authentication needed for this call - for now
     // TODO: Add Captcha verification
 
     let response = if state.mode == OperationMode::Local {
-        let result: SessionPackage = CloudProxy::new(method, uri).json(&request).proxy().await?;
+        let result: SessionPackage = proxy.send_json(&request).await?;
 
         record_session(&state, &result).await?;
 
         result
     } else {
-        let request = verify_registration_details(&state, headers, request).await?;
+        let rp_config = state.get_rp_config(proxy.is_proxied());
+        let (cred_id, public_key) = validate_passkey_creation_details(
+            true,
+            &state,
+            &rp_config,
+            PasskeyCreateValidationRequest {
+                create_response: request.passkey_response,
+                email_address: request.email.clone(),
+                confirmation_code: request.confirmation_code,
+                user_id: request.id,
+                auth_response: request.auth_response,
+            },
+        )
+        .await?;
 
         state
             .backend
-            .create_user(request)
+            .create_user(BackendCreateUserRequest {
+                user_id: request.id,
+                user_email: request.email,
+                user_name: request.name,
+                passkey_type: rp_config.passkey_type,
+                passkey_cred_id: cred_id,
+                passkey_name: request.passkey_name,
+                passkey_public_key: public_key,
+            })
             .await
             .map_err(error_mapper(
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -45,15 +67,30 @@ pub async fn create_user(
     Ok(Json(response))
 }
 
-async fn verify_registration_details(
+pub struct PasskeyCreateValidationRequest {
+    pub user_id: Uuid,
+    pub email_address: String,
+    pub confirmation_code: String,
+    pub create_response: PasskeyCreationResponse,
+    pub auth_response: PasskeyAuthorizationResponse,
+}
+
+pub async fn validate_passkey_creation_details(
+    is_signup: bool,
     state: &ApiState,
-    headers: HeaderMap,
-    request: CreateUserRequest,
-) -> HttpResponse<BackendCreateUserRequest> {
-    let rp_config = state.get_rp_config(&headers);
+    rp_config: &RpConfig,
+    request: PasskeyCreateValidationRequest,
+) -> HttpResponse<(String, String)> {
     let email_challenge = state
         .backend
-        .pop_pending_challenge(ChallengeKind::EmailSignup, request.email.clone())
+        .pop_pending_challenge(
+            if is_signup {
+                ChallengeKind::EmailSignup
+            } else {
+                ChallengeKind::EmailAuthorize
+            },
+            request.email_address.clone(),
+        )
         .await
         .map_err(error_mapper(
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -68,14 +105,21 @@ async fn verify_registration_details(
 
     if !email_challenge.verify_challenge(request.confirmation_code) {
         return Err((
-            StatusCode::UNAUTHORIZED,
+            StatusCode::FORBIDDEN,
             "Invalid email confirmation code".to_string(),
         ));
     }
 
     let passkey_challenge = state
         .backend
-        .pop_pending_challenge(ChallengeKind::PasskeySignup, request.email.clone())
+        .pop_pending_challenge(
+            if is_signup {
+                ChallengeKind::PasskeySignup
+            } else {
+                ChallengeKind::PasskeyCreate
+            },
+            request.email_address.clone(),
+        )
         .await
         .map_err(error_mapper(
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -89,7 +133,7 @@ async fn verify_registration_details(
         })?;
 
     let (passkey_cred_id, passkey_public_key) = request
-        .passkey_response
+        .create_response
         .validate(
             passkey_challenge.value_hash.clone(),
             rp_config.id.to_string(),
@@ -103,26 +147,16 @@ async fn verify_registration_details(
     request
         .auth_response
         .validate(
-            request.id.clone(),
+            request.user_id.to_string(),
             passkey_public_key.clone(),
             passkey_challenge.value_hash.clone(),
             rp_config.id.to_string(),
             rp_config.origin.to_string(),
         )
         .map_err(error_mapper(
-            StatusCode::UNAUTHORIZED,
+            StatusCode::INTERNAL_SERVER_ERROR,
             "Error  validating passkey authorization",
         ))?;
 
-    let create_request = BackendCreateUserRequest {
-        user_id: request.id,
-        user_email: request.email,
-        user_name: request.name,
-        passkey_type: rp_config.passkey_type,
-        passkey_cred_id,
-        passkey_public_key,
-        passkey_name: request.passkey_name,
-    };
-
-    Ok(create_request)
+    Ok((passkey_cred_id, passkey_public_key))
 }

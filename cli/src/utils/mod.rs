@@ -3,7 +3,7 @@ pub fn short_path(path: String) -> String {
         let home_dir = format!("{}", home_dir.display());
 
         if let Some(short) = path.strip_prefix(&home_dir) {
-            format!("~/{short}")
+            format!("~{short}")
         } else {
             path
         }

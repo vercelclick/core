@@ -4,6 +4,6 @@ mod passkeys;
 mod session;
 
 pub use passkeys::{
-    authorize::{AssertionResponse, AuthorizationResponse},
+    authorize::{AssertionResponse, PasskeyAuthorizationResponse},
     creation::{AttestationResponse, PasskeyCreationResponse},
 };

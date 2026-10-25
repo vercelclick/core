@@ -1,5 +1,5 @@
 use crate::auth::DecryptionAuthorizationRequest;
-use crate::passkeys::authorize::AuthorizationResponse;
+use crate::passkeys::authorize::PasskeyAuthorizationResponse;
 use secretpass_core::{PrivateKey, PrivateKeySeed, PublicKeyEncrypt};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -15,7 +15,7 @@ pub struct GenerateMachineKeyRequest {
 
 #[derive(Serialize, Tsify)]
 pub struct GenerateMachineKeyResult {
-    auth_response: AuthorizationResponse,
+    auth_response: PasskeyAuthorizationResponse,
     id: String,
     kem_key: Option<String>,
     ecc_key: Option<String>,

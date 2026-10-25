@@ -16,46 +16,27 @@ pub fn parse_user_from_row(row: &PgRow) -> (i32, SecretpassUser) {
     (internal_id, user)
 }
 
-pub fn parse_passkey_from_row_with_user_id(
-    row: &PgRow,
-    user_id: i32,
-    external_user_id: Uuid,
-) -> anyhow::Result<(i32, SecretpassPasskey)> {
+pub fn parse_passkey_from_row_with_user_id(row: &PgRow, user_id: Uuid) -> (i32, SecretpassPasskey) {
     let internal_id: i32 = row.get("id");
-
-    let passkey_user_id: i32 = row.get("user_id");
-    if passkey_user_id != user_id {
-        return Err(anyhow::anyhow!("Passkey user id mismatch"));
-    }
 
     let passkey = SecretpassPasskey {
         id: row.get("cred_id"),
-        user_id: external_user_id,
+        user_id,
         type_: row.get("type"),
         name: row.get("name"),
         public_key: row.get("public_key"),
         created_at: row.get("created_at"),
     };
 
-    Ok((internal_id, passkey))
+    (internal_id, passkey)
 }
 
-pub fn parse_session_from_row_with_user_id(
-    row: &PgRow,
-    user_id: i32,
-    external_user_id: Uuid,
-) -> anyhow::Result<SecretpassUserSession> {
-    let session_user_id: i32 = row.get("user_id");
-    if session_user_id != user_id {
-        return Err(anyhow::anyhow!("Session user id mismatch"));
-    }
-    let session = SecretpassUserSession {
+pub fn parse_session_from_row_with_user_id(row: &PgRow, user_id: Uuid) -> SecretpassUserSession {
+    SecretpassUserSession {
         id: row.get("id"),
-        user_id: external_user_id,
+        user_id,
         created_on: row.get("created_on"),
         last_seen: row.get("last_seen"),
         expires_on: row.get("expires_on"),
-    };
-
-    Ok(session)
+    }
 }

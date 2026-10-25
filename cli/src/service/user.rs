@@ -18,7 +18,7 @@ impl LocalUserConfig {
             return Ok(None);
         }
 
-        let config_file = path.join(format!("{user_id}.json"));
+        let config_file = path.join(format!("{}.json", user_id));
         if !config_file.is_file() {
             return Ok(None);
         }

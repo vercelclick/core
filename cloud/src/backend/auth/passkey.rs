@@ -1,4 +1,7 @@
+use crate::db::queries::auth::{CREATE_PASSKEY_QUERY, INTERNAL_USER_ID_QUERY};
+use crate::db::user::parse_passkey_from_row_with_user_id;
 use secretpass_core::enums::PasskeyType;
+use secretpass_core::{SecretpassPasskey, SecretpassUser};
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
@@ -30,4 +33,31 @@ pub async fn retrieve_user_id_and_public_key(
     let public_key: String = row.get("public_key");
 
     Ok(Some((user_id, public_key)))
+}
+
+pub async fn create_passkey(
+    pool: &PgPool,
+    user: &SecretpassUser,
+    passkey_type: PasskeyType,
+    passkey_name: String,
+    cred_id: String,
+    public_key: String,
+) -> anyhow::Result<SecretpassPasskey> {
+    let row = sqlx::query(INTERNAL_USER_ID_QUERY)
+        .bind(user.id)
+        .fetch_one(pool)
+        .await?;
+    let user_id: i32 = row.get("id");
+    let row = sqlx::query(CREATE_PASSKEY_QUERY)
+        .bind(cred_id)
+        .bind(user_id)
+        .bind(passkey_name)
+        .bind(passkey_type)
+        .bind(public_key)
+        .fetch_one(pool)
+        .await?;
+
+    let (_, passkey) = parse_passkey_from_row_with_user_id(&row, user.id);
+
+    Ok(passkey)
 }

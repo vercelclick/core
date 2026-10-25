@@ -1,4 +1,4 @@
-use crate::passkeys::authorize::{AssertionResponse, AuthorizationResponse};
+use crate::passkeys::authorize::{AssertionResponse, PasskeyAuthorizationResponse};
 use crate::passkeys::creation::{AttestationResponse, PasskeyCreationResponse};
 use crate::passkeys::prf::PrfResults;
 use secretpass_core::utils::{bin_decode, sha256_raw};
@@ -111,7 +111,7 @@ pub fn parse_prf_result(
 
 pub fn map_browser_passkey_authentication(
     pk_credential: PublicKeyCredential,
-) -> anyhow::Result<(AuthorizationResponse, Option<PrfResults>)> {
+) -> anyhow::Result<(PasskeyAuthorizationResponse, Option<PrfResults>)> {
     let ext_outputs = pk_credential.get_client_extension_results();
     let prf_results = parse_prf_result(ext_outputs)?;
 
@@ -131,7 +131,7 @@ pub fn map_browser_passkey_authentication(
         user_handle: user_handle.map(|value| Uint8Array::new(&value).to_vec()),
     };
 
-    let login_response = AuthorizationResponse {
+    let login_response = PasskeyAuthorizationResponse {
         id: pk_credential.id(),
         type_: pk_credential.type_(),
         response,

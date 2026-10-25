@@ -1,10 +1,11 @@
 use crate::backend::challenge::{get_pending_challenge, save_pending_challenge};
+use crate::backend::projects::list_projects;
 use crate::config::LocalServiceConfig;
 use secretpass_api::auth::BackendCreateUserRequest;
 use secretpass_api::projects::ListProjectsResult;
 use secretpass_api::{BackendProvider, PendingChallenge, SessionPackage};
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
-use secretpass_core::{SecretpassPasskey, SecretpassUser};
+use secretpass_core::{SecretpassPasskey, SecretpassUser, SecretpassUserSession};
 use uuid::Uuid;
 
 #[derive(Default)]
@@ -49,24 +50,19 @@ impl BackendProvider for LocalBackendProvider {
 
     async fn record_session(&self, response: SessionPackage) -> anyhow::Result<()> {
         let mut config = LocalServiceConfig::load()?;
-        config
-            .sessions
-            .insert(response.session.id.to_string(), response);
+        config.sessions.insert(response.session.id, response);
 
         config.write()
     }
 
     async fn get_session(
         &self,
-        passkey_type: PasskeyType,
+        _passkey_type: PasskeyType,
         id: Uuid,
     ) -> anyhow::Result<Option<SessionPackage>> {
-        if passkey_type != PasskeyType::Local {
-            return Err(not_supported("Get session with cloud passkeys"));
-        }
         let config = LocalServiceConfig::load()?;
 
-        let response = config.sessions.get(&id.to_string());
+        let response = config.sessions.get(&id);
         Ok(response.cloned())
     }
 
@@ -109,7 +105,26 @@ impl BackendProvider for LocalBackendProvider {
         Err(not_supported("Retrieve user with passkeys"))
     }
 
-    async fn list_projects(&self, _user: &SecretpassUser) -> anyhow::Result<ListProjectsResult> {
-        todo!()
+    async fn list_projects(&self, user: &SecretpassUser) -> anyhow::Result<ListProjectsResult> {
+        list_projects(user).await
+    }
+
+    async fn logout_session(&self, session: &SecretpassUserSession) -> anyhow::Result<()> {
+        let mut config = LocalServiceConfig::load()?;
+
+        config.sessions.remove(&session.id);
+
+        config.write()
+    }
+
+    async fn save_passkey(
+        &self,
+        _user: &SecretpassUser,
+        _passkey_type: PasskeyType,
+        _passkey_name: String,
+        _cred_id: String,
+        _public_key: String,
+    ) -> anyhow::Result<SecretpassPasskey> {
+        Err(not_supported("Retrieve user with passkeys"))
     }
 }

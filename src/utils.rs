@@ -1,16 +1,20 @@
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
-use rand::rngs::ChaCha12Rng;
-use rand::{RngExt, SeedableRng};
+use rand::rngs::{ChaCha20Rng, SysRng};
+use rand::{RngExt, SeedableRng, TryRng};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use sha2::{Digest, Sha256};
 use std::io::Cursor;
 use std::sync::{Mutex, OnceLock};
 
-static RNG: OnceLock<Mutex<ChaCha12Rng>> = OnceLock::new();
+static RNG: OnceLock<Mutex<ChaCha20Rng>> = OnceLock::new();
 
-pub fn get_global_rng() -> &'static Mutex<ChaCha12Rng> {
-    RNG.get_or_init(|| Mutex::new(ChaCha12Rng::from_seed(Default::default())))
+pub fn get_global_rng() -> &'static Mutex<ChaCha20Rng> {
+    RNG.get_or_init(|| {
+        let mut seed = [0u8; 32];
+        SysRng.try_fill_bytes(&mut seed).unwrap();
+        Mutex::new(ChaCha20Rng::from_seed(seed))
+    })
 }
 
 pub fn fill_random_bytes(bytes: &mut [u8]) {

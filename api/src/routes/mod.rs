@@ -1,14 +1,21 @@
-mod auth;
+pub mod auth;
+pub mod projects;
 pub mod types;
+pub mod user;
 pub mod utils;
 
-use crate::ApiState;
+use crate::ApiStateInner;
 use crate::routes::auth::auth_router;
+use crate::routes::auth::middleware::AuthLayer;
+use crate::routes::projects::project_routes;
+use crate::routes::user::user_routes;
 use crate::routes::utils::{health_endpoint, ping_endpoint};
+use crate::utils::CloudProxyLayer;
 use axum::http::header;
 use axum::http::{HeaderValue, Method};
 use axum::routing::{get, post};
 use axum::{Router, http};
+use std::sync::Arc;
 use tower_cookies::CookieManagerLayer;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
@@ -18,7 +25,7 @@ use tracing_subscriber::{EnvFilter, fmt};
 
 const HOST_ORIGIN: &str = env!("UI_ORIGIN");
 
-pub fn create_backend_app() -> Router<ApiState> {
+pub fn create_backend_app(state: ApiStateInner) -> Router {
     subscribe_tracing();
 
     let allowed_origin = HOST_ORIGIN.parse::<HeaderValue>().unwrap();
@@ -59,13 +66,22 @@ pub fn create_backend_app() -> Router<ApiState> {
             },
         );
 
+    let state = Arc::new(state);
+    let auth_layer = AuthLayer::new(state.clone());
+    let proxy_layer = CloudProxyLayer::new(state.mode);
+
     Router::new()
-        .nest("/api/auth", auth_router())
+        .nest("/api/projects", project_routes())
+        .nest("/api/users", user_routes())
+        .layer(auth_layer.clone())
+        .nest("/api/auth", auth_router(auth_layer.clone()))
         .route("/health", get(health_endpoint))
         .route("/ping", post(ping_endpoint))
+        .layer(proxy_layer)
         .layer(CookieManagerLayer::new())
         .layer(cors)
         .layer(trace_layer)
+        .with_state(state)
 }
 
 fn subscribe_tracing() {

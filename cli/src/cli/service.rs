@@ -1,7 +1,7 @@
 use crate::backend::LocalBackendProvider;
 use crate::config::{CONFIG_DIR, DATA_DIR};
 use daemon_kit::{Daemon, DaemonConfig};
-use secretpass_api::{ApiState, create_backend_app};
+use secretpass_api::{ApiStateInner, create_backend_app};
 use secretpass_core::enums::OperationMode;
 use std::fs;
 use std::sync::Arc;
@@ -12,12 +12,12 @@ const API_HOST: &str = env!("API_HOST");
 async fn run_server() {
     let backend = LocalBackendProvider::default();
 
-    let state = ApiState {
+    let state = ApiStateInner {
         mode: OperationMode::Local,
         backend: Arc::new(backend),
     };
 
-    let app = create_backend_app().with_state(state);
+    let app = create_backend_app(state);
 
     let listener = tokio::net::TcpListener::bind(API_HOST)
         .await

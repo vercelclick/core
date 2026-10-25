@@ -3,22 +3,20 @@ use crate::auth::{EmailLoginRequest, PasskeyLoginRequest, StartLoginRequest, Sta
 use crate::routes::auth::shared::{record_session, set_session_cookie};
 use crate::utils::{CloudProxy, error_mapper};
 use crate::{ApiState, PendingChallenge, SessionPackage};
-use axum::Json;
-use axum::extract::{OriginalUri, State};
-use axum::http::{HeaderMap, Method, StatusCode};
-use secretpass_core::enums::{ChallengeKind, OperationMode};
+use axum::extract::State;
+use axum::http::StatusCode;
+use axum::{Extension, Json};
+use secretpass_core::enums::ChallengeKind;
 use tower_cookies::Cookies;
 
 pub async fn login_user_with_email(
     State(state): State<ApiState>,
     cookies: Cookies,
-    headers: HeaderMap,
-    method: Method,
-    OriginalUri(uri): OriginalUri,
+    Extension(proxy): Extension<CloudProxy>,
     Json(request): Json<EmailLoginRequest>,
 ) -> HttpResponse<Json<SessionPackage>> {
-    let result = if state.mode == OperationMode::Local {
-        let result: SessionPackage = CloudProxy::new(method, uri).json(&request).proxy().await?;
+    let result = if proxy.is_local() {
+        let result: SessionPackage = proxy.send_json(&request).await?;
         record_session(&state, &result).await?;
 
         result
@@ -40,12 +38,12 @@ pub async fn login_user_with_email(
 
         if !pending_challenge.verify_challenge(request.confirmation_code) {
             return Err((
-                StatusCode::UNAUTHORIZED,
+                StatusCode::FORBIDDEN,
                 "Invalid confirmation code".to_string(),
             ));
         }
 
-        let rp_config = state.get_rp_config(&headers);
+        let rp_config = state.get_rp_config(proxy.is_proxied());
 
         state
             .backend
@@ -65,13 +63,11 @@ pub async fn login_user_with_email(
 pub async fn login_user_with_passkey(
     State(state): State<ApiState>,
     cookies: Cookies,
-    headers: HeaderMap,
-    method: Method,
-    OriginalUri(uri): OriginalUri,
+    Extension(proxy): Extension<CloudProxy>,
     Json(request): Json<PasskeyLoginRequest>,
 ) -> HttpResponse<Json<SessionPackage>> {
-    let result = if state.mode == OperationMode::Local {
-        let result: SessionPackage = CloudProxy::new(method, uri).json(&request).proxy().await?;
+    let result = if proxy.is_local() {
+        let result: SessionPackage = proxy.send_json(&request).await?;
 
         record_session(&state, &result).await?;
         result
@@ -91,7 +87,7 @@ pub async fn login_user_with_passkey(
                 )
             })?;
 
-        let rp_config = state.get_rp_config(&headers);
+        let rp_config = state.get_rp_config(proxy.is_proxied());
         let (user_id, public_key) = state
             .backend
             .retrieve_user_id_and_public_key(
@@ -141,18 +137,15 @@ pub async fn login_user_with_passkey(
 
 pub async fn start_login(
     State(state): State<ApiState>,
-    headers: HeaderMap,
-    method: Method,
-    OriginalUri(uri): OriginalUri,
+    Extension(proxy): Extension<CloudProxy>,
     Json(request): Json<StartLoginRequest>,
 ) -> HttpResponse<Json<StartLoginResponse>> {
-    if state.mode == OperationMode::Local {
-        let result: StartLoginResponse =
-            CloudProxy::new(method, uri).json(&request).proxy().await?;
+    if proxy.is_local() {
+        let result: StartLoginResponse = proxy.send_json(&request).await?;
         return Ok(Json(result));
     }
 
-    let rp_config = state.get_rp_config(&headers);
+    let rp_config = state.get_rp_config(proxy.is_proxied());
     let (user, passkeys) = state
         .backend
         .retrieve_user_and_known_passkeys(request.email_address, rp_config.passkey_type)
@@ -172,7 +165,7 @@ pub async fn start_login(
         PendingChallenge::send_email_code(
             ChallengeKind::EmailSignIn,
             user.email,
-            state.is_proxied(&headers),
+            proxy.is_proxied(),
         )
         .await
         .map_err(error_mapper(

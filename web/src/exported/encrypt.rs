@@ -1,5 +1,5 @@
 use crate::auth::{AuthorizationRequest, DecryptionAuthorizationRequest};
-use crate::passkeys::authorize::AuthorizationResponse;
+use crate::passkeys::authorize::PasskeyAuthorizationResponse;
 use secretpass_core::{
     PublicKeyEncrypt, SecretpassProjectMachinePublicKey, SecretpassProjectUserPublicKey,
 };
@@ -19,7 +19,7 @@ pub struct EncryptSecretRequest {
 
 #[derive(Serialize, Tsify)]
 pub struct EncryptSecretResult {
-    auth_response: AuthorizationResponse,
+    auth_response: PasskeyAuthorizationResponse,
     user_values: HashMap<String, String>,
     machine_values: HashMap<String, String>,
 }
@@ -103,7 +103,7 @@ pub struct ReEncryptPackageRequest {
 
 #[derive(Serialize, Tsify)]
 pub struct ReEncryptPackageResult {
-    auth_response: AuthorizationResponse,
+    auth_response: PasskeyAuthorizationResponse,
     secrets_package: HashMap<String, HashMap<String, HashMap<String, String>>>,
 }
 
@@ -157,7 +157,7 @@ pub struct DecryptEnvPackageRequest {
 
 #[derive(Serialize, Tsify)]
 pub struct DecryptEnvPackageResult {
-    auth_response: AuthorizationResponse,
+    auth_response: PasskeyAuthorizationResponse,
     secrets_package: HashMap<String, String>,
 }
 

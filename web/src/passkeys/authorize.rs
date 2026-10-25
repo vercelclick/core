@@ -21,14 +21,14 @@ pub struct AssertionResponse {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Tsify, TS)]
-pub struct AuthorizationResponse {
+pub struct PasskeyAuthorizationResponse {
     pub id: String,
     #[serde(rename = "type")]
     pub type_: String,
     pub response: AssertionResponse,
 }
 
-impl AuthorizationResponse {
+impl PasskeyAuthorizationResponse {
     fn verify_challenge_and_config(
         &self,
         challenge_hash: String,

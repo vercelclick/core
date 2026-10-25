@@ -53,6 +53,8 @@ pub enum ChallengeKind {
     PasskeySignup,
     PasskeySignIn,
     PasskeyAuthorize,
+    PasskeyCreate,
+    EmailAuthorize,
 }
 
 impl ChallengeKind {
@@ -61,7 +63,9 @@ impl ChallengeKind {
     }
 
     pub fn is_checkable(&self) -> bool {
-        *self == ChallengeKind::EmailSignup || *self == ChallengeKind::EmailSignIn
+        *self == ChallengeKind::EmailSignup
+            || *self == ChallengeKind::EmailSignIn
+            || *self == ChallengeKind::EmailAuthorize
     }
 
     pub fn is_new_user_only(&self) -> bool {

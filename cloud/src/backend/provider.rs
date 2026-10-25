@@ -1,17 +1,17 @@
 use crate::backend::auth::challenge::{
     insert_or_replace_challenge, pop_pending_challenge, retrieve_pending_challenge_for_attempt,
 };
-use crate::backend::auth::passkey::retrieve_user_id_and_public_key;
+use crate::backend::auth::passkey::{create_passkey, retrieve_user_id_and_public_key};
 use crate::backend::auth::register::create_user;
 use crate::backend::auth::session::{
-    create_session_by_email, create_session_by_user_id, get_session,
+    create_session_by_email, create_session_by_user_id, expire_session, get_session,
 };
 use crate::backend::auth::user::{retrieve_user_and_known_passkeys, retrieve_user_by_email};
 use secretpass_api::auth::BackendCreateUserRequest;
 use secretpass_api::projects::ListProjectsResult;
 use secretpass_api::{BackendProvider, PendingChallenge, SessionPackage};
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
-use secretpass_core::{SecretpassPasskey, SecretpassUser};
+use secretpass_core::{SecretpassPasskey, SecretpassUser, SecretpassUserSession};
 use sqlx::PgPool;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -109,5 +109,28 @@ impl BackendProvider for CloudBackendProvider {
 
     async fn list_projects(&self, _user: &SecretpassUser) -> anyhow::Result<ListProjectsResult> {
         todo!("Implement list projects")
+    }
+
+    async fn logout_session(&self, session: &SecretpassUserSession) -> anyhow::Result<()> {
+        expire_session(&self.pool, session).await
+    }
+
+    async fn save_passkey(
+        &self,
+        user: &SecretpassUser,
+        passkey_type: PasskeyType,
+        passkey_name: String,
+        cred_id: String,
+        public_key: String,
+    ) -> anyhow::Result<SecretpassPasskey> {
+        create_passkey(
+            &self.pool,
+            user,
+            passkey_type,
+            passkey_name,
+            cred_id,
+            public_key,
+        )
+        .await
     }
 }

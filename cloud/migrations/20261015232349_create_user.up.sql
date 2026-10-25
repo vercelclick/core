@@ -27,7 +27,7 @@ CREATE TABLE "UserPasskeys"
             ON DELETE CASCADE
 );
 
-CREATE TYPE "ChallengeKind" AS ENUM ('EmailSignup', 'EmailSignIn', 'PasskeySignup', 'PasskeySignIn', 'PasskeyAuthorize');
+CREATE TYPE "ChallengeKind" AS ENUM ('EmailSignup', 'EmailSignIn', 'PasskeySignup', 'PasskeySignIn', 'PasskeyAuthorize', 'PasskeyCreate', 'EmailAuthorize');
 
 -- If a challenge is lost, the user can simply create a new one
 CREATE UNLOGGED TABLE "PendingChallenge"

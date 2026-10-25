@@ -22,3 +22,4 @@ pub static LOCAL_RP_CONFIG: RpConfig = RpConfig {
 pub const CLOUD_PROXY_BASE_URL: &str = env!("CLOUD_PROXY_URL");
 
 pub const PROXY_REQUEST_HEADER: &str = "Local-Proxy";
+pub const SESSION_COOKIE_NAME: &str = "session_token";

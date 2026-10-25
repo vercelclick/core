@@ -3,7 +3,7 @@ use crate::auth::mapping::{
     build_credential_request_extensions, build_credentials_array, build_prf_eval_values,
     map_browser_passkey_authentication,
 };
-use crate::passkeys::authorize::AuthorizationResponse;
+use crate::passkeys::authorize::PasskeyAuthorizationResponse;
 use crate::passkeys::prf::{PrfDeriveConfig, PrfResults};
 use crate::passkeys::protocol::RP_ENTITY_ID;
 use crate::session::SecureSession;
@@ -21,7 +21,7 @@ pub struct AuthorizationRequest {
 }
 
 impl AuthorizationRequest {
-    pub(crate) async fn authorize(&self) -> anyhow::Result<AuthorizationResponse> {
+    pub(crate) async fn authorize(&self) -> anyhow::Result<PasskeyAuthorizationResponse> {
         let (response, _) =
             browser_user_authorize(&self.challenge, &self.allowed_credentials, &None).await?;
         Ok(response)
@@ -36,7 +36,9 @@ pub struct DecryptionAuthorizationRequest {
 }
 
 impl DecryptionAuthorizationRequest {
-    pub(crate) async fn authorize(&self) -> anyhow::Result<(AuthorizationResponse, SecureSession)> {
+    pub(crate) async fn authorize(
+        &self,
+    ) -> anyhow::Result<(PasskeyAuthorizationResponse, SecureSession)> {
         let (login_response, prf_results) = browser_user_authorize(
             &self.challenge,
             &Some(self.allowed_credentials.clone()),
@@ -56,7 +58,7 @@ async fn browser_user_authorize(
     challenge: &str,
     allowed_credentials: &Option<Vec<String>>,
     prf_config: &Option<PrfDeriveConfig>,
-) -> anyhow::Result<(AuthorizationResponse, Option<PrfResults>)> {
+) -> anyhow::Result<(PasskeyAuthorizationResponse, Option<PrfResults>)> {
     let mut challenge = bin_decode(challenge)?;
 
     let pk_options = PublicKeyCredentialRequestOptions::new_with_u8_slice(&mut challenge);

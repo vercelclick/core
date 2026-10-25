@@ -1,5 +1,5 @@
 use secretpass_core::{SecretpassProject, SecretpassProjectUserPublicKey, SecretpassWorkspace};
-use secretpass_web::AuthorizationResponse;
+use secretpass_web::PasskeyAuthorizationResponse;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -39,5 +39,5 @@ pub struct CreateProjectRequest {
     pub path: Option<String>,
     pub project: SecretpassProject,
     pub public_key: SecretpassProjectUserPublicKey,
-    pub auth_response: AuthorizationResponse,
+    pub auth_response: PasskeyAuthorizationResponse,
 }

@@ -25,7 +25,7 @@ pub static DATA_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
 pub struct LocalServiceConfig {
     pub known_projects: Vec<String>,
     pub attached_projects: Vec<(String, Uuid)>,
-    pub sessions: HashMap<String, SessionPackage>,
+    pub sessions: HashMap<Uuid, SessionPackage>,
 }
 
 impl LocalServiceConfig {

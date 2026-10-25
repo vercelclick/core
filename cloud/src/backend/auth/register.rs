@@ -4,7 +4,7 @@ use crate::db::user::{parse_session_from_row_with_user_id, parse_user_from_row};
 use secretpass_api::SessionPackage;
 use secretpass_api::auth::BackendCreateUserRequest;
 use sqlx::PgPool;
-use uuid::Uuid;
+use std::sync::Arc;
 
 // language=sql
 const CREATE_USER_QUERY: &str = r#"
@@ -17,11 +17,8 @@ pub async fn create_user(
 ) -> anyhow::Result<SessionPackage> {
     let mut tx = pool.begin().await?;
 
-    let user_id =
-        Uuid::parse_str(&request.user_id).map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
-
     let row = sqlx::query(CREATE_USER_QUERY)
-        .bind(user_id)
+        .bind(request.user_id)
         .bind(&request.user_name)
         .bind(&request.user_email)
         .fetch_one(&mut *tx)
@@ -42,16 +39,17 @@ pub async fn create_user(
         .bind(user_id)
         .fetch_one(&mut *tx)
         .await?;
-    let session = parse_session_from_row_with_user_id(&row, user_id, user.id)?;
+
+    let session = parse_session_from_row_with_user_id(&row, user.id);
 
     let passkeys = get_user_passkeys_by_type(pool, request.passkey_type, user_id, user.id).await?;
 
     tx.commit().await?;
 
     let result = SessionPackage {
-        user,
-        session,
-        passkeys,
+        user: Arc::new(user),
+        session: Arc::new(session),
+        passkeys: Arc::new(passkeys),
     };
     Ok(result)
 }

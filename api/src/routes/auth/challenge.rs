@@ -2,9 +2,9 @@ use crate::backend::ApiState;
 use crate::routes::types::HttpResponse;
 use crate::utils::{CloudProxy, error_mapper};
 use crate::{CheckChallengeResult, PendingChallenge};
-use axum::Json;
-use axum::extract::{OriginalUri, State};
-use axum::http::{HeaderMap, Method, StatusCode};
+use axum::extract::State;
+use axum::http::StatusCode;
+use axum::{Extension, Json};
 use secretpass_core::enums::{ChallengeKind, OperationMode};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -24,14 +24,11 @@ pub struct GenerateChallengeResponse {
 
 pub async fn generate_challenge_handler(
     State(state): State<ApiState>,
-    headers: HeaderMap,
-    method: Method,
-    OriginalUri(uri): OriginalUri,
+    Extension(proxy): Extension<CloudProxy>,
     Json(request): Json<GenerateChallengeRequest>,
 ) -> HttpResponse<Json<GenerateChallengeResponse>> {
-    if state.mode == OperationMode::Local && request.kind.is_cloud_only() {
-        let response: GenerateChallengeResponse =
-            CloudProxy::new(method, uri).json(&request).proxy().await?;
+    if proxy.is_local() && request.kind.is_cloud_only() {
+        let response: GenerateChallengeResponse = proxy.send_json(&request).await?;
         return Ok(Json(response));
     }
 
@@ -55,12 +52,7 @@ pub async fn generate_challenge_handler(
 
     let (challenge, pending_challenge) = match request.kind {
         ChallengeKind::EmailSignup | ChallengeKind::EmailSignIn => {
-            PendingChallenge::send_email_code(
-                request.kind,
-                request.owner,
-                state.is_proxied(&headers),
-            )
-            .await
+            PendingChallenge::send_email_code(request.kind, request.owner, proxy.is_proxied()).await
         }
         _ => PendingChallenge::generate_webauthn(request.kind, request.owner).await,
     }
@@ -85,8 +77,7 @@ pub struct CheckChallengeRequest {
 #[axum::debug_handler]
 pub async fn check_challenge_handler(
     State(state): State<ApiState>,
-    method: Method,
-    OriginalUri(uri): OriginalUri,
+    Extension(proxy): Extension<CloudProxy>,
     Json(request): Json<CheckChallengeRequest>,
 ) -> HttpResponse<Json<CheckChallengeResult>> {
     if !request.kind.is_checkable() {
@@ -97,8 +88,7 @@ pub async fn check_challenge_handler(
     }
 
     if state.mode == OperationMode::Local && request.kind.is_cloud_only() {
-        let challenge: CheckChallengeResult =
-            CloudProxy::new(method, uri).json(&request).proxy().await?;
+        let challenge: CheckChallengeResult = proxy.send_json(&request).await?;
         return Ok(Json(challenge));
     }
 

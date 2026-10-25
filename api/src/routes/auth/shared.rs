@@ -5,6 +5,7 @@ use axum::http::StatusCode;
 use secretpass_core::SecretpassUserSession;
 use tower_cookies::cookie::SameSite;
 use tower_cookies::{Cookie, Cookies};
+use crate::constants::SESSION_COOKIE_NAME;
 
 pub(crate) async fn record_session(
     state: &ApiState,
@@ -21,7 +22,7 @@ pub(crate) async fn record_session(
 }
 
 pub(crate) fn set_session_cookie(cookies: &Cookies, session: &SecretpassUserSession) {
-    let cookie = Cookie::build(("session_token", session.id.to_string()))
+    let cookie = Cookie::build((SESSION_COOKIE_NAME, session.id.to_string()))
         .path("/")
         .http_only(true)
         .secure(true)

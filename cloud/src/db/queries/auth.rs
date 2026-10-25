@@ -19,3 +19,8 @@ pub const GET_PASSKEY_BY_CRED_ID_QUERY: &str = r#"
 pub const LIST_USER_PASSKEYS_BY_TYPE: &str = r#"
     SELECT * FROM "UserPasskeys" WHERE type = $1 AND user_id = $2
 "#;
+
+// language=sql
+pub const INTERNAL_USER_ID_QUERY: &str = r#"
+    SELECT id FROM "Users" WHERE external_id = $1
+"#;
