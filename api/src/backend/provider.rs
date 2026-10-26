@@ -1,9 +1,9 @@
 use crate::auth::BackendCreateUserRequest;
 use crate::backend::auth::SessionPackage;
 use crate::backend::challenge::PendingChallenge;
-use crate::projects::ListProjectsResult;
+use crate::projects::{CreateProjectRequest, ListProjectsResult};
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
-use secretpass_core::{SecretpassPasskey, SecretpassUser, SecretpassUserSession};
+use secretpass_core::{SpassPasskey, SpassProject, SpassSession, SpassUser};
 use uuid::Uuid;
 
 #[async_trait::async_trait]
@@ -42,7 +42,7 @@ pub trait BackendProvider: Send + Sync + 'static {
         email: String,
     ) -> anyhow::Result<SessionPackage>;
 
-    async fn get_user_email(&self, email: String) -> anyhow::Result<Option<(i32, SecretpassUser)>>;
+    async fn get_user_email(&self, email: String) -> anyhow::Result<Option<SpassUser>>;
 
     async fn create_session_by_user_id(
         &self,
@@ -50,28 +50,36 @@ pub trait BackendProvider: Send + Sync + 'static {
         user_id: Uuid,
     ) -> anyhow::Result<SessionPackage>;
 
-    async fn retrieve_user_id_and_public_key(
+    async fn retrieve_passkey_by_cred_id(
         &self,
         passkey_type: PasskeyType,
         cred_id: String,
-    ) -> anyhow::Result<Option<(Uuid, String)>>;
+        email: String,
+    ) -> anyhow::Result<Option<SpassPasskey>>;
 
     async fn retrieve_user_and_known_passkeys(
         &self,
         email: String,
         passkey_type: PasskeyType,
-    ) -> anyhow::Result<Option<(SecretpassUser, Vec<SecretpassPasskey>)>>;
+    ) -> anyhow::Result<Option<(SpassUser, Vec<SpassPasskey>)>>;
 
-    async fn list_projects(&self, user: &SecretpassUser) -> anyhow::Result<ListProjectsResult>;
+    async fn list_projects(&self, user: &SpassUser) -> anyhow::Result<ListProjectsResult>;
 
-    async fn logout_session(&self, session: &SecretpassUserSession) -> anyhow::Result<()>;
+    async fn logout_session(&self, session: &SpassSession) -> anyhow::Result<()>;
 
     async fn save_passkey(
         &self,
-        user: &SecretpassUser,
+        user: &SpassUser,
         passkey_type: PasskeyType,
         passkey_name: String,
         cred_id: String,
         public_key: String,
-    ) -> anyhow::Result<SecretpassPasskey>;
+    ) -> anyhow::Result<SpassPasskey>;
+
+    async fn create_project(
+        &self,
+        user: &SpassUser,
+        passkeys: &Vec<SpassPasskey>,
+        request: CreateProjectRequest,
+    ) -> anyhow::Result<SpassProject>;
 }

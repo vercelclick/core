@@ -10,6 +10,7 @@ homepage = { workspace = true }
 
 [dependencies]
 anyhow = { version = "1.0.104", features = ["backtrace"] }
+chrono = { version = "0.4.45", features = ["serde"] }
 ciborium = "0.2.2"
 coset = "0.4.2"
 p256 = "0.14.0"
@@ -19,6 +20,7 @@ sha2 = { version = "0.11.0" }
 secretpass-core = { path = ".." }
 tsify = "0.5.8"
 ts-rs = { version = "12.0.1" }
+uuid = { version = "1.29.0", features = ["js", "v4", "v7"] }
 wasm-bindgen = { version = "0.2.128" }
 wasm-bindgen-futures = "0.4.78"
 

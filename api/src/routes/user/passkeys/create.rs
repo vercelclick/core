@@ -9,8 +9,8 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use axum::{Extension, Json};
 use secretpass_core::enums::ChallengeKind;
-use secretpass_core::{SecretpassPasskey, SecretpassUser};
-use secretpass_web::{PasskeyAuthorizationResponse, PasskeyCreationResponse};
+use secretpass_core::{SpassPasskey, SpassUser};
+use secretpass_web::{PasskeyAuthorizationResult, PasskeyCreationResult};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use ts_rs::TS;
@@ -20,20 +20,20 @@ use ts_rs::TS;
 pub struct CreatePasskeyRequest {
     name: String,
     confirmation_code: String,
-    auth_response: PasskeyAuthorizationResponse,
-    create_response: PasskeyCreationResponse,
+    auth_response: PasskeyAuthorizationResult,
+    create_response: PasskeyCreationResult,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct CreatePasskeyResponse {
-    passkey: SecretpassPasskey,
+    passkey: SpassPasskey,
 }
 
 pub async fn create_passkey_start_handler(
     State(state): State<ApiState>,
     Extension(proxy): Extension<CloudProxy>,
-    Extension(user): Extension<Arc<SecretpassUser>>,
+    Extension(user): Extension<Arc<SpassUser>>,
 ) -> HttpResponse<Json<GenerateChallengeResponse>> {
     if proxy.is_local() {
         let result: GenerateChallengeResponse = proxy.send().await?;
@@ -111,9 +111,9 @@ pub async fn create_passkey_complete_handler(
         &state,
         rp_config,
         PasskeyCreateValidationRequest {
-            create_response: request.create_response,
+            create_result: request.create_response,
             email_address: package.user.email.clone(),
-            auth_response: request.auth_response,
+            auth_result: request.auth_response,
             user_id: package.user.id,
             confirmation_code: request.confirmation_code,
         },

@@ -1,6 +1,6 @@
-use crate::passkeys::authorize::{AssertionResponse, PasskeyAuthorizationResponse};
-use crate::passkeys::creation::{AttestationResponse, PasskeyCreationResponse};
-use crate::passkeys::prf::PrfResults;
+use crate::passkeys::authorize::{AssertionResponse, PasskeyAuthorizationResult};
+use crate::passkeys::creation::{AttestationResponse, PasskeyCreationResult};
+use crate::passkeys::prf::{PrfDeriveConfig, PrfResults};
 use secretpass_core::utils::{bin_decode, sha256_raw};
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::js_sys::{
@@ -36,7 +36,7 @@ fn get_prf_value(
 
 pub fn map_browser_passkey_registration_response(
     pk_credential: PublicKeyCredential,
-) -> anyhow::Result<PasskeyCreationResponse> {
+) -> anyhow::Result<PasskeyCreationResult> {
     let ext_outputs = pk_credential.get_client_extension_results();
     verify_prf_enabled(ext_outputs)?;
 
@@ -52,7 +52,7 @@ pub fn map_browser_passkey_registration_response(
         client_data_json: Uint8Array::new(&attestation_response.client_data_json()).to_vec(),
     };
 
-    let response = PasskeyCreationResponse {
+    let response = PasskeyCreationResult {
         id: pk_credential.id(),
         type_: pk_credential.type_(),
         response: attestation_response,
@@ -111,7 +111,7 @@ pub fn parse_prf_result(
 
 pub fn map_browser_passkey_authentication(
     pk_credential: PublicKeyCredential,
-) -> anyhow::Result<(PasskeyAuthorizationResponse, Option<PrfResults>)> {
+) -> anyhow::Result<(PasskeyAuthorizationResult, Option<PrfResults>)> {
     let ext_outputs = pk_credential.get_client_extension_results();
     let prf_results = parse_prf_result(ext_outputs)?;
 
@@ -131,7 +131,7 @@ pub fn map_browser_passkey_authentication(
         user_handle: user_handle.map(|value| Uint8Array::new(&value).to_vec()),
     };
 
-    let login_response = PasskeyAuthorizationResponse {
+    let login_response = PasskeyAuthorizationResult {
         id: pk_credential.id(),
         type_: pk_credential.type_(),
         response,
@@ -175,21 +175,27 @@ fn encode_prf_salt(value: Vec<String>) -> Uint8Array {
 }
 
 pub fn build_prf_eval_values(
-    user_salt: Vec<String>,
-    entity_salt: Vec<String>,
-) -> AuthenticationExtensionsPrfValues {
-    let prf_value =
-        AuthenticationExtensionsPrfValues::new_with_u8_array(&encode_prf_salt(entity_salt));
-    prf_value.set_second_u8_array(&encode_prf_salt(user_salt));
-    prf_value
+    configs: &[PrfDeriveConfig],
+) -> JsObject<AuthenticationExtensionsPrfValues> {
+    let output: JsObject<AuthenticationExtensionsPrfValues> = JsObject::new_typed();
+    for config in configs.iter() {
+        let (first, second) = config.get_salts();
+        let prf_value =
+            AuthenticationExtensionsPrfValues::new_with_u8_array(&encode_prf_salt(first));
+        prf_value.set_second_u8_array(&encode_prf_salt(second));
+
+        JsReflect::set(&output, &JsValue::from_str(&config.cred_id), &prf_value).unwrap();
+    }
+
+    output
 }
 
 pub fn build_credential_request_extensions(
-    prf_value: Option<AuthenticationExtensionsPrfValues>,
+    prf_values: Option<JsObject<AuthenticationExtensionsPrfValues>>,
 ) -> AuthenticationExtensionsClientInputs {
     let prf_extension = AuthenticationExtensionsPrfInputs::new();
-    if let Some(prf_value) = prf_value {
-        prf_extension.set_eval(&prf_value);
+    if let Some(prf_values) = prf_values {
+        prf_extension.set_eval_by_credential(&prf_values);
     }
 
     let extensions = AuthenticationExtensionsClientInputs::new();

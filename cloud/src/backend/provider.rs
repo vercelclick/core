@@ -1,17 +1,18 @@
 use crate::backend::auth::challenge::{
     insert_or_replace_challenge, pop_pending_challenge, retrieve_pending_challenge_for_attempt,
 };
-use crate::backend::auth::passkey::{create_passkey, retrieve_user_id_and_public_key};
+use crate::backend::auth::passkey::{create_passkey, retrieve_passkey_by_cred_id};
 use crate::backend::auth::register::create_user;
 use crate::backend::auth::session::{
     create_session_by_email, create_session_by_user_id, expire_session, get_session,
 };
 use crate::backend::auth::user::{retrieve_user_and_known_passkeys, retrieve_user_by_email};
+use crate::backend::projects::project::create_project;
 use secretpass_api::auth::BackendCreateUserRequest;
-use secretpass_api::projects::ListProjectsResult;
+use secretpass_api::projects::{CreateProjectRequest, ListProjectsResult};
 use secretpass_api::{BackendProvider, PendingChallenge, SessionPackage};
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
-use secretpass_core::{SecretpassPasskey, SecretpassUser, SecretpassUserSession};
+use secretpass_core::{SpassPasskey, SpassProject, SpassSession, SpassUser};
 use sqlx::PgPool;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -79,7 +80,7 @@ impl BackendProvider for CloudBackendProvider {
         create_session_by_email(&self.pool, passkey_type, email).await
     }
 
-    async fn get_user_email(&self, email: String) -> anyhow::Result<Option<(i32, SecretpassUser)>> {
+    async fn get_user_email(&self, email: String) -> anyhow::Result<Option<SpassUser>> {
         retrieve_user_by_email(&self.pool, email).await
     }
 
@@ -91,38 +92,39 @@ impl BackendProvider for CloudBackendProvider {
         create_session_by_user_id(&self.pool, passkey_type, user_id).await
     }
 
-    async fn retrieve_user_id_and_public_key(
+    async fn retrieve_passkey_by_cred_id(
         &self,
         passkey_type: PasskeyType,
         cred_id: String,
-    ) -> anyhow::Result<Option<(Uuid, String)>> {
-        retrieve_user_id_and_public_key(&self.pool, passkey_type, cred_id).await
+        email: String,
+    ) -> anyhow::Result<Option<SpassPasskey>> {
+        retrieve_passkey_by_cred_id(&self.pool, passkey_type, cred_id, email).await
     }
 
     async fn retrieve_user_and_known_passkeys(
         &self,
         email: String,
         passkey_type: PasskeyType,
-    ) -> anyhow::Result<Option<(SecretpassUser, Vec<SecretpassPasskey>)>> {
+    ) -> anyhow::Result<Option<(SpassUser, Vec<SpassPasskey>)>> {
         retrieve_user_and_known_passkeys(&self.pool, email, passkey_type).await
     }
 
-    async fn list_projects(&self, _user: &SecretpassUser) -> anyhow::Result<ListProjectsResult> {
+    async fn list_projects(&self, _user: &SpassUser) -> anyhow::Result<ListProjectsResult> {
         todo!("Implement list projects")
     }
 
-    async fn logout_session(&self, session: &SecretpassUserSession) -> anyhow::Result<()> {
+    async fn logout_session(&self, session: &SpassSession) -> anyhow::Result<()> {
         expire_session(&self.pool, session).await
     }
 
     async fn save_passkey(
         &self,
-        user: &SecretpassUser,
+        user: &SpassUser,
         passkey_type: PasskeyType,
         passkey_name: String,
         cred_id: String,
         public_key: String,
-    ) -> anyhow::Result<SecretpassPasskey> {
+    ) -> anyhow::Result<SpassPasskey> {
         create_passkey(
             &self.pool,
             user,
@@ -132,5 +134,14 @@ impl BackendProvider for CloudBackendProvider {
             public_key,
         )
         .await
+    }
+
+    async fn create_project(
+        &self,
+        user: &SpassUser,
+        passkeys: &Vec<SpassPasskey>,
+        request: CreateProjectRequest,
+    ) -> anyhow::Result<SpassProject> {
+        create_project(&self.pool, user, passkeys, request).await
     }
 }

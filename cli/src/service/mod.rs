@@ -1,4 +1,3 @@
-pub mod machines;
+pub mod keys;
 pub mod project;
 pub mod secrets;
-pub mod user;

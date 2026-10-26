@@ -1,26 +1,25 @@
 use crate::auth::{AuthorizationRequest, DecryptionAuthorizationRequest};
-use crate::passkeys::authorize::PasskeyAuthorizationResponse;
-use secretpass_core::{
-    PublicKeyEncrypt, SecretpassProjectMachinePublicKey, SecretpassProjectUserPublicKey,
-};
+use crate::passkeys::authorize::PasskeyAuthorizationResult;
+use secretpass_core::{MachinePublicKey, ProjectUserPasskey, PublicKeyEncrypt};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tsify::{Ts, Tsify};
+use uuid::Uuid;
 use wasm_bindgen::JsError;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 #[derive(Deserialize, Tsify)]
 pub struct EncryptSecretRequest {
     auth_request: AuthorizationRequest,
-    user_keys: Vec<SecretpassProjectUserPublicKey>,
-    machine_keys: Vec<SecretpassProjectMachinePublicKey>,
+    passkeys: Vec<ProjectUserPasskey>,
+    machine_keys: Vec<MachinePublicKey>,
     secret_value: String,
 }
 
 #[derive(Serialize, Tsify)]
 pub struct EncryptSecretResult {
-    auth_response: PasskeyAuthorizationResponse,
-    user_values: HashMap<String, String>,
+    auth_response: PasskeyAuthorizationResult,
+    user_values: HashMap<Uuid, String>,
     machine_values: HashMap<String, String>,
 }
 
@@ -36,22 +35,20 @@ pub async fn encrypt_secret(
         .await
         .map_err(|err| JsError::new(&format!("Error authorizing user: {}", err)))?;
 
-    let mut user_values: HashMap<String, String> = HashMap::new();
-    for pk in request.user_keys {
-        let key_id = pk.id.clone();
+    let mut user_values: HashMap<Uuid, String> = HashMap::new();
+    for pk in request.passkeys {
         let encrypted_value = pk
             .encrypt(request.secret_value.clone().into_bytes())
             .map_err(|err| JsError::new(&format!("Error encrypting secret: {}", err)))?;
-        user_values.insert(key_id, encrypted_value);
+        user_values.insert(pk.id, encrypted_value);
     }
 
     let mut machine_values: HashMap<String, String> = HashMap::new();
     for pk in request.machine_keys {
-        let key_id = pk.id.clone();
         let encrypted_value = pk
             .encrypt(request.secret_value.clone().into_bytes())
             .map_err(|err| JsError::new(&format!("Error encrypting secret: {}", err)))?;
-        machine_values.insert(key_id, encrypted_value);
+        machine_values.insert(pk.id, encrypted_value);
     }
 
     let result = EncryptSecretResult {
@@ -90,8 +87,8 @@ pub async fn decrypt_secret(ts_request: Ts<DecryptSecretRequest>) -> Result<Stri
 
 #[derive(Deserialize, Tsify)]
 enum TargetKey {
-    User(SecretpassProjectUserPublicKey),
-    Machine(SecretpassProjectMachinePublicKey),
+    User(ProjectUserPasskey),
+    Machine(MachinePublicKey),
 }
 
 #[derive(Deserialize, Tsify)]
@@ -103,7 +100,7 @@ pub struct ReEncryptPackageRequest {
 
 #[derive(Serialize, Tsify)]
 pub struct ReEncryptPackageResult {
-    auth_response: PasskeyAuthorizationResponse,
+    auth_response: PasskeyAuthorizationResult,
     secrets_package: HashMap<String, HashMap<String, HashMap<String, String>>>,
 }
 
@@ -157,7 +154,7 @@ pub struct DecryptEnvPackageRequest {
 
 #[derive(Serialize, Tsify)]
 pub struct DecryptEnvPackageResult {
-    auth_response: PasskeyAuthorizationResponse,
+    auth_response: PasskeyAuthorizationResult,
     secrets_package: HashMap<String, String>,
 }
 

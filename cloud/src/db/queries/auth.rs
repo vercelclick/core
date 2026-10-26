@@ -1,7 +1,7 @@
 // language=sql
 pub const CREATE_PASSKEY_QUERY: &str = r#"
-    INSERT INTO "UserPasskeys" (cred_id, user_id, name, "type", public_key)
-        VALUES ($1, $2, $3, $4, $5)
+    INSERT INTO "UserPasskeys" (id, user_id, name, cred_id, type, ecc, kem, public_key)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     RETURNING *
 "#;
 
@@ -18,9 +18,4 @@ pub const GET_PASSKEY_BY_CRED_ID_QUERY: &str = r#"
 // language=sql
 pub const LIST_USER_PASSKEYS_BY_TYPE: &str = r#"
     SELECT * FROM "UserPasskeys" WHERE type = $1 AND user_id = $2
-"#;
-
-// language=sql
-pub const INTERNAL_USER_ID_QUERY: &str = r#"
-    SELECT id FROM "Users" WHERE external_id = $1
 "#;

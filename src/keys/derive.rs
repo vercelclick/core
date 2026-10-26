@@ -1,4 +1,3 @@
-use crate::enums::EncryptionAlgorithm;
 use crate::utils::{bin_deserialize, bin_serialize, fill_random_bytes};
 use argon2::Argon2;
 pub(crate) use ml_kem::ml_kem_768::{
@@ -14,7 +13,6 @@ struct MachineKey([u8; 32], [u8; 32]);
 
 #[derive(Clone, Deserialize)]
 pub struct PrivateKeySeed {
-    pub algorithm: EncryptionAlgorithm,
     pub first: [u8; 32],
     pub second: [u8; 32],
 }
@@ -43,7 +41,7 @@ impl PrivateKeySeed {
         Ok((public_key, private_key))
     }
 
-    pub fn generate_machine_key(algorithm: EncryptionAlgorithm) -> anyhow::Result<(String, Self)> {
+    pub fn generate_machine_key() -> anyhow::Result<(String, Self)> {
         let mut first = [0u8; 32];
         fill_random_bytes(&mut first);
 
@@ -52,21 +50,13 @@ impl PrivateKeySeed {
 
         let machine_key = MachineKey(first, second);
         let encoded = bin_serialize(&machine_key)?;
-        let seed = Self {
-            algorithm,
-            first,
-            second,
-        };
+        let seed = Self { first, second };
         Ok((encoded, seed))
     }
 
-    pub fn from_machine_key(
-        algorithm: EncryptionAlgorithm,
-        encoded: String,
-    ) -> anyhow::Result<Self> {
+    pub fn from_machine_key(encoded: String) -> anyhow::Result<Self> {
         let machine_key: MachineKey = bin_deserialize(&encoded)?;
         Ok(Self {
-            algorithm,
             first: machine_key.0,
             second: machine_key.1,
         })

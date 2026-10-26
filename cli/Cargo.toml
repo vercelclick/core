@@ -21,13 +21,10 @@ eula = false
 anyhow = "1.0.104"
 async-trait = "0.1.92"
 axum = { version = "0.8.9", features = ["tokio", "macros", "json", "query", "ws"] }
-chrono = "0.4.45"
+chrono = { version = "0.4.45", features = ["serde", "now"] }
 clap = { version = "4.6.6", features = ["derive"] }
 daemon-kit = "0.1.4"
 dirs = "7.0.0"
-home = "0.5.12"
-nix = { version = "0.31.3", features = ["signal"] }
-reqwest = "0.13.5"
 secretpass-api = { path = "../api" }
 secretpass-core = { path = ".." }
 serde = { version = "1.0.229" }

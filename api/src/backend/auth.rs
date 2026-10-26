@@ -1,6 +1,6 @@
 use secretpass_core::enums::PasskeyType;
-use secretpass_core::{SecretpassPasskey, SecretpassUser, SecretpassUserSession};
-use secretpass_web::{PasskeyAuthorizationResponse, PasskeyCreationResponse};
+use secretpass_core::{SpassPasskey, SpassSession, SpassUser};
+use secretpass_web::{PasskeyAuthorizationResult, PasskeyCreationResult, PublicKeyGenerateResult};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use ts_rs::TS;
@@ -13,10 +13,10 @@ pub struct CreateUserRequest {
     pub name: String,
     pub email: String,
     pub confirmation_code: String,
+    pub passkey_id: Uuid,
     pub passkey_name: String,
-    pub passkey_response: PasskeyCreationResponse,
-    // The user use's the registered passkey to registration
-    pub auth_response: PasskeyAuthorizationResponse,
+    pub passkey_result: PasskeyCreationResult,
+    pub public_key_result: PublicKeyGenerateResult,
 }
 
 #[derive(Debug, Clone)]
@@ -24,25 +24,28 @@ pub struct BackendCreateUserRequest {
     pub user_id: Uuid,
     pub user_name: String,
     pub user_email: String,
+    pub passkey_id: Uuid,
     pub passkey_cred_id: String,
     pub passkey_name: String,
     pub passkey_type: PasskeyType,
+    pub passkey_ecc: String,
+    pub passkey_kem: String,
     pub passkey_public_key: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct SessionPackage {
-    pub session: Arc<SecretpassUserSession>,
-    pub user: Arc<SecretpassUser>,
-    pub passkeys: Arc<Vec<SecretpassPasskey>>,
+    pub session: Arc<SpassSession>,
+    pub user: Arc<SpassUser>,
+    pub passkeys: Arc<Vec<SpassPasskey>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct PasskeyLoginRequest {
     pub owner: String,
-    pub auth_response: PasskeyAuthorizationResponse,
+    pub auth_response: PasskeyAuthorizationResult,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

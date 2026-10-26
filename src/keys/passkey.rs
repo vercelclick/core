@@ -1,28 +1,20 @@
 use crate::enums::PasskeyType;
-use crate::utils::bin_decode;
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
 use ts_rs::TS;
 use tsify::Tsify;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS)]
-pub struct SecretpassPasskey {
-    pub id: String, // Credential ID
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, FromRow)]
+pub struct SpassPasskey {
+    pub id: Uuid, // Credential ID
     pub user_id: Uuid,
     pub name: String,
+    pub cred_id: String, // Base64url-encoded credential id
     #[serde(rename = "type")]
+    #[sqlx(rename = "type")]
     pub type_: PasskeyType,
     pub public_key: String, // Base64url-encoded COSE key
-    pub created_at: DateTime<Utc>,
-}
-
-impl SecretpassPasskey {
-    pub fn id_bytes(&self) -> anyhow::Result<Vec<u8>> {
-        bin_decode(&self.id)
-    }
-
-    pub fn public_key_bytes(&self) -> anyhow::Result<Vec<u8>> {
-        bin_decode(&self.public_key)
-    }
+    pub ecc: String,
+    pub kem: String,
 }

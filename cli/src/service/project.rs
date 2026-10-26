@@ -1,6 +1,4 @@
-use secretpass_core::{
-    SecretpassEnvironment, SecretpassProject, SecretpassProjectUser, SecretpassUser,
-};
+use secretpass_core::{SpassEnvironment, SpassProject, SpassProjectUser, SpassUser};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
@@ -8,9 +6,10 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LocalProjectConfig {
-    pub project: SecretpassProject,
-    pub environments: Vec<SecretpassEnvironment>,
-    pub users: Vec<(SecretpassUser, SecretpassProjectUser)>,
+    pub project: SpassProject,
+    pub environments: Vec<SpassEnvironment>,
+    pub users: Vec<(SpassUser, SpassProjectUser)>,
+    pub machines: Vec<()>,
 }
 
 impl LocalProjectConfig {

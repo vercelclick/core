@@ -8,7 +8,7 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use axum::{Extension, Json};
 use secretpass_core::enums::{ChallengeKind, OperationMode};
-use secretpass_web::{PasskeyAuthorizationResponse, PasskeyCreationResponse};
+use secretpass_web::{PasskeyAuthorizationResult, PasskeyCreationResult};
 use tower_cookies::Cookies;
 use uuid::Uuid;
 
@@ -19,7 +19,6 @@ pub async fn create_user(
     Extension(proxy): Extension<CloudProxy>,
     Json(request): Json<CreateUserRequest>,
 ) -> HttpResponse<Json<SessionPackage>> {
-    // No authentication needed for this call - for now
     // TODO: Add Captcha verification
 
     let response = if state.mode == OperationMode::Local {
@@ -33,13 +32,13 @@ pub async fn create_user(
         let (cred_id, public_key) = validate_passkey_creation_details(
             true,
             &state,
-            &rp_config,
+            rp_config,
             PasskeyCreateValidationRequest {
-                create_response: request.passkey_response,
+                create_result: request.passkey_result,
                 email_address: request.email.clone(),
                 confirmation_code: request.confirmation_code,
                 user_id: request.id,
-                auth_response: request.auth_response,
+                auth_result: request.public_key_result.auth_response.clone(),
             },
         )
         .await?;
@@ -50,9 +49,12 @@ pub async fn create_user(
                 user_id: request.id,
                 user_email: request.email,
                 user_name: request.name,
+                passkey_id: request.passkey_id,
                 passkey_type: rp_config.passkey_type,
                 passkey_cred_id: cred_id,
                 passkey_name: request.passkey_name,
+                passkey_ecc: request.public_key_result.ecc,
+                passkey_kem: request.public_key_result.kem,
                 passkey_public_key: public_key,
             })
             .await
@@ -71,8 +73,8 @@ pub struct PasskeyCreateValidationRequest {
     pub user_id: Uuid,
     pub email_address: String,
     pub confirmation_code: String,
-    pub create_response: PasskeyCreationResponse,
-    pub auth_response: PasskeyAuthorizationResponse,
+    pub create_result: PasskeyCreationResult,
+    pub auth_result: PasskeyAuthorizationResult,
 }
 
 pub async fn validate_passkey_creation_details(
@@ -133,7 +135,7 @@ pub async fn validate_passkey_creation_details(
         })?;
 
     let (passkey_cred_id, passkey_public_key) = request
-        .create_response
+        .create_result
         .validate(
             passkey_challenge.value_hash.clone(),
             rp_config.id.to_string(),
@@ -145,9 +147,9 @@ pub async fn validate_passkey_creation_details(
         ))?;
 
     request
-        .auth_response
+        .auth_result
         .validate(
-            request.user_id.to_string(),
+            request.user_id,
             passkey_public_key.clone(),
             passkey_challenge.value_hash.clone(),
             rp_config.id.to_string(),

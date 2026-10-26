@@ -1,11 +1,11 @@
 use crate::backend::challenge::{get_pending_challenge, save_pending_challenge};
-use crate::backend::projects::list_projects;
+use crate::backend::projects::project::{create_project, list_projects};
 use crate::config::LocalServiceConfig;
 use secretpass_api::auth::BackendCreateUserRequest;
-use secretpass_api::projects::ListProjectsResult;
+use secretpass_api::projects::{CreateProjectRequest, ListProjectsResult};
 use secretpass_api::{BackendProvider, PendingChallenge, SessionPackage};
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
-use secretpass_core::{SecretpassPasskey, SecretpassUser, SecretpassUserSession};
+use secretpass_core::{SpassPasskey, SpassProject, SpassSession, SpassUser};
 use uuid::Uuid;
 
 #[derive(Default)]
@@ -74,10 +74,7 @@ impl BackendProvider for LocalBackendProvider {
         Err(not_supported("Create session by email"))
     }
 
-    async fn get_user_email(
-        &self,
-        _email: String,
-    ) -> anyhow::Result<Option<(i32, SecretpassUser)>> {
+    async fn get_user_email(&self, _email: String) -> anyhow::Result<Option<SpassUser>> {
         Err(not_supported("Retrieve user by email"))
     }
 
@@ -89,11 +86,12 @@ impl BackendProvider for LocalBackendProvider {
         Err(not_supported("Create session by passkey"))
     }
 
-    async fn retrieve_user_id_and_public_key(
+    async fn retrieve_passkey_by_cred_id(
         &self,
         _passkey_type: PasskeyType,
         _cred_id: String,
-    ) -> anyhow::Result<Option<(Uuid, String)>> {
+        _email: String,
+    ) -> anyhow::Result<Option<SpassPasskey>> {
         Err(not_supported("Retrieve user id and public key"))
     }
 
@@ -101,15 +99,15 @@ impl BackendProvider for LocalBackendProvider {
         &self,
         _email: String,
         _passkey_type: PasskeyType,
-    ) -> anyhow::Result<Option<(SecretpassUser, Vec<SecretpassPasskey>)>> {
+    ) -> anyhow::Result<Option<(SpassUser, Vec<SpassPasskey>)>> {
         Err(not_supported("Retrieve user with passkeys"))
     }
 
-    async fn list_projects(&self, user: &SecretpassUser) -> anyhow::Result<ListProjectsResult> {
+    async fn list_projects(&self, user: &SpassUser) -> anyhow::Result<ListProjectsResult> {
         list_projects(user).await
     }
 
-    async fn logout_session(&self, session: &SecretpassUserSession) -> anyhow::Result<()> {
+    async fn logout_session(&self, session: &SpassSession) -> anyhow::Result<()> {
         let mut config = LocalServiceConfig::load()?;
 
         config.sessions.remove(&session.id);
@@ -119,12 +117,21 @@ impl BackendProvider for LocalBackendProvider {
 
     async fn save_passkey(
         &self,
-        _user: &SecretpassUser,
+        _user: &SpassUser,
         _passkey_type: PasskeyType,
         _passkey_name: String,
         _cred_id: String,
         _public_key: String,
-    ) -> anyhow::Result<SecretpassPasskey> {
+    ) -> anyhow::Result<SpassPasskey> {
         Err(not_supported("Retrieve user with passkeys"))
+    }
+
+    async fn create_project(
+        &self,
+        user: &SpassUser,
+        passkeys: &Vec<SpassPasskey>,
+        request: CreateProjectRequest,
+    ) -> anyhow::Result<SpassProject> {
+        create_project(user, passkeys, request).await
     }
 }

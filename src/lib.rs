@@ -1,20 +1,18 @@
-mod config;
 pub mod enums;
 mod keys;
-pub mod lock;
-mod project;
+
+mod projects;
 pub mod types;
 mod user;
 pub mod utils;
 mod workspace;
 
-pub use config::{SecretManagerConfig, SecretManagerConfigLock};
-pub use enums::{EncryptionAlgorithm, SecretDataType, UserLevel};
-pub use keys::{
-    PrivateKey, PrivateKeySeed, PublicKey, PublicKeyEncrypt, SecretpassPasskey,
-    SecretpassProjectMachinePublicKey, SecretpassProjectUserPublicKey,
+pub use enums::{EncryptionAlgorithm, ProjectUserLevel, SecretDataType};
+pub use keys::{PrivateKey, PrivateKeySeed, PublicKey, PublicKeyEncrypt, SpassPasskey};
+pub use projects::{
+    MachinePublicKey, MachineSecretValue, PasskeySecretValue, ProjectUserPasskey, SecretDefinition,
+    SpassEnvironment, SpassProject, SpassProjectUser,
 };
-pub use project::SecretpassProject;
-pub use types::{EncryptedPackage, SecretDefinition, SecretpassEnvironment};
-pub use user::{SecretpassProjectUser, SecretpassUser, SecretpassUserSession};
-pub use workspace::SecretpassWorkspace;
+pub use types::EncryptedPackage;
+pub use user::{SpassSession, SpassUser};
+pub use workspace::SpassWorkspace;

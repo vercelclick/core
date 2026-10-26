@@ -1,6 +1,6 @@
 use crate::auth::DecryptionAuthorizationRequest;
-use crate::passkeys::authorize::PasskeyAuthorizationResponse;
-use secretpass_core::{PrivateKey, PrivateKeySeed, PublicKeyEncrypt};
+use crate::passkeys::authorize::PasskeyAuthorizationResult;
+use secretpass_core::{EncryptionAlgorithm, PrivateKey, PrivateKeySeed, PublicKeyEncrypt};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tsify::{Ts, Tsify};
@@ -9,13 +9,14 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 #[derive(Deserialize, Tsify)]
 pub struct GenerateMachineKeyRequest {
+    algorithm: EncryptionAlgorithm,
     auth_request: DecryptionAuthorizationRequest,
     secrets_package: HashMap<String, HashMap<String, String>>,
 }
 
 #[derive(Serialize, Tsify)]
 pub struct GenerateMachineKeyResult {
-    auth_response: PasskeyAuthorizationResponse,
+    auth_response: PasskeyAuthorizationResult,
     id: String,
     kem_key: Option<String>,
     ecc_key: Option<String>,
@@ -35,13 +36,13 @@ pub async fn generate_machine_key(
         .await
         .map_err(|err| JsError::new(&format!("Error authorizing user: {}", err)))?;
 
-    let (machine_key, seed) = PrivateKeySeed::generate_machine_key(session.algorithm)
+    let (machine_key, seed) = PrivateKeySeed::generate_machine_key()
         .map_err(|err| JsError::new(&format!("Error generating machine key: {}", err)))?;
 
     let private_key = PrivateKey::from_seed(seed)
         .map_err(|err| JsError::new(&format!("Error getting private key from seed: {}", err)))?;
 
-    let public_key = private_key.public_key();
+    let public_key = private_key.public_key(request.algorithm);
 
     let mut output: HashMap<String, HashMap<String, String>> = Default::default();
     for (env, encrypted_package) in &request.secrets_package {

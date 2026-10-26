@@ -1,13 +1,10 @@
 use crate::backend::auth::user::retrieve_user_by_email;
 use crate::db::queries::auth::{CREATE_SESSION_QUERY, LIST_USER_PASSKEYS_BY_TYPE};
-use crate::db::queries::user::{GET_USER_BY_EXTERNAL_ID_QUERY, GET_USER_BY_ID_QUERY};
-use crate::db::user::{
-    parse_passkey_from_row_with_user_id, parse_session_from_row_with_user_id, parse_user_from_row,
-};
+use crate::db::queries::user::GET_USER_BY_ID_QUERY;
 use secretpass_api::SessionPackage;
 use secretpass_core::enums::PasskeyType;
-use secretpass_core::{SecretpassPasskey, SecretpassUserSession};
-use sqlx::{PgPool, Row};
+use secretpass_core::{SpassPasskey, SpassSession, SpassUser};
+use sqlx::PgPool;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -22,26 +19,22 @@ pub async fn get_session(
     id: Uuid,
 ) -> anyhow::Result<Option<SessionPackage>> {
     // TODO: Collapse these queries to one
-    let session_row = sqlx::query(GET_SESSION_QUERY)
+    let session: Option<SpassSession> = sqlx::query_as(GET_SESSION_QUERY)
         .bind(id)
         .fetch_optional(pool)
         .await?;
 
-    let session_row = match session_row {
-        Some(row) => row,
+    let session = match session {
+        Some(session) => session,
         None => return Ok(None),
     };
 
-    let id: i32 = session_row.get("user_id");
-    let user_row = sqlx::query(GET_USER_BY_ID_QUERY)
+    let user: SpassUser = sqlx::query_as(GET_USER_BY_ID_QUERY)
         .bind(id)
         .fetch_one(pool)
         .await?;
-    let (user_id, user) = parse_user_from_row(&user_row);
 
-    let session = parse_session_from_row_with_user_id(&session_row, user.id);
-
-    let passkeys = get_user_passkeys_by_type(pool, passkey_type, user_id, user.id).await?;
+    let passkeys = get_user_passkeys_by_type(pool, passkey_type, user.id).await?;
 
     Ok(Some(SessionPackage {
         user: Arc::new(user),
@@ -55,16 +48,16 @@ pub async fn create_session_by_email(
     passkey_type: PasskeyType,
     email: String,
 ) -> anyhow::Result<SessionPackage> {
-    let (user_id, user) = retrieve_user_by_email(pool, email)
+    let user = retrieve_user_by_email(pool, email)
         .await?
         .ok_or_else(|| anyhow::anyhow!("User not found"))?;
 
-    let session_row = sqlx::query(CREATE_SESSION_QUERY)
-        .bind(user_id)
+    let session: SpassSession = sqlx::query_as(CREATE_SESSION_QUERY)
+        .bind(user.id)
         .fetch_one(pool)
         .await?;
-    let session = parse_session_from_row_with_user_id(&session_row, user.id);
-    let passkeys = get_user_passkeys_by_type(pool, passkey_type, user_id, user.id).await?;
+
+    let passkeys = get_user_passkeys_by_type(pool, passkey_type, user.id).await?;
     Ok(SessionPackage {
         user: Arc::new(user),
         session: Arc::new(session),
@@ -77,20 +70,17 @@ pub async fn create_session_by_user_id(
     passkey_type: PasskeyType,
     user_id: Uuid,
 ) -> anyhow::Result<SessionPackage> {
-    let user_row = sqlx::query(GET_USER_BY_EXTERNAL_ID_QUERY)
+    let user: SpassUser = sqlx::query_as(GET_USER_BY_ID_QUERY)
         .bind(user_id)
         .fetch_one(pool)
         .await?;
 
-    let (user_id, user) = parse_user_from_row(&user_row);
-
-    let session_row = sqlx::query(CREATE_SESSION_QUERY)
+    let session: SpassSession = sqlx::query_as(CREATE_SESSION_QUERY)
         .bind(user_id)
         .fetch_one(pool)
         .await?;
 
-    let session = parse_session_from_row_with_user_id(&session_row, user.id);
-    let passkeys = get_user_passkeys_by_type(pool, passkey_type, user_id, user.id).await?;
+    let passkeys = get_user_passkeys_by_type(pool, passkey_type, user_id).await?;
     Ok(SessionPackage {
         user: Arc::new(user),
         session: Arc::new(session),
@@ -101,20 +91,13 @@ pub async fn create_session_by_user_id(
 pub async fn get_user_passkeys_by_type(
     pool: &PgPool,
     passkey_type: PasskeyType,
-    user_id: i32,
-    external_user_id: Uuid,
-) -> anyhow::Result<Vec<SecretpassPasskey>> {
-    let rows = sqlx::query(LIST_USER_PASSKEYS_BY_TYPE)
+    user_id: Uuid,
+) -> anyhow::Result<Vec<SpassPasskey>> {
+    let passkeys: Vec<SpassPasskey> = sqlx::query_as(LIST_USER_PASSKEYS_BY_TYPE)
         .bind(passkey_type)
         .bind(user_id)
         .fetch_all(pool)
         .await?;
-
-    let mut passkeys: Vec<SecretpassPasskey> = Vec::with_capacity(rows.len());
-    for row in rows.iter() {
-        let (_, passkey) = parse_passkey_from_row_with_user_id(row, external_user_id);
-        passkeys.push(passkey);
-    }
 
     Ok(passkeys)
 }
@@ -122,7 +105,7 @@ pub async fn get_user_passkeys_by_type(
 // language=sql
 const EXPIRE_SESSION_QUERY: &str = r#"UPDATE "UserSessions" SET expires_on=now() WHERE id=$1"#;
 
-pub async fn expire_session(pool: &PgPool, session: &SecretpassUserSession) -> anyhow::Result<()> {
+pub async fn expire_session(pool: &PgPool, session: &SpassSession) -> anyhow::Result<()> {
     sqlx::query(EXPIRE_SESSION_QUERY)
         .bind(session.id)
         .execute(pool)

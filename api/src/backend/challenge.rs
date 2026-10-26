@@ -7,6 +7,7 @@ use rand::RngExt;
 use secretpass_core::enums::ChallengeKind;
 use secretpass_core::utils::{bin_encode, fill_random_bytes, get_global_rng, sha256_digest};
 use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
 use ts_rs::TS;
 
 const CODE_POOL: &[u8] = b"ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -18,7 +19,7 @@ pub struct CheckChallengeResult {
     pub attempts_left: i32,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, FromRow)]
 pub struct PendingChallenge {
     pub owner: String,
     pub kind: ChallengeKind,

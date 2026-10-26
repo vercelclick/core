@@ -1,21 +1,20 @@
 use crate::backend::auth::session::get_user_passkeys_by_type;
 use crate::db::queries::user::GET_USER_BY_EMAIL_QUERY;
-use crate::db::user::parse_user_from_row;
 use secretpass_core::enums::PasskeyType;
-use secretpass_core::{SecretpassPasskey, SecretpassUser};
+use secretpass_core::{SpassPasskey, SpassUser};
 use sqlx::PgPool;
 
 pub async fn retrieve_user_and_known_passkeys(
     pool: &PgPool,
     email: String,
     passkey_type: PasskeyType,
-) -> anyhow::Result<Option<(SecretpassUser, Vec<SecretpassPasskey>)>> {
-    let (user_id, user) = match retrieve_user_by_email(pool, email).await? {
+) -> anyhow::Result<Option<(SpassUser, Vec<SpassPasskey>)>> {
+    let user = match retrieve_user_by_email(pool, email).await? {
         Some(res) => res,
         None => return Ok(None),
     };
 
-    let passkeys = get_user_passkeys_by_type(pool, passkey_type, user_id, user.id).await?;
+    let passkeys = get_user_passkeys_by_type(pool, passkey_type, user.id).await?;
 
     Ok(Some((user, passkeys)))
 }
@@ -23,16 +22,11 @@ pub async fn retrieve_user_and_known_passkeys(
 pub async fn retrieve_user_by_email(
     pool: &PgPool,
     email: String,
-) -> anyhow::Result<Option<(i32, SecretpassUser)>> {
-    let row = sqlx::query(GET_USER_BY_EMAIL_QUERY)
+) -> anyhow::Result<Option<SpassUser>> {
+    let user: Option<SpassUser> = sqlx::query_as(GET_USER_BY_EMAIL_QUERY)
         .bind(email)
         .fetch_optional(pool)
         .await?;
 
-    let user_row = match row {
-        Some(row) => row,
-        None => return Ok(None),
-    };
-
-    Ok(Some(parse_user_from_row(&user_row)))
+    Ok(user)
 }

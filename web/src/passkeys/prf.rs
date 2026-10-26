@@ -1,27 +1,20 @@
-use secretpass_core::lock::HashedLock;
-use secretpass_core::{EncryptionAlgorithm, SecretpassProject, SecretpassUser};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
-
-#[derive(Debug, Clone, Serialize, Deserialize, Tsify)]
-pub enum PrfEntity {
-    Project(SecretpassProject),
-}
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Tsify)]
 pub struct PrfDeriveConfig {
-    pub algorithm: EncryptionAlgorithm,
-    pub user: SecretpassUser, // The logged-in secretpass user
-    pub entity: PrfEntity,    // Can be workspace or project
+    pub cred_id: String,
+    pub user_id: Uuid,
+    pub passkey_id: Uuid,
 }
 
 impl PrfDeriveConfig {
     pub(crate) fn get_salts(&self) -> (Vec<String>, Vec<String>) {
-        let user_salt = self.user.salt();
-        let entity_salt = match &self.entity {
-            PrfEntity::Project(project) => project.salt(),
-        };
-        (user_salt, entity_salt)
+        (
+            vec![self.user_id.to_string()],
+            vec![self.passkey_id.to_string()],
+        )
     }
 }
 

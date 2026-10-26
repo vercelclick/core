@@ -1,32 +1,37 @@
 use crate::PublicKey;
-use crate::keys::public::PublicKeyEncrypt;
+use crate::enums::AccessGrant;
+use crate::keys::PublicKeyEncrypt;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
 use std::collections::HashMap;
+use ts_rs::TS;
 use tsify::Tsify;
+use uuid::Uuid;
 use wasm_bindgen::prelude::wasm_bindgen;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify)]
-pub struct SecretpassProjectMachinePublicKey {
-    pub id: String,
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, FromRow)]
+pub struct ProjectUserPasskey {
+    pub id: Uuid,
     pub name: String,
-    pub description: String,
-    pub environments: Vec<String>,
-    pub project_id: String,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub kem: Option<String>,
+    pub user_id: Uuid,
+    pub passkey_id: Uuid,
+    pub access: AccessGrant,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub ecc: Option<String>,
-    pub generated_by: String, // Set to the email of the generator
-    pub generated_on: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub kem: Option<String>,
+    pub granted_by: Option<String>,
+    pub granted_on: Option<DateTime<Utc>>,
 }
 
-impl SecretpassProjectMachinePublicKey {
+impl ProjectUserPasskey {
     fn public_key(&self) -> anyhow::Result<PublicKey> {
         PublicKey::from_encoded(self.ecc.clone(), self.kem.clone())
     }
 }
 
-impl PublicKeyEncrypt for SecretpassProjectMachinePublicKey {
+impl PublicKeyEncrypt for ProjectUserPasskey {
     fn encrypt(&self, payload: Vec<u8>) -> anyhow::Result<String> {
         self.public_key()?.encrypt(payload)
     }

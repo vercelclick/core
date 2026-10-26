@@ -1,63 +1,48 @@
-use crate::db::queries::auth::{CREATE_PASSKEY_QUERY, INTERNAL_USER_ID_QUERY};
-use crate::db::user::parse_passkey_from_row_with_user_id;
+use crate::db::queries::auth::CREATE_PASSKEY_QUERY;
 use secretpass_core::enums::PasskeyType;
-use secretpass_core::{SecretpassPasskey, SecretpassUser};
-use sqlx::{PgPool, Row};
-use uuid::Uuid;
+use secretpass_core::{SpassPasskey, SpassUser};
+use sqlx::PgPool;
 
 // language=sql
 const PASSKEY_USER_ID_PUBLIC_KEY_QUERY: &str = r#"
     SELECT
-        U.external_id as "user_id", PK.public_key as "public_key"
+        PK.*
     FROM "UserPasskeys" PK INNER JOIN "Users" U on U.id = PK.user_id
-    WHERE PK.type = $1 AND cred_id = $2
+    WHERE PK.type = $1 AND cred_id = $2 AND U.email = $3
 "#;
 
-pub async fn retrieve_user_id_and_public_key(
+pub async fn retrieve_passkey_by_cred_id(
     pool: &PgPool,
     passkey_type: PasskeyType,
     cred_id: String,
-) -> anyhow::Result<Option<(Uuid, String)>> {
-    let row = sqlx::query(PASSKEY_USER_ID_PUBLIC_KEY_QUERY)
+    email: String,
+) -> anyhow::Result<Option<SpassPasskey>> {
+    let passkey: Option<SpassPasskey> = sqlx::query_as(PASSKEY_USER_ID_PUBLIC_KEY_QUERY)
         .bind(passkey_type)
         .bind(cred_id)
+        .bind(email)
         .fetch_optional(pool)
         .await?;
 
-    let row = match row {
-        Some(row) => row,
-        None => return Ok(None),
-    };
-
-    let user_id: Uuid = row.get("user_id");
-    let public_key: String = row.get("public_key");
-
-    Ok(Some((user_id, public_key)))
+    Ok(passkey)
 }
 
 pub async fn create_passkey(
     pool: &PgPool,
-    user: &SecretpassUser,
+    user: &SpassUser,
     passkey_type: PasskeyType,
     passkey_name: String,
     cred_id: String,
     public_key: String,
-) -> anyhow::Result<SecretpassPasskey> {
-    let row = sqlx::query(INTERNAL_USER_ID_QUERY)
-        .bind(user.id)
-        .fetch_one(pool)
-        .await?;
-    let user_id: i32 = row.get("id");
-    let row = sqlx::query(CREATE_PASSKEY_QUERY)
+) -> anyhow::Result<SpassPasskey> {
+    let passkey: SpassPasskey = sqlx::query_as(CREATE_PASSKEY_QUERY)
         .bind(cred_id)
-        .bind(user_id)
+        .bind(user.id)
         .bind(passkey_name)
         .bind(passkey_type)
         .bind(public_key)
         .fetch_one(pool)
         .await?;
-
-    let (_, passkey) = parse_passkey_from_row_with_user_id(&row, user.id);
 
     Ok(passkey)
 }

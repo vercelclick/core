@@ -41,8 +41,8 @@ impl PublicKey {
         Ok(Self { kem, ecc })
     }
 
-    pub fn from_keys(kem: Option<KemPublicKey>, ecc: Option<EccPublicKey>) -> Self {
-        Self { kem, ecc }
+    pub fn from_keys(ecc: Option<EccPublicKey>, kem: Option<KemPublicKey>) -> Self {
+        Self { ecc, kem }
     }
 
     pub fn ecc(&self) -> Option<String> {

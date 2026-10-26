@@ -5,7 +5,7 @@ use crate::{ApiState, SessionPackage};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::{Extension, Json};
-use secretpass_core::SecretpassUserSession;
+use secretpass_core::SpassSession;
 use std::sync::Arc;
 use tower_cookies::{Cookie, Cookies};
 use uuid::Uuid;
@@ -48,7 +48,7 @@ pub async fn get_session(
 pub async fn logout_handler(
     State(state): State<ApiState>,
     cookies: Cookies,
-    Extension(session): Extension<Arc<SecretpassUserSession>>,
+    Extension(session): Extension<Arc<SpassSession>>,
 ) -> HttpResponse<()> {
     state
         .backend

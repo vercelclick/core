@@ -88,11 +88,12 @@ pub async fn login_user_with_passkey(
             })?;
 
         let rp_config = state.get_rp_config(proxy.is_proxied());
-        let (user_id, public_key) = state
+        let passkey = state
             .backend
-            .retrieve_user_id_and_public_key(
+            .retrieve_passkey_by_cred_id(
                 rp_config.passkey_type,
                 request.auth_response.id.clone(),
+                request.owner.clone(),
             )
             .await
             .map_err(error_mapper(
@@ -109,8 +110,8 @@ pub async fn login_user_with_passkey(
         request
             .auth_response
             .validate(
-                user_id.to_string(),
-                public_key,
+                passkey.user_id,
+                passkey.public_key.clone(),
                 pending_challenge.value_hash,
                 rp_config.id.to_string(),
                 rp_config.origin.to_string(),
@@ -122,7 +123,7 @@ pub async fn login_user_with_passkey(
 
         state
             .backend
-            .create_session_by_user_id(rp_config.passkey_type, user_id)
+            .create_session_by_user_id(rp_config.passkey_type, passkey.user_id)
             .await
             .map_err(error_mapper(
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -185,6 +186,6 @@ pub async fn start_login(
 
     Ok(Json(StartLoginResponse {
         challenge,
-        known_credentials: passkeys.iter().map(|pk| pk.id.clone()).collect(),
+        known_credentials: passkeys.iter().map(|pk| pk.cred_id.clone()).collect(),
     }))
 }

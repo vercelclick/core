@@ -1,5 +1,5 @@
-use secretpass_core::{SecretpassProject, SecretpassProjectUserPublicKey, SecretpassWorkspace};
-use secretpass_web::PasskeyAuthorizationResponse;
+use secretpass_core::{EncryptionAlgorithm, SpassProject, SpassWorkspace};
+use secretpass_web::PasskeyAuthorizationResult;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -13,15 +13,15 @@ pub struct ProjectPath {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct ProjectListItem {
-    pub project: SecretpassProject,
+    pub project: SpassProject,
     pub path: Option<ProjectPath>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct WorkspaceProjectListItem {
-    pub workspace: SecretpassWorkspace,
-    pub projects: Vec<SecretpassProject>,
+    pub workspace: SpassWorkspace,
+    pub projects: Vec<SpassProject>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -35,9 +35,18 @@ pub struct ListProjectsResult {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
+pub struct CreateEnvironmentRequest {
+    pub name: String,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct CreateProjectRequest {
     pub path: Option<String>,
-    pub project: SecretpassProject,
-    pub public_key: SecretpassProjectUserPublicKey,
-    pub auth_response: PasskeyAuthorizationResponse,
+    pub name: String,
+    pub description: String,
+    pub algorithm: EncryptionAlgorithm,
+    pub environments: Vec<CreateEnvironmentRequest>,
+    pub auth_response: PasskeyAuthorizationResult,
 }

@@ -1,14 +1,13 @@
-use secretpass_core::SecretDefinition;
+use secretpass_core::{MachineSecretValue, PasskeySecretValue, SecretDefinition};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
-use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LocalSecretConfig {
     pub definition: SecretDefinition,
-    pub encrypted_values: HashMap<Uuid, String>,
+    pub passkey_values: Vec<PasskeySecretValue>,
+    pub machine_values: Vec<MachineSecretValue>,
 }
 
 impl LocalSecretConfig {

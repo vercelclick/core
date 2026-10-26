@@ -1,21 +1,4 @@
-use crate::enums::SecretDataType;
-
 use serde::{Deserialize, Serialize};
-use tsify::Tsify;
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify)]
-pub struct SecretDefinition {
-    pub name: String,
-    pub data_type: SecretDataType,
-    pub description: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify)]
-pub struct SecretpassEnvironment {
-    pub name: String,
-    pub description: String,
-    pub secrets: Vec<SecretDefinition>,
-}
 
 // No keys for smaller payloads
 #[derive(Clone, Serialize, Deserialize)]

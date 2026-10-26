@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use ts_rs::TS;
 use tsify::Tsify;
+use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Tsify, TS)]
 pub struct AssertionResponse {
@@ -21,14 +22,14 @@ pub struct AssertionResponse {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Tsify, TS)]
-pub struct PasskeyAuthorizationResponse {
+pub struct PasskeyAuthorizationResult {
     pub id: String,
     #[serde(rename = "type")]
     pub type_: String,
     pub response: AssertionResponse,
 }
 
-impl PasskeyAuthorizationResponse {
+impl PasskeyAuthorizationResult {
     fn verify_challenge_and_config(
         &self,
         challenge_hash: String,
@@ -65,14 +66,14 @@ impl PasskeyAuthorizationResponse {
 
     pub fn validate(
         &self,
-        user_id: String,
+        user_id: Uuid,
         public_key: String,
         challenge_hash: String,
         rp_id: String,
         rp_origin: String,
     ) -> anyhow::Result<()> {
         let passkey_user_id = self.verify_challenge_and_config(challenge_hash, rp_id, rp_origin)?;
-        if user_id != passkey_user_id {
+        if user_id.to_string() != passkey_user_id {
             return Err(anyhow::anyhow!("Invalid credential - user_id mismatch!"));
         }
 

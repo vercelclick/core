@@ -6,26 +6,74 @@ use tsify::Tsify;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 #[wasm_bindgen(skip_typescript)]
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify, TS)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    EnumString,
+    Display,
+    Tsify,
+    TS,
+    sqlx::Type,
+)]
 #[tsify(namespace)]
+#[sqlx(type_name = r#""EncryptionAlgorithm""#)]
 pub enum EncryptionAlgorithm {
     ECC,    // X25519
     KEM,    // ML-KEM-768
     Hybrid, // Encrypts with both algorithms
 }
 
-#[wasm_bindgen(skip_typescript)]
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify, TS)]
-#[tsify(namespace)]
-pub enum UserLevel {
-    Admin,
-    Standard,
-    Machine,
+impl EncryptionAlgorithm {
+    pub fn is_ecc(&self) -> bool {
+        *self == EncryptionAlgorithm::ECC || *self == EncryptionAlgorithm::Hybrid
+    }
+
+    pub fn is_kem(&self) -> bool {
+        *self == EncryptionAlgorithm::KEM || *self == EncryptionAlgorithm::Hybrid
+    }
 }
 
 #[wasm_bindgen(skip_typescript)]
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify, TS)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    EnumString,
+    Display,
+    Tsify,
+    TS,
+    sqlx::Type,
+)]
 #[tsify(namespace)]
+#[sqlx(type_name = r#""ProjectUserLevel""#)]
+pub enum ProjectUserLevel {
+    Admin,
+    Standard,
+}
+
+#[wasm_bindgen(skip_typescript)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    EnumString,
+    Display,
+    Tsify,
+    TS,
+    sqlx::Type,
+)]
+#[tsify(namespace)]
+#[sqlx(type_name = r#""SecretDataType""#)]
 pub enum SecretDataType {
     Text,
     Json,
@@ -73,11 +121,31 @@ impl ChallengeKind {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify, TS)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    EnumString,
+    Display,
+    Tsify,
+    TS,
+    sqlx::Type,
+)]
 #[tsify(namespace)]
+#[sqlx(type_name = r#""AccessGrant""#)]
 pub enum AccessGrant {
     Pending,
     Granted,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify, TS)]
+#[tsify(namespace)]
+pub enum OperationMode {
+    Local,
+    Cloud,
 }
 
 #[derive(
@@ -100,9 +168,22 @@ pub enum PasskeyType {
     Cloud,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify, TS)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    EnumString,
+    Display,
+    Tsify,
+    TS,
+    sqlx::Type,
+)]
 #[tsify(namespace)]
-pub enum OperationMode {
-    Local,
-    Cloud,
+#[sqlx(type_name = r#""ProjectUserStatus""#)]
+pub enum ProjectUserStatus {
+    Active,
+    Archived,
 }
