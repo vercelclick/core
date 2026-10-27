@@ -30,7 +30,7 @@ pub struct LocalServiceConfig {
 
 impl LocalServiceConfig {
     pub fn load() -> anyhow::Result<Self> {
-        if !CONFIG_DIR.is_dir() {
+        if !CONFIG_DIR.exists() {
             fs::create_dir_all(CONFIG_DIR.clone())?;
             return Ok(Default::default());
         }

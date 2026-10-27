@@ -15,12 +15,12 @@ pub struct LocalProjectConfig {
 impl LocalProjectConfig {
     pub fn load(path: &str) -> anyhow::Result<Option<Self>> {
         let path = Path::new(path).join(".spass");
-        if !path.is_dir() {
+        if !path.exists() {
             return Ok(None);
         }
 
         let config_file = path.join("config.json");
-        if !path.is_file() {
+        if !path.exists() {
             return Ok(None);
         }
 
@@ -37,7 +37,7 @@ impl LocalProjectConfig {
             fs::create_dir_all(path.clone())?;
         }
 
-        let content = serde_json::to_string_pretty(&self.project)?;
+        let content = serde_json::to_string_pretty(self)?;
         let config_file = path.join("config.json");
 
         fs::write(config_file, content)?;

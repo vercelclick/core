@@ -11,7 +11,7 @@ pub struct LocalKeysConfig {
 impl LocalKeysConfig {
     pub fn load(path: &str) -> anyhow::Result<Self> {
         let path = Path::new(path).join(".spass");
-        if !path.is_dir() {
+        if !path.exists() {
             return Ok(Self::default());
         }
 

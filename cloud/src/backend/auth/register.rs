@@ -1,8 +1,7 @@
-use crate::backend::auth::session::get_user_passkeys_by_type;
 use crate::db::queries::auth::{CREATE_PASSKEY_QUERY, CREATE_SESSION_QUERY};
 use secretpass_api::SessionPackage;
 use secretpass_api::auth::BackendCreateUserRequest;
-use secretpass_core::{SpassSession, SpassUser};
+use secretpass_core::{SpassPasskey, SpassSession, SpassUser};
 use sqlx::PgPool;
 use std::sync::Arc;
 
@@ -24,7 +23,7 @@ pub async fn create_user(
         .fetch_one(&mut *tx)
         .await?;
 
-    sqlx::query(CREATE_PASSKEY_QUERY)
+    let passkey: SpassPasskey = sqlx::query_as(CREATE_PASSKEY_QUERY)
         .bind(request.passkey_id)
         .bind(user.id)
         .bind(&request.passkey_name)
@@ -33,7 +32,7 @@ pub async fn create_user(
         .bind(&request.passkey_ecc)
         .bind(&request.passkey_kem)
         .bind(&request.passkey_public_key)
-        .execute(&mut *tx)
+        .fetch_one(&mut *tx)
         .await?;
 
     let session: SpassSession = sqlx::query_as(CREATE_SESSION_QUERY)
@@ -41,10 +40,9 @@ pub async fn create_user(
         .fetch_one(&mut *tx)
         .await?;
 
-    let passkeys = get_user_passkeys_by_type(pool, request.passkey_type, user.id).await?;
-
     tx.commit().await?;
 
+    let passkeys = vec![passkey];
     let result = SessionPackage {
         user: Arc::new(user),
         session: Arc::new(session),

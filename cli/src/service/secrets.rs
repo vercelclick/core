@@ -16,7 +16,7 @@ impl LocalSecretConfig {
             .join(".spass")
             .join("secrets")
             .join(env_name);
-        if !path.is_dir() {
+        if !path.exists() {
             return Ok(None);
         }
 
@@ -37,7 +37,7 @@ impl LocalSecretConfig {
             .join("secrets")
             .join(env_name);
 
-        if !path.is_dir() {
+        if !path.exists() {
             fs::create_dir_all(path.clone())?;
         }
 

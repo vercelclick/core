@@ -34,7 +34,7 @@ pub async fn get_session(
         .fetch_one(pool)
         .await?;
 
-    let passkeys = get_user_passkeys_by_type(pool, passkey_type, user.id).await?;
+    let passkeys = get_passkeys_by_user_id(pool, passkey_type, user.id).await?;
 
     Ok(Some(SessionPackage {
         user: Arc::new(user),
@@ -57,7 +57,7 @@ pub async fn create_session_by_email(
         .fetch_one(pool)
         .await?;
 
-    let passkeys = get_user_passkeys_by_type(pool, passkey_type, user.id).await?;
+    let passkeys = get_passkeys_by_user_id(pool, passkey_type, user.id).await?;
     Ok(SessionPackage {
         user: Arc::new(user),
         session: Arc::new(session),
@@ -80,7 +80,7 @@ pub async fn create_session_by_user_id(
         .fetch_one(pool)
         .await?;
 
-    let passkeys = get_user_passkeys_by_type(pool, passkey_type, user_id).await?;
+    let passkeys = get_passkeys_by_user_id(pool, passkey_type, user_id).await?;
     Ok(SessionPackage {
         user: Arc::new(user),
         session: Arc::new(session),
@@ -88,7 +88,7 @@ pub async fn create_session_by_user_id(
     })
 }
 
-pub async fn get_user_passkeys_by_type(
+pub async fn get_passkeys_by_user_id(
     pool: &PgPool,
     passkey_type: PasskeyType,
     user_id: Uuid,

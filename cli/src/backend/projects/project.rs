@@ -27,7 +27,7 @@ pub async fn list_projects(user: &SpassUser) -> anyhow::Result<ListProjectsResul
     for project_path in config.known_projects.clone() {
         let path = ProjectPath {
             path: project_path.clone(),
-            short_path: short_path(project_path.clone()),
+            short_path: short_path(&project_path),
         };
         if let Some(project_config) = LocalProjectConfig::load(&project_path)? {
             let project_id = project_config.project.id;
@@ -66,6 +66,19 @@ pub async fn create_project(
     let path = request
         .path
         .ok_or_else(|| anyhow::anyhow!("A path is required when creating a secretpass project"))?;
+
+    if let Some(project_config) = LocalProjectConfig::load(&path)? {
+        if config.attach(&path, project_config.project.id) {
+            config.write()?;
+        }
+
+        return Err(anyhow::format_err!(
+            "A project({}) already exists under {}. Please delete .spass directory if you intend to replace the project.",
+            project_config.project.name,
+            short_path(&path)
+        ));
+    }
+
     let project = SpassProject {
         id: Uuid::now_v7(),
         algorithm: request.algorithm,
@@ -118,16 +131,18 @@ pub async fn create_project(
         machines: vec![],
         users: vec![(user.clone(), project_user)],
     };
-    project_conf.write(&path)?;
 
     let keys_conf = LocalKeysConfig {
         passkeys,
         machines: vec![],
     };
 
+    project_conf.write(&path)?;
     keys_conf.write(&path)?;
 
-    config.attach(&path, project.id);
+    if config.attach(&path, project.id) {
+        config.write()?;
+    }
 
     Ok(project)
 }

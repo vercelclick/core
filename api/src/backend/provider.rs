@@ -79,7 +79,7 @@ pub trait BackendProvider: Send + Sync + 'static {
     async fn create_project(
         &self,
         user: &SpassUser,
-        passkeys: &Vec<SpassPasskey>,
+        passkeys: &[SpassPasskey],
         request: CreateProjectRequest,
     ) -> anyhow::Result<SpassProject>;
 }

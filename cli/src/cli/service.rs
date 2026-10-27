@@ -29,11 +29,11 @@ async fn run_server() {
 }
 
 pub fn build_daemon() -> Daemon {
-    if !CONFIG_DIR.is_dir() {
+    if !CONFIG_DIR.exists() {
         fs::create_dir_all(CONFIG_DIR.clone()).expect("Error creating config directory");
     }
 
-    if !DATA_DIR.is_dir() {
+    if !DATA_DIR.exists() {
         fs::create_dir_all(DATA_DIR.clone()).expect("Error creating config directory");
     }
     let config = DaemonConfig::new("secretpass-local-service")

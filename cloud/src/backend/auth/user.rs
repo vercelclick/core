@@ -1,4 +1,4 @@
-use crate::backend::auth::session::get_user_passkeys_by_type;
+use crate::backend::auth::session::get_passkeys_by_user_id;
 use crate::db::queries::user::GET_USER_BY_EMAIL_QUERY;
 use secretpass_core::enums::PasskeyType;
 use secretpass_core::{SpassPasskey, SpassUser};
@@ -14,7 +14,7 @@ pub async fn retrieve_user_and_known_passkeys(
         None => return Ok(None),
     };
 
-    let passkeys = get_user_passkeys_by_type(pool, passkey_type, user.id).await?;
+    let passkeys = get_passkeys_by_user_id(pool, passkey_type, user.id).await?;
 
     Ok(Some((user, passkeys)))
 }

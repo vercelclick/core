@@ -1,0 +1,55 @@
+{
+  "project": {
+    "id": "01a17af1-1726-72c8-8acd-f021a348dbbb",
+    "name": "Secretpass Cli",
+    "description": "The first spass project",
+    "algorithm": "ECC",
+    "updated_at": "2026-10-27T01:19:42.886053Z"
+  },
+  "environments": [
+    {
+      "name": "development",
+      "project_id": "01a17af1-1726-72c8-8acd-f021a348dbbb",
+      "description": "For testing by developers before moving to QC",
+      "tags": [],
+      "updated_at": "2026-10-27T01:19:42.886062Z",
+      "created_at": "2026-10-27T01:19:42.886062Z"
+    },
+    {
+      "name": "staging",
+      "project_id": "01a17af1-1726-72c8-8acd-f021a348dbbb",
+      "description": "For testing by QAs before promoting to production",
+      "tags": [],
+      "updated_at": "2026-10-27T01:19:42.886065Z",
+      "created_at": "2026-10-27T01:19:42.886064Z"
+    },
+    {
+      "name": "production",
+      "project_id": "01a17af1-1726-72c8-8acd-f021a348dbbb",
+      "description": "Prod secrets, heavily restricted",
+      "tags": [],
+      "updated_at": "2026-10-27T01:19:42.886066Z",
+      "created_at": "2026-10-27T01:19:42.886065Z"
+    }
+  ],
+  "users": [
+    [
+      {
+        "id": "01a17a90-8d9a-73b6-9bc6-bf2fb3314c8f",
+        "email": "me@billcountry.tech",
+        "name": "Billcountry Mwaniki",
+        "updated_at": "2026-10-26T23:40:13.981178Z"
+      },
+      {
+        "id": "01a17af1-1726-72c8-8acd-f02283f457bf",
+        "user_id": "01a17a90-8d9a-73b6-9bc6-bf2fb3314c8f",
+        "status": "Active",
+        "project_id": "01a17af1-1726-72c8-8acd-f021a348dbbb",
+        "level": "Admin",
+        "environments": [],
+        "updated_at": "2026-10-27T01:19:42.886071Z"
+      }
+    ]
+  ],
+  "machines": []
+}
