@@ -16,3 +16,13 @@ pub struct SpassProjectUser {
     pub environments: Vec<String>,
     pub updated_at: DateTime<Utc>,
 }
+
+impl SpassProjectUser {
+    pub fn can_access(&self, env_name: &String) -> bool {
+        if self.level == ProjectUserLevel::Admin {
+            true
+        } else {
+            self.environments.contains(env_name)
+        }
+    }
+}

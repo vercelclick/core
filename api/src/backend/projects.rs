@@ -1,4 +1,7 @@
-use secretpass_core::{EncryptionAlgorithm, SpassProject, SpassWorkspace};
+use secretpass_core::{
+    EncryptionAlgorithm, SpassEnvironment, SpassProject, SpassProjectUser,
+    SpassWorkspace,
+};
 use secretpass_web::PasskeyAuthorizationResult;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -49,4 +52,13 @@ pub struct CreateProjectRequest {
     pub algorithm: EncryptionAlgorithm,
     pub environments: Vec<CreateEnvironmentRequest>,
     pub auth_response: PasskeyAuthorizationResult,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct GetProjectResult {
+    pub path: Option<ProjectPath>,
+    pub project: SpassProject,
+    pub project_user: SpassProjectUser,
+    pub environments: Vec<SpassEnvironment>,
 }

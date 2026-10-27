@@ -1,4 +1,5 @@
 mod challenge;
+pub mod environments;
 pub mod projects;
 mod provider;
 

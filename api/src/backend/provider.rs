@@ -1,7 +1,8 @@
 use crate::auth::BackendCreateUserRequest;
 use crate::backend::auth::SessionPackage;
 use crate::backend::challenge::PendingChallenge;
-use crate::projects::{CreateProjectRequest, ListProjectsResult};
+use crate::environments::{GetEnvironmentRequest, GetEnvironmentResult};
+use crate::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
 use secretpass_core::{SpassPasskey, SpassProject, SpassSession, SpassUser};
 use uuid::Uuid;
@@ -82,4 +83,16 @@ pub trait BackendProvider: Send + Sync + 'static {
         passkeys: &[SpassPasskey],
         request: CreateProjectRequest,
     ) -> anyhow::Result<SpassProject>;
+
+    async fn get_project_by_id(
+        &self,
+        user: &SpassUser,
+        project_id: Uuid,
+    ) -> anyhow::Result<Option<GetProjectResult>>;
+
+    async fn get_environment_by_name(
+        &self,
+        user: &SpassUser,
+        request: GetEnvironmentRequest,
+    ) -> anyhow::Result<Option<GetEnvironmentResult>>;
 }

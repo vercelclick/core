@@ -1,6 +1,7 @@
-use secretpass_core::{MachinePublicKey, ProjectUserPasskey};
+use secretpass_core::{MachinePublicKey, ProjectUserLevel, ProjectUserPasskey, SpassProjectUser};
 use std::path::Path;
 use std::{fs, io};
+use uuid::Uuid;
 
 #[derive(Debug, Default)]
 pub struct LocalKeysConfig {
@@ -41,5 +42,47 @@ impl LocalKeysConfig {
         fs::write(path.join("passkeys.json"), passkeys_content)?;
 
         Ok(())
+    }
+
+    pub fn get_user_keys(&self, user_id: Uuid) -> Vec<ProjectUserPasskey> {
+        self.passkeys
+            .iter()
+            .filter(|pk| pk.user_id == user_id)
+            .cloned()
+            .collect()
+    }
+
+    pub fn get_environment_machine_keys(
+        &self,
+        env_name: &str,
+        users: &[SpassProjectUser],
+    ) -> (Vec<ProjectUserPasskey>, Vec<MachinePublicKey>) {
+        let user_ids: Vec<Uuid> = users
+            .iter()
+            .filter_map(|user| {
+                if user.level == ProjectUserLevel::Admin
+                    || user.environments.contains(&env_name.to_string())
+                {
+                    Some(user.id)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let passkeys = self
+            .passkeys
+            .iter()
+            .filter(|pk| user_ids.contains(&pk.user_id))
+            .cloned()
+            .collect();
+
+        let machines = self
+            .machines
+            .iter()
+            .filter(|key| key.environments.contains(&env_name.to_string()))
+            .cloned()
+            .collect();
+
+        (passkeys, machines)
     }
 }

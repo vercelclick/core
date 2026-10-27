@@ -1,3 +1,4 @@
+use crate::service::project::LocalProjectConfig;
 use secretpass_api::SessionPackage;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -71,5 +72,20 @@ impl LocalServiceConfig {
             .push((project_path.clone(), project_id));
 
         true
+    }
+
+    pub fn get_project_by_id(
+        &self,
+        project_id: Uuid,
+    ) -> anyhow::Result<Option<(String, LocalProjectConfig)>> {
+        for (path, id) in self.attached_projects.iter() {
+            if project_id == *id {
+                let project_config =
+                    LocalProjectConfig::load(path)?.map(|config| (path.clone(), config));
+                return Ok(project_config);
+            }
+        }
+
+        Ok(None)
     }
 }

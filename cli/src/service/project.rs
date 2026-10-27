@@ -45,13 +45,25 @@ impl LocalProjectConfig {
         Ok(())
     }
 
-    pub fn user_has_access(&self, user_id: Uuid) -> bool {
+    pub fn get_user(&self, user_id: Uuid) -> Option<SpassProjectUser> {
         for (user, project_user) in self.users.iter() {
             if user.id == user_id && project_user.user_id == user_id {
-                return true;
+                return Some(project_user.clone());
             }
         }
+        None
+    }
 
-        false
+    pub fn get_environment(&self, name: &str) -> Option<SpassEnvironment> {
+        for env in self.environments.iter() {
+            if env.name == name {
+                return Some(env.clone());
+            }
+        }
+        None
+    }
+
+    pub fn project_users(&self) -> Vec<SpassProjectUser> {
+        self.users.iter().map(|(_, user)| user.clone()).collect()
     }
 }

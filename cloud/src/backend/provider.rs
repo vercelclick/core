@@ -7,9 +7,11 @@ use crate::backend::auth::session::{
     create_session_by_email, create_session_by_user_id, expire_session, get_session,
 };
 use crate::backend::auth::user::{retrieve_user_and_known_passkeys, retrieve_user_by_email};
-use crate::backend::projects::project::create_project;
+use crate::backend::projects::environments::get_environment_by_name;
+use crate::backend::projects::project::{create_project, get_project_by_id, list_projects};
 use secretpass_api::auth::BackendCreateUserRequest;
-use secretpass_api::projects::{CreateProjectRequest, ListProjectsResult};
+use secretpass_api::environments::{GetEnvironmentRequest, GetEnvironmentResult};
+use secretpass_api::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
 use secretpass_api::{BackendProvider, PendingChallenge, SessionPackage};
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
 use secretpass_core::{SpassPasskey, SpassProject, SpassSession, SpassUser};
@@ -109,8 +111,8 @@ impl BackendProvider for CloudBackendProvider {
         retrieve_user_and_known_passkeys(&self.pool, email, passkey_type).await
     }
 
-    async fn list_projects(&self, _user: &SpassUser) -> anyhow::Result<ListProjectsResult> {
-        todo!("Implement list projects")
+    async fn list_projects(&self, user: &SpassUser) -> anyhow::Result<ListProjectsResult> {
+        list_projects(&self.pool, user).await
     }
 
     async fn logout_session(&self, session: &SpassSession) -> anyhow::Result<()> {
@@ -143,5 +145,21 @@ impl BackendProvider for CloudBackendProvider {
         request: CreateProjectRequest,
     ) -> anyhow::Result<SpassProject> {
         create_project(&self.pool, user, passkeys, request).await
+    }
+
+    async fn get_project_by_id(
+        &self,
+        user: &SpassUser,
+        project_id: Uuid,
+    ) -> anyhow::Result<Option<GetProjectResult>> {
+        get_project_by_id(&self.pool, user, project_id).await
+    }
+
+    async fn get_environment_by_name(
+        &self,
+        user: &SpassUser,
+        request: GetEnvironmentRequest,
+    ) -> anyhow::Result<Option<GetEnvironmentResult>> {
+        get_environment_by_name(&self.pool, user, &request).await
     }
 }

@@ -4,7 +4,7 @@ use crate::service::project::LocalProjectConfig;
 use crate::utils::short_path;
 use chrono::Utc;
 use secretpass_api::projects::{
-    CreateProjectRequest, ListProjectsResult, ProjectListItem, ProjectPath,
+    CreateProjectRequest, GetProjectResult, ListProjectsResult, ProjectListItem, ProjectPath,
 };
 use secretpass_core::enums::{AccessGrant, ProjectUserStatus};
 use secretpass_core::{
@@ -35,7 +35,7 @@ pub async fn list_projects(user: &SpassUser) -> anyhow::Result<ListProjectsResul
                 path: Some(path),
                 project: project_config.project.clone(),
             };
-            if project_config.user_has_access(user.id) {
+            if project_config.get_user(user.id).is_some() {
                 result.projects.push(item);
             } else {
                 result.inaccessible.push(item);
@@ -145,4 +145,33 @@ pub async fn create_project(
     }
 
     Ok(project)
+}
+
+pub async fn get_project_by_id(
+    user: &SpassUser,
+    project_id: Uuid,
+) -> anyhow::Result<Option<GetProjectResult>> {
+    let config = LocalServiceConfig::load()?;
+
+    let (path, project_config) = match config.get_project_by_id(project_id)? {
+        Some(result) => result,
+        None => return Ok(None),
+    };
+
+    let project_user = project_config.get_user(user.id).ok_or_else(|| {
+        anyhow::format_err!(
+            "FORBIDDEN: you do not have access to this project under {}",
+            user.email
+        )
+    })?;
+
+    Ok(Some(GetProjectResult {
+        project: project_config.project,
+        project_user,
+        environments: project_config.environments,
+        path: Some(ProjectPath {
+            path: path.clone(),
+            short_path: short_path(&path),
+        }),
+    }))
 }

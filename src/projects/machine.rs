@@ -2,11 +2,13 @@ use crate::PublicKey;
 use crate::PublicKeyEncrypt;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
 use std::collections::HashMap;
+use ts_rs::TS;
 use tsify::Tsify;
 use wasm_bindgen::prelude::wasm_bindgen;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, FromRow)]
 pub struct MachinePublicKey {
     pub id: String,
     pub name: String,
