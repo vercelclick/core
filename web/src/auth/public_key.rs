@@ -1,6 +1,6 @@
 use crate::PasskeyAuthorizationResult;
 use crate::auth::DecryptionAuthorizationRequest;
-use secretpass_core::EncryptionAlgorithm;
+use secretpass_core::enums::EncryptionAlgorithm;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use tsify::{Ts, Tsify};

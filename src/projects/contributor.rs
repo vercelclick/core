@@ -1,4 +1,4 @@
-use crate::enums::{ProjectUserLevel, ProjectUserStatus};
+use crate::enums::{ContributorRole, ContributorStatus};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
@@ -7,19 +7,19 @@ use tsify::Tsify;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, FromRow)]
-pub struct SpassProjectUser {
+pub struct SpassContributor {
     pub id: Uuid,
     pub user_id: Uuid,
-    pub status: ProjectUserStatus,
+    pub status: ContributorStatus,
     pub project_id: Uuid,
-    pub level: ProjectUserLevel,
+    pub role: ContributorRole,
     pub environments: Vec<String>,
     pub updated_at: DateTime<Utc>,
 }
 
-impl SpassProjectUser {
+impl SpassContributor {
     pub fn can_access(&self, env_name: &String) -> bool {
-        if self.level == ProjectUserLevel::Admin {
+        if self.role == ContributorRole::Admin {
             true
         } else {
             self.environments.contains(env_name)

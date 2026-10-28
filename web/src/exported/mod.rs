@@ -5,4 +5,4 @@ mod create;
 mod encrypt;
 mod machine;
 
-pub use encrypt::{EncryptedMachineValue, EncryptedUserValue, EncryptSecretResult};
+pub use encrypt::{EncryptSecretResult, EncryptedContributorValue, EncryptedMachineValue};

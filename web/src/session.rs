@@ -1,5 +1,6 @@
 use crate::passkeys::prf::PrfResults;
-use secretpass_core::{EncryptionAlgorithm, PrivateKey, PrivateKeySeed, PublicKey};
+use secretpass_core::enums::EncryptionAlgorithm;
+use secretpass_core::{PrivateKey, PrivateKeySeed, PublicKey};
 use std::collections::HashMap;
 
 #[derive(Clone)]

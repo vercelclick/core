@@ -1,6 +1,6 @@
 use crate::auth::{AuthorizationRequest, DecryptionAuthorizationRequest};
 use crate::passkeys::authorize::PasskeyAuthorizationResult;
-use secretpass_core::{MachinePublicKey, ProjectUserPasskey, PublicKeyEncrypt};
+use secretpass_core::{ContributorPublicKey, MachinePublicKey, PublicKeyEncrypt};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use ts_rs::TS;
@@ -12,28 +12,28 @@ use wasm_bindgen::prelude::wasm_bindgen;
 #[derive(Deserialize, Tsify)]
 pub struct EncryptSecretRequest {
     pub auth_request: AuthorizationRequest,
-    pub passkeys: Vec<ProjectUserPasskey>,
-    pub machine_keys: Vec<MachinePublicKey>,
+    pub machines_keys: Vec<MachinePublicKey>,
+    pub contributors_keys: Vec<ContributorPublicKey>,
     pub secret_value: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Tsify, TS)]
-pub struct EncryptedUserValue {
-    pub passkey_id: Uuid,
+pub struct EncryptedContributorValue {
+    pub target: Uuid,
     pub encrypted_value: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Tsify, TS)]
 pub struct EncryptedMachineValue {
-    pub machine_id: String,
+    pub target: String,
     pub encrypted_value: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Tsify, TS)]
 pub struct EncryptSecretResult {
     pub auth_response: PasskeyAuthorizationResult,
-    pub user_values: Vec<EncryptedUserValue>,
-    pub machine_values: Vec<EncryptedMachineValue>,
+    pub machines_values: Vec<EncryptedMachineValue>,
+    pub contributors_values: Vec<EncryptedContributorValue>,
 }
 
 #[wasm_bindgen]
@@ -48,33 +48,33 @@ pub async fn encrypt_secret(
         .await
         .map_err(|err| JsError::new(&format!("Error authorizing user: {}", err)))?;
 
-    let mut user_values: Vec<EncryptedUserValue> = Vec::new();
-    for pk in request.passkeys {
+    let mut contributors_values: Vec<EncryptedContributorValue> = Vec::new();
+    for pk in request.contributors_keys {
         let encrypted_value = pk
             .encrypt(request.secret_value.clone().into_bytes())
             .map_err(|err| JsError::new(&format!("Error encrypting secret: {}", err)))?;
-        user_values.push(EncryptedUserValue {
-            passkey_id: pk.id,
+        contributors_values.push(EncryptedContributorValue {
+            target: pk.id,
             encrypted_value,
         });
     }
 
-    let mut machine_values: Vec<EncryptedMachineValue> = Vec::new();
-    for pk in request.machine_keys {
+    let mut machines_values: Vec<EncryptedMachineValue> = Vec::new();
+    for pk in request.machines_keys {
         let encrypted_value = pk
             .encrypt(request.secret_value.clone().into_bytes())
             .map_err(|err| JsError::new(&format!("Error encrypting secret: {}", err)))?;
 
-        machine_values.push(EncryptedMachineValue {
-            machine_id: pk.id,
+        machines_values.push(EncryptedMachineValue {
+            target: pk.id,
             encrypted_value,
         });
     }
 
     let result = EncryptSecretResult {
         auth_response,
-        user_values,
-        machine_values,
+        machines_values,
+        contributors_values,
     }
     .into_ts()?;
 
@@ -107,7 +107,7 @@ pub async fn decrypt_secret(ts_request: Ts<DecryptSecretRequest>) -> Result<Stri
 
 #[derive(Deserialize, Tsify)]
 enum TargetKey {
-    User(ProjectUserPasskey),
+    Contributor(ContributorPublicKey),
     Machine(MachinePublicKey),
 }
 
@@ -146,8 +146,10 @@ pub async fn reencrypt_package(
             })?;
 
             let encrypted_package = match &request.target_key {
-                TargetKey::User(user_key) => user_key.encrypt_package(decrypted_package),
                 TargetKey::Machine(machine_key) => machine_key.encrypt_package(decrypted_package),
+                TargetKey::Contributor(contributor_key) => {
+                    contributor_key.encrypt_package(decrypted_package)
+                }
             }
             .map_err(|err| {
                 JsError::new(&format!("Error encrypting secrets for {}: {}", env, err))
