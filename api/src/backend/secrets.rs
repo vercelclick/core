@@ -1,6 +1,5 @@
-use secretpass_web::{
-    EncryptedContributorValue, EncryptedMachineValue, PasskeyAuthorizationResult,
-};
+use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
+use secretpass_core::web::{EncryptedContributorValue, EncryptedMachineValue};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;

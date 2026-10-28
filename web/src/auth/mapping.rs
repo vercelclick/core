@@ -1,6 +1,6 @@
-use crate::passkeys::authorize::{AssertionResponse, PasskeyAuthorizationResult};
-use crate::passkeys::creation::{AttestationResponse, PasskeyCreationResult};
 use crate::passkeys::prf::{PrfDeriveConfig, PrfResults};
+use secretpass_core::passkeys::authorize::{AssertionResponse, PasskeyAuthorizationResult};
+use secretpass_core::passkeys::create::{AttestationResponse, PasskeyCreationResult};
 use secretpass_core::utils::{bin_decode, sha256_raw};
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::js_sys::{

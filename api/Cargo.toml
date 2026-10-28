@@ -14,7 +14,6 @@ axum = { version = "0.8.9", features = ["tokio", "macros", "json", "query"] }
 chrono = { version = "0.4.45", features = ["serde", "wasm-bindgen"] }
 futures-util = "0.3.34"
 secretpass-core = { path = ".." }
-secretpass-web = { path = "../web" }
 serde = { version = "1.0.229", features = ["derive"] }
 rand = { version = "0.10.3" }
 reqwest = { version = "0.13.5", features = ["json", "cookies"] }

@@ -1,5 +1,4 @@
-pub mod authorize;
-pub mod creation;
-pub mod flags;
 pub mod prf;
-pub mod protocol;
+
+pub const RP_ENTITY_ID: &str = env!("WEBAUTH_RP_ID");
+pub const RP_ENTITY_NAME: &str = env!("WEBAUTH_RP_ENTITY");

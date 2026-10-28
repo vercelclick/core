@@ -1,5 +1,5 @@
 use crate::passkeys::flags::PasskeyFlags;
-use secretpass_core::utils::{bin_decode, bin_encode, sha256_digest};
+use crate::utils::{bin_decode, bin_encode, sha256_digest};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use wasm_bindgen::throw_str;
@@ -23,9 +23,6 @@ impl ClientData {
         Ok(challenge_bytes)
     }
 }
-
-pub const RP_ENTITY_ID: &str = env!("WEBAUTH_RP_ID");
-pub const RP_ENTITY_NAME: &str = env!("WEBAUTH_RP_ENTITY");
 
 pub fn verify_client_data(
     bytes: &[u8],

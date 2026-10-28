@@ -1,10 +1,10 @@
-use crate::passkeys::protocol::{parse_auth_data, verify_client_data};
+use crate::passkeys::helpers::{parse_auth_data, verify_client_data};
+use crate::utils::bin_decode;
 use ciborium::Value;
 use coset::{CborSerializable, CoseKey, Label};
 use p256::Sec1Point;
 use p256::ecdsa::signature::Verifier;
 use p256::ecdsa::{Signature, VerifyingKey};
-use secretpass_core::utils::bin_decode;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use ts_rs::TS;

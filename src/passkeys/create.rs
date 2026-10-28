@@ -1,7 +1,8 @@
-use crate::passkeys::protocol::{parse_auth_data, verify_client_data};
 use ciborium::Value;
 use coset::{CborSerializable, CoseKey};
-use secretpass_core::utils::bin_encode;
+
+use crate::passkeys::helpers::{parse_auth_data, verify_client_data};
+use crate::utils::bin_encode;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use tsify::Tsify;

@@ -3,10 +3,10 @@ use crate::auth::mapping::{
     build_credential_request_extensions, build_credentials_array, build_prf_eval_values,
     map_browser_passkey_authentication,
 };
-use crate::passkeys::authorize::PasskeyAuthorizationResult;
+use crate::passkeys::RP_ENTITY_ID;
 use crate::passkeys::prf::{PrfDeriveConfig, PrfResults};
-use crate::passkeys::protocol::RP_ENTITY_ID;
 use crate::session::SecureSession;
+use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
 use secretpass_core::utils::bin_decode;
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;

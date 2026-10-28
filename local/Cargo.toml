@@ -1,5 +1,5 @@
 [package]
-name = "secretpass-cli"
+name = "secretpass-local"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
@@ -10,10 +10,6 @@ homepage.workspace = true
 
 [package.metadata.dist]
 dist = true
-
-[[bin]]
-name = "spass"
-path = "src/main.rs"
 
 [package.metadata.wix]
 upgrade-guid = "B1BF63D8-5598-4B6A-B5EF-55CCCBBEAC79"

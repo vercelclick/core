@@ -2462,7 +2462,6 @@ dependencies = [
  "rand 0.10.3",
  "reqwest",
  "secretpass-core",
- "secretpass-web",
  "serde",
  "sqlx",
  "tower-cookies",
@@ -2473,26 +2472,6 @@ dependencies = [
  "tracing-subscriber",
  "ts-rs",
  "uuid",
-]
-
-[[package]]
-name = "secretpass-cli"
-version = "0.1.2"
-dependencies = [
- "anyhow",
- "async-trait",
- "axum",
- "chrono",
- "clap",
- "daemon-kit",
- "dirs 7.0.0",
- "secretpass-api",
- "secretpass-core",
- "serde",
- "serde_json",
- "tokio",
- "uuid",
- "webbrowser",
 ]
 
 [[package]]
@@ -2519,11 +2498,14 @@ dependencies = [
  "base64 0.23.1",
  "chrono",
  "ciborium",
+ "coset",
  "getrandom 0.4.3",
  "hex",
  "ml-kem",
+ "p256",
  "rand 0.10.3",
  "serde",
+ "serde_json",
  "sha2 0.11.0",
  "sqlx",
  "strum",
@@ -2532,6 +2514,26 @@ dependencies = [
  "uuid",
  "wasm-bindgen",
  "x25519-dalek",
+]
+
+[[package]]
+name = "secretpass-local"
+version = "0.1.2"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "axum",
+ "chrono",
+ "clap",
+ "daemon-kit",
+ "dirs 7.0.0",
+ "secretpass-api",
+ "secretpass-core",
+ "serde",
+ "serde_json",
+ "tokio",
+ "uuid",
+ "webbrowser",
 ]
 
 [[package]]
@@ -2545,7 +2547,6 @@ dependencies = [
  "p256",
  "secretpass-core",
  "serde",
- "serde_json",
  "sha2 0.11.0",
  "ts-rs",
  "tsify",
@@ -3507,6 +3508,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "756050066659291d47a554a9f558125db17428b073c5ffce1daf5dcb0f7231d8"
 dependencies = [
  "chrono",
+ "serde_json",
  "thiserror",
  "ts-rs-macros",
  "uuid",

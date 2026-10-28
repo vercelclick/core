@@ -1,11 +1,11 @@
 use crate::auth::{AuthorizationRequest, DecryptionAuthorizationRequest};
-use crate::passkeys::authorize::PasskeyAuthorizationResult;
+use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
+use secretpass_core::web::{EncryptedContributorValue, EncryptedMachineValue};
 use secretpass_core::{ContributorPublicKey, MachinePublicKey, PublicKeyEncrypt};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use ts_rs::TS;
 use tsify::{Ts, Tsify};
-use uuid::Uuid;
 use wasm_bindgen::JsError;
 use wasm_bindgen::prelude::wasm_bindgen;
 
@@ -15,18 +15,6 @@ pub struct EncryptSecretRequest {
     pub machines_keys: Vec<MachinePublicKey>,
     pub contributors_keys: Vec<ContributorPublicKey>,
     pub secret_value: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Tsify, TS)]
-pub struct EncryptedContributorValue {
-    pub target: Uuid,
-    pub encrypted_value: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Tsify, TS)]
-pub struct EncryptedMachineValue {
-    pub target: String,
-    pub encrypted_value: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Tsify, TS)]

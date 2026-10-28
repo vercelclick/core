@@ -1,10 +1,12 @@
 pub mod enums;
 mod keys;
 
+pub mod passkeys;
 mod projects;
 pub mod types;
 mod user;
 pub mod utils;
+pub mod web;
 mod workspace;
 
 pub use keys::{Passkey, PrivateKey, PrivateKeySeed, PublicKey, PublicKeyEncrypt};

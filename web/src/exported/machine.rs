@@ -1,6 +1,6 @@
 use crate::auth::DecryptionAuthorizationRequest;
-use crate::passkeys::authorize::PasskeyAuthorizationResult;
 use secretpass_core::enums::EncryptionAlgorithm;
+use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
 use secretpass_core::{PrivateKey, PrivateKeySeed, PublicKeyEncrypt};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

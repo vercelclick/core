@@ -1,6 +1,6 @@
 use secretpass_core::enums::EncryptionAlgorithm;
+use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
 use secretpass_core::{Contributor, Environment, Project, Workspace};
-use secretpass_web::PasskeyAuthorizationResult;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 

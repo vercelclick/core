@@ -1,5 +1,5 @@
 use crate::auth::AuthorizationRequest;
-use crate::passkeys::authorize::PasskeyAuthorizationResult;
+use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
 use tsify::{Ts, Tsify};
 use wasm_bindgen::JsError;
 use wasm_bindgen::prelude::wasm_bindgen;

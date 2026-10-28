@@ -1,6 +1,8 @@
 use secretpass_core::enums::PasskeyType;
+use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
+use secretpass_core::passkeys::create::PasskeyCreationResult;
+use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
 use secretpass_core::{Passkey, Session, User};
-use secretpass_web::{PasskeyAuthorizationResult, PasskeyCreationResult, PublicKeyGenerateResult};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use ts_rs::TS;

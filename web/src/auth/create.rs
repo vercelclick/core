@@ -6,8 +6,8 @@ use crate::auth::mapping::{
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 
-use crate::passkeys::creation::PasskeyCreationResult;
-use crate::passkeys::protocol::{RP_ENTITY_ID, RP_ENTITY_NAME};
+use crate::passkeys::{RP_ENTITY_ID, RP_ENTITY_NAME};
+use secretpass_core::passkeys::create::PasskeyCreationResult;
 use secretpass_core::utils::bin_decode;
 use wasm_bindgen::JsValue;
 use web_sys::js_sys::{Array as JsArray, Object as JsObject, Reflect as JsReflect};

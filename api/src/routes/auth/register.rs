@@ -8,7 +8,8 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use axum::{Extension, Json};
 use secretpass_core::enums::{ChallengeKind, OperationMode};
-use secretpass_web::{PasskeyAuthorizationResult, PasskeyCreationResult};
+use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
+use secretpass_core::passkeys::create::PasskeyCreationResult;
 use tower_cookies::Cookies;
 use uuid::Uuid;
 
