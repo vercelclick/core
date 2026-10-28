@@ -47,6 +47,9 @@ infra:
 	@echo "==> Starting docker for DB and Cache"
 	docker compose .
 
+tag:
+	git tag $(cargo metadata --format-version=1 --no-deps | jq -r '.packages[0].version')
+
 # ------------------------------------------------------------------------------
 # Help
 # ------------------------------------------------------------------------------
