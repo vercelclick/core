@@ -168,9 +168,9 @@ impl BackendProvider for CloudBackendProvider {
 
     async fn create_secret(
         &self,
-        user: &User,
-        params: CreateSecretParams,
-        request: CreateSecretRequest,
+        _user: &User,
+        _params: CreateSecretParams,
+        _request: CreateSecretRequest,
     ) -> anyhow::Result<SecretWithEncryptedValues> {
         todo!()
     }

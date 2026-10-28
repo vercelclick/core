@@ -3,6 +3,7 @@ members = ["cargo:."]
 
 # Config for 'dist'
 [dist]
+#We have custom steps that happen after the builds
 allow-dirty = ["msi"]
 # The preferred dist version to use in CI (Cargo.toml SemVer syntax)
 cargo-dist-version = "0.32.0"
