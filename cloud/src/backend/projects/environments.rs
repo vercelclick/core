@@ -1,16 +1,16 @@
-use crate::backend::projects::project::get_project_user_by_id;
+use crate::backend::projects::project::get_contributor_by_id;
 use secretpass_api::environments::{
     GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues,
 };
 use secretpass_api::projects::CreateEnvironmentRequest;
 use secretpass_core::{
-    MachinePublicKey, PasskeySecretValue, ProjectUserPasskey, SecretDefinition, SpassEnvironment,
-    SpassProject, SpassUser,
+    ContributorPublicKey, ContributorSecretValue, Environment, MachinePublicKey, Project,
+    SecretDefinition, User,
 };
 use sqlx::{PgPool, Postgres, QueryBuilder};
 
 pub fn environments_insert_query_builder(
-    project: &SpassProject,
+    project: &Project,
     requests: &Vec<CreateEnvironmentRequest>,
 ) -> QueryBuilder<Postgres> {
     let mut query_builder: QueryBuilder<Postgres> =
@@ -29,21 +29,21 @@ pub fn environments_insert_query_builder(
 
 pub async fn get_environment_by_name(
     pool: &PgPool,
-    user: &SpassUser,
+    user: &User,
     request: &GetEnvironmentRequest,
 ) -> anyhow::Result<Option<GetEnvironmentResult>> {
-    let project_user = match get_project_user_by_id(pool, user, request.project_id).await? {
+    let contributor = match get_contributor_by_id(pool, user, request.project_id).await? {
         Some(pu) => pu,
         None => return Ok(None),
     };
 
-    if !project_user.can_access(&request.env_name) {
+    if !contributor.can_access(&request.env_name) {
         return Ok(None);
     }
 
-    let environment: SpassEnvironment =
+    let environment: Environment =
         sqlx::query_as(r#"SELECT * FROM "Environments" WHERE project_id = $1 AND name = $2"#)
-            .bind(project_user.project_id)
+            .bind(contributor.project_id)
             .bind(&request.env_name)
             .fetch_one(pool)
             .await?;
@@ -51,48 +51,60 @@ pub async fn get_environment_by_name(
     let secret_definitions: Vec<SecretDefinition> = sqlx::query_as(
         r#"SELECT * FROM "SecretDefinitions" WHERE project_id = $1 AND env_name = $2"#,
     )
-    .bind(project_user.project_id)
+    .bind(contributor.project_id)
     .bind(&request.env_name)
     .fetch_all(pool)
     .await?;
 
-    let secret_passkey_values: Vec<PasskeySecretValue> = sqlx::query_as(
-        r#"SELECT psv.* FROM "PasskeySecretValues" psv
-                     INNER JOIN "ProjectUserPasskey" pup ON pup.id = psv.passkey_id
-                     WHERE pup.user_id = $1 AND psv.env_name = $2"#,
+    let contributor_secret_values: Vec<ContributorSecretValue> = sqlx::query_as(
+        r#"SELECT psv.* FROM "ContributorSecretValues" psv
+                     INNER JOIN "ContributorPublicKey" cpk ON cpk.id = psv.target
+                     WHERE cpk.contributor_id = $1 AND psv.env_name = $2"#,
     )
-    .bind(project_user.user_id)
+    .bind(contributor.id)
     .bind(&request.env_name)
     .fetch_all(pool)
     .await?;
 
-    let passkeys: Vec<ProjectUserPasskey> = sqlx::query_as(
-        r#"SELECT pup.* FROM "ProjectUserPasskey" pup
-                    INNER JOIN "ProjectUsers" pu ON pu.id = pup.user_id
-                    WHERE pu.project_id = $1 AND (pu.level = 'Admin' OR $2 = ANY(pu.environments))"#,
+    let contributors_keys: Vec<ContributorPublicKey> = sqlx::query_as(
+        r#"SELECT cpk.* FROM "ContributorPublicKey" cpk
+                    INNER JOIN "Contributors" contributor ON contributor.id = cpk.contributor_id
+                    WHERE contributor.project_id = $1 AND (contributor.role = 'Admin' OR $2 = ANY(contributor.environments))"#,
     )
-    .bind(project_user.project_id)
+    .bind(contributor.project_id)
     .bind(&request.env_name)
     .fetch_all(pool)
     .await?;
 
-    let machines: Vec<MachinePublicKey> = sqlx::query_as(
+    let machines_keys: Vec<MachinePublicKey> = sqlx::query_as(
         r#"SELECT * FROM "MachinePublicKey" WHERE project_id = $1 AND $2 = ANY(environments)"#,
     )
-    .bind(project_user.project_id)
+    .bind(contributor.project_id)
     .bind(&request.env_name)
     .fetch_all(pool)
     .await?;
+
+    let current_contributor_keys: Vec<ContributorPublicKey> = contributors_keys
+        .iter()
+        .filter(|c| c.contributor_id == contributor.id)
+        .cloned()
+        .collect();
 
     let secrets: Vec<SecretWithEncryptedValues> = secret_definitions
         .iter()
-        .map(|definition| SecretWithEncryptedValues::extract(definition, &secret_passkey_values))
+        .map(|definition| {
+            SecretWithEncryptedValues::extract(
+                definition,
+                &current_contributor_keys,
+                &contributor_secret_values,
+            )
+        })
         .collect();
 
     Ok(Some(GetEnvironmentResult {
         environment,
         secrets,
-        passkeys,
-        machines,
+        contributors_keys,
+        machines_keys,
     }))
 }

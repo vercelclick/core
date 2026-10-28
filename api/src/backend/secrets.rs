@@ -1,4 +1,6 @@
-use secretpass_web::{EncryptedMachineValue, EncryptedUserValue, PasskeyAuthorizationResult};
+use secretpass_web::{
+    EncryptedContributorValue, EncryptedMachineValue, PasskeyAuthorizationResult,
+};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
@@ -16,6 +18,6 @@ pub struct CreateSecretRequest {
     pub name: String,
     pub comments: String,
     pub auth_result: PasskeyAuthorizationResult,
-    pub user_values: Vec<EncryptedUserValue>,
-    pub machine_values: Vec<EncryptedMachineValue>,
+    pub contributors_values: Vec<EncryptedContributorValue>,
+    pub machines_values: Vec<EncryptedMachineValue>,
 }

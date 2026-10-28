@@ -5,7 +5,7 @@ use crate::{ApiState, SessionPackage};
 use axum::Json;
 use axum::extract::{Extension, Path, State};
 use reqwest::StatusCode;
-use secretpass_core::{SpassProject, SpassUser};
+use secretpass_core::{Project, User};
 use serde::Deserialize;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -13,7 +13,7 @@ use uuid::Uuid;
 #[axum::debug_handler]
 pub async fn list_projects(
     State(state): State<ApiState>,
-    Extension(user): Extension<Arc<SpassUser>>,
+    Extension(user): Extension<Arc<User>>,
 ) -> HttpResponse<Json<ListProjectsResult>> {
     let result = state
         .backend
@@ -32,7 +32,7 @@ pub async fn create_project(
     State(state): State<ApiState>,
     Extension(package): Extension<Arc<SessionPackage>>,
     Json(request): Json<CreateProjectRequest>,
-) -> HttpResponse<Json<SpassProject>> {
+) -> HttpResponse<Json<Project>> {
     let project = state
         .backend
         .create_project(&package.user, &package.passkeys, request)
@@ -53,7 +53,7 @@ pub struct GetProjectByIdRequest {
 #[axum::debug_handler]
 pub async fn get_project_by_id(
     State(state): State<ApiState>,
-    Extension(user): Extension<Arc<SpassUser>>,
+    Extension(user): Extension<Arc<User>>,
     Path(request): Path<GetProjectByIdRequest>,
 ) -> HttpResponse<Json<GetProjectResult>> {
     let project = state

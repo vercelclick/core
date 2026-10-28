@@ -34,7 +34,7 @@ sequenceDiagram
     participant Vault@{"type": "boundary"} as Secure Enclave
     actor User
     participant App@{"type": "control"} as Web App(javascript)
-    participant Cli@{"type": "control"} as Spass Cli
+    participant Cli@{"type": "control"} as  Cli
     User ->> App: Opens Secret Manager Interface
     App <<->> Cli: [GET]<br/>- /api/project<br/>---<br/>Response:<br/>- Project does not exist
     App ->> User: Presents project creation interface
@@ -78,7 +78,7 @@ sequenceDiagram
     participant Vault@{"type": "boundary"} as Secure Enclave
     actor User
     participant App@{"type": "control"} as Web App
-    participant Cli@{"type": "control"} as Spass Cli
+    participant Cli@{"type": "control"} as  Cli
     User ->> App: Opens Secret Manager Interface
     App <<->> Cli: [GET]<br/>- /api/project<br/>---<br/>Response:<br/>- Loaded project details only
     App ->> User: Presents login interface
@@ -116,7 +116,7 @@ sequenceDiagram
     participant Vault@{"type": "boundary"} as Secure Enclave
     actor User
     participant App@{"type": "control"} as Web App
-    participant Cli@{"type": "control"} as Spass Cli
+    participant Cli@{"type": "control"} as  Cli
     User ->> App: Clicks View Secret
     App <<->> Cli: [GET]<br/>- /api/secrets/[env]/[name]/key/:key-id<br/>---<br/>Response:<br/>- Encrypted secret for the key
     App -->> Core: Request:<br/>- Authorization<br/>- Decrypted secret for the key
@@ -145,7 +145,7 @@ sequenceDiagram
     participant Vault@{"type": "boundary"} as Secure Enclave
     actor User
     participant App@{"type": "control"} as Web App
-    participant Cli@{"type": "control"} as Spass Cli
+    participant Cli@{"type": "control"} as  Cli
     Note over Core, Cli: Refer to View Secret - sequence, this assumes the user can see the plain secret
     User ->> App: Updates the secret value and clicks save
     App <<->> Cli: [GET]<br/>- /api/secrets/[env]/[name]/keys
@@ -204,7 +204,7 @@ sequenceDiagram
     participant Vault@{"type": "boundary"} as Secure Enclave
     actor User
     participant App@{"type": "control"} as Web App
-    participant Cli@{"type": "control"} as Spass Cli
+    participant Cli@{"type": "control"} as  Cli
     User -->> Cli: Run spass-cli
     User ->> App: Open web interface
     App ->> User: Present options<br/>- Login<br/>- Generate public key
@@ -251,7 +251,7 @@ sequenceDiagram
     participant Vault@{"type": "boundary"} as Secure Enclave
     actor User as Admin
     participant App@{"type": "control"} as Web App
-    participant Cli@{"type": "control"} as Spass Cli
+    participant Cli@{"type": "control"} as  Cli
     App ->> User: Presents administration interface
     User ->> App: Selects finalize new public key addition
     App ->> User: Presents new key addition interface
@@ -285,7 +285,7 @@ sequenceDiagram
     participant Vault@{"type": "boundary"} as Secure Enclave
     actor User as Admin
     participant App@{"type": "control"} as Web App
-    participant Cli@{"type": "control"} as Spass Cli
+    participant Cli@{"type": "control"} as  Cli
     App ->> User: Presents administration interface
     User ->> App: - Select update user<br/>- Select new environments to add<br/>- Confirm Action
 
@@ -321,7 +321,7 @@ sequenceDiagram
     participant Vault@{"type": "boundary"} as Secure Enclave
     actor User
     participant App@{"type": "control"} as Web App
-    participant Cli@{"type": "control"} as Spass Cli
+    participant Cli@{"type": "control"} as  Cli
     App ->> User: Presents administration interface
     User ->> App: - Select update user<br/>- Remove environments<br/>- Confirm Action
     App -->> Core: Request authorization

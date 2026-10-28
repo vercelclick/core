@@ -1,7 +1,7 @@
 use crate::db::queries::auth::{CREATE_PASSKEY_QUERY, CREATE_SESSION_QUERY};
 use secretpass_api::SessionPackage;
 use secretpass_api::auth::BackendCreateUserRequest;
-use secretpass_core::{SpassPasskey, SpassSession, SpassUser};
+use secretpass_core::{Passkey, Session, User};
 use sqlx::PgPool;
 use std::sync::Arc;
 
@@ -16,14 +16,14 @@ pub async fn create_user(
 ) -> anyhow::Result<SessionPackage> {
     let mut tx = pool.begin().await?;
 
-    let user: SpassUser = sqlx::query_as(CREATE_USER_QUERY)
+    let user: User = sqlx::query_as(CREATE_USER_QUERY)
         .bind(request.user_id)
         .bind(&request.user_name)
         .bind(&request.user_email)
         .fetch_one(&mut *tx)
         .await?;
 
-    let passkey: SpassPasskey = sqlx::query_as(CREATE_PASSKEY_QUERY)
+    let passkey: Passkey = sqlx::query_as(CREATE_PASSKEY_QUERY)
         .bind(request.passkey_id)
         .bind(user.id)
         .bind(&request.passkey_name)
@@ -35,7 +35,7 @@ pub async fn create_user(
         .fetch_one(&mut *tx)
         .await?;
 
-    let session: SpassSession = sqlx::query_as(CREATE_SESSION_QUERY)
+    let session: Session = sqlx::query_as(CREATE_SESSION_QUERY)
         .bind(user.id)
         .fetch_one(&mut *tx)
         .await?;

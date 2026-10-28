@@ -1,4 +1,4 @@
-use crate::SecretDataType;
+use crate::enums::SecretDataType;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
@@ -17,10 +17,17 @@ pub struct SecretDefinition {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, FromRow)]
-pub struct PasskeySecretValue {
+pub struct SimplifiedEncryptedValue {
+    data_type: SecretDataType,
+    value: String,
+    created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, FromRow)]
+pub struct ContributorSecretValue {
     pub name: String,
     pub env_name: String,
-    pub passkey_id: Uuid,
+    pub target: Uuid,
     pub project_id: Uuid,
     pub tag: String,
     pub data_type: SecretDataType,
@@ -28,11 +35,21 @@ pub struct PasskeySecretValue {
     pub created_at: DateTime<Utc>,
 }
 
+impl ContributorSecretValue {
+    pub fn simplify(&self) -> SimplifiedEncryptedValue {
+        SimplifiedEncryptedValue {
+            data_type: self.data_type,
+            value: self.encrypted_value.clone(),
+            created_at: self.created_at,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, FromRow)]
 pub struct MachineSecretValue {
     pub name: String,
     pub env_name: String,
-    pub machine_id: String,
+    pub target: String,
     pub project_id: Uuid,
     pub tag: String,
     pub data_type: SecretDataType,

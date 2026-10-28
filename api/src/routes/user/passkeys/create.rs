@@ -9,7 +9,7 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use axum::{Extension, Json};
 use secretpass_core::enums::ChallengeKind;
-use secretpass_core::{SpassPasskey, SpassUser};
+use secretpass_core::{Passkey, User};
 use secretpass_web::{PasskeyAuthorizationResult, PasskeyCreationResult};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -27,13 +27,13 @@ pub struct CreatePasskeyRequest {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct CreatePasskeyResponse {
-    passkey: SpassPasskey,
+    passkey: Passkey,
 }
 
 pub async fn create_passkey_start_handler(
     State(state): State<ApiState>,
     Extension(proxy): Extension<CloudProxy>,
-    Extension(user): Extension<Arc<SpassUser>>,
+    Extension(user): Extension<Arc<User>>,
 ) -> HttpResponse<Json<GenerateChallengeResponse>> {
     if proxy.is_local() {
         let result: GenerateChallengeResponse = proxy.send().await?;

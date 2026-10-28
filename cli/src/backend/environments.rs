@@ -2,10 +2,10 @@ use crate::config::LocalServiceConfig;
 use crate::service::keys::LocalKeysConfig;
 use crate::service::secrets::LocalSecretConfig;
 use secretpass_api::environments::{GetEnvironmentRequest, GetEnvironmentResult};
-use secretpass_core::SpassUser;
+use secretpass_core::User;
 
 pub async fn get_environment_by_name(
-    user: &SpassUser,
+    user: &User,
     request: &GetEnvironmentRequest,
 ) -> anyhow::Result<Option<GetEnvironmentResult>> {
     let local_config = LocalServiceConfig::load()?;
@@ -15,12 +15,12 @@ pub async fn get_environment_by_name(
         None => return Ok(None),
     };
 
-    let project_user = match project_config.get_user(user.id) {
+    let contributor = match project_config.get_contributor_by_user_id(user.id) {
         Some(res) => res,
         None => return Ok(None),
     };
 
-    if !project_user.can_access(&request.env_name) {
+    if !contributor.can_access(&request.env_name) {
         return Ok(None);
     }
 
@@ -33,20 +33,20 @@ pub async fn get_environment_by_name(
 
     let keys_config = LocalKeysConfig::load(&path)?;
 
-    let current_user_keys = keys_config.get_user_keys(project_user.id);
+    let contributor_keys = keys_config.get_contributor_keys(contributor.id);
 
     let secrets = secret_configs
         .iter()
-        .map(|config| config.build_values_for_user(&current_user_keys))
+        .map(|config| config.build_values_for_contributors(&contributor_keys))
         .collect();
 
-    let (passkeys, machines) = keys_config
-        .get_environment_machine_keys(&request.env_name, &project_config.project_users());
+    let (contributors, machines) = keys_config
+        .get_environment_public_keys(&request.env_name, &project_config.get_contributors());
 
     Ok(Some(GetEnvironmentResult {
         environment,
         secrets,
-        machines,
-        passkeys,
+        machines_keys: machines,
+        contributors_keys: contributors,
     }))
 }

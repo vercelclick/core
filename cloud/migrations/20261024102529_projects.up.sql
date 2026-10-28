@@ -11,26 +11,26 @@ CREATE TABLE "Projects"
 );
 
 
-CREATE TYPE "ProjectUserLevel" as enum ('Admin', 'Standard');
+CREATE TYPE "ContributorRole" as enum ('Admin', 'Standard');
 
-CREATE TYPE "ProjectUserStatus" as enum ('Active', 'Archived');
+CREATE TYPE "ContributorStatus" as enum ('Active', 'Archived');
 
-CREATE TABLE "ProjectUsers"
+CREATE TABLE "Contributors"
 (
     id           UUID PRIMARY KEY DEFAULT uuidv7(),
     user_id      UUID                NOT NULL,
-    status       "ProjectUserStatus" NOT NULL,
+    status       "ContributorStatus" NOT NULL,
     project_id   UUID                NOT NULL,
-    level        "ProjectUserLevel"  NOT NULL,
+    role         "ContributorRole"   NOT NULL,
     environments TEXT[]              NOT NULL,
     updated_at   TIMESTAMPTZ      DEFAULT now(),
 
-    CONSTRAINT fk_project_user_user
+    CONSTRAINT fk_contributor_to_user
         FOREIGN KEY (user_id)
             REFERENCES "Users" (id)
             ON DELETE CASCADE,
 
-    CONSTRAINT fk_project_user_project
+    CONSTRAINT fk_contributor_to_project
         FOREIGN KEY (project_id)
             REFERENCES "Projects" (id)
             ON DELETE CASCADE
@@ -38,26 +38,27 @@ CREATE TABLE "ProjectUsers"
 
 CREATE TYPE "AccessGrant" as enum ('Pending', 'Granted');
 
-CREATE TABLE "ProjectUserPasskey"
+CREATE TABLE "ContributorPublicKey"
 (
-    id         UUID PRIMARY KEY DEFAULT uuidv7(),
-    name       TEXT          NOT NULL,
-    user_id    UUID          NOT NULL,
-    passkey_id UUID          NOT NULL,
-    access     "AccessGrant" NOT NULL,
-    ecc        TEXT,
-    kem        TEXT,
-    granted_by TEXT,
-    granted_on TIMESTAMPTZ,
+    id             UUID PRIMARY KEY DEFAULT uuidv7(),
+    name           TEXT          NOT NULL,
+    user_id        UUID          NOT NULL,
+    cred_id        TEXT          NOT NULL,
+    contributor_id UUID          NOT NULL,
+    access         "AccessGrant" NOT NULL,
+    ecc            TEXT,
+    kem            TEXT,
+    granted_by     TEXT,
+    granted_on     TIMESTAMPTZ,
 
-    CONSTRAINT fk_project_user_passkey_user
-        FOREIGN KEY (user_id)
-            REFERENCES "ProjectUsers" (id)
+    CONSTRAINT fk_contributor_pub_key_to_project
+        FOREIGN KEY (contributor_id)
+            REFERENCES "Contributors" (id)
             ON DELETE CASCADE,
 
-    CONSTRAINT fk_project_user_passkey_passkey
-        FOREIGN KEY (passkey_id)
-            REFERENCES "UserPasskeys" (id)
+    CONSTRAINT fk_contributor_pub_key_to_passkey
+        FOREIGN KEY (user_id, cred_id)
+            REFERENCES "Passkeys" (user_id, cred_id)
             ON DELETE CASCADE
 );
 
@@ -101,21 +102,25 @@ CREATE TABLE "SecretDefinitions"
 
 CREATE TYPE "SecretDataType" as ENUM ('Text', 'Json', 'Url');
 
-CREATE TABLE "PasskeySecretValues"
+CREATE TABLE "ContributorSecretValues"
 (
     name            TEXT NOT NULL,
     env_name        TEXT NOT NULL,
-    passkey_id      UUID NOT NULL,
+    target          UUID NOT NULL,
     project_id      UUID NOT NULL,
     tag             TEXT,
     data_type       "SecretDataType",
     encrypted_value TEXT,
     created_at      TIMESTAMPTZ DEFAULT now(),
-    CONSTRAINT secret_values_primary_key
-        PRIMARY KEY (passkey_id, project_id, env_name, name),
-    CONSTRAINT fk_secret_values_definition
+    CONSTRAINT contributor_values_primary_key
+        PRIMARY KEY (target, project_id, env_name, name),
+    CONSTRAINT fk_contributor_values_definition
         FOREIGN KEY (project_id, env_name, name)
             REFERENCES "SecretDefinitions" (project_id, env_name, name)
+            ON DELETE CASCADE,
+    CONSTRAINT fk_contributor_value_to_public_key
+        FOREIGN KEY (target)
+            REFERENCES "ContributorPublicKey" (id)
             ON DELETE CASCADE
 );
 
@@ -142,17 +147,21 @@ CREATE TABLE "MachineSecretValues"
 (
     name            TEXT  NOT NULL,
     env_name        TEXT  NOT NULL,
-    machine_id      BYTEA NOT NULL,
+    target          BYTEA NOT NULL,
     project_id      UUID  NOT NULL,
     tag             TEXT,
     data_type       "SecretDataType",
     encrypted_value TEXT,
     created_at      TIMESTAMPTZ DEFAULT now(),
-    CONSTRAINT machine_secret_values_primary_key
-        PRIMARY KEY (machine_id, project_id, env_name, name),
-    CONSTRAINT fk_machine_secret_values_definition
+    CONSTRAINT machine_values_primary_key
+        PRIMARY KEY (target, project_id, env_name, name),
+    CONSTRAINT fk_machine_values_definition
         FOREIGN KEY (project_id, env_name, name)
             REFERENCES "SecretDefinitions" (project_id, env_name, name)
+            ON DELETE CASCADE,
+    CONSTRAINT fk_machine_values_to_public_key
+        FOREIGN KEY (target)
+            REFERENCES "MachinePublicKey" (id)
             ON DELETE CASCADE
 );
 

@@ -8,7 +8,7 @@ use tsify::Tsify;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, FromRow)]
-pub struct SpassProject {
+pub struct Project {
     pub id: Uuid,
     pub name: String,
     pub description: String,

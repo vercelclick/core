@@ -5,7 +5,7 @@ use tsify::Tsify;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS)]
-pub struct SpassWorkspace {
+pub struct Workspace {
     pub id: Uuid, // Fixed - invalidates keys if changed
     pub name: String,
     pub description: String,

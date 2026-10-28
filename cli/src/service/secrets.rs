@@ -1,16 +1,15 @@
 use secretpass_api::environments::SecretWithEncryptedValues;
 use secretpass_core::{
-    MachineSecretValue, PasskeySecretValue, ProjectUserPasskey, SecretDefinition,
+    ContributorPublicKey, ContributorSecretValue, MachineSecretValue, SecretDefinition,
 };
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
-use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LocalSecretConfig {
     pub definition: SecretDefinition,
-    pub passkey_values: Vec<PasskeySecretValue>,
+    pub contributor_values: Vec<ContributorSecretValue>,
     pub machine_values: Vec<MachineSecretValue>,
 }
 
@@ -88,21 +87,10 @@ impl LocalSecretConfig {
         Ok(())
     }
 
-    pub fn build_values_for_user(
+    pub fn build_values_for_contributors(
         &self,
-        passkeys: &[ProjectUserPasskey],
+        public_keys: &[ContributorPublicKey],
     ) -> SecretWithEncryptedValues {
-        let valid_ids: Vec<Uuid> = passkeys.iter().map(|key| key.id).collect();
-        let passkey_values = self
-            .passkey_values
-            .iter()
-            .filter(|value| valid_ids.contains(&value.passkey_id))
-            .cloned()
-            .collect();
-
-        SecretWithEncryptedValues {
-            definition: self.definition.clone(),
-            passkey_values,
-        }
+        SecretWithEncryptedValues::extract(&self.definition, public_keys, &self.contributor_values)
     }
 }

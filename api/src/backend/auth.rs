@@ -1,5 +1,5 @@
 use secretpass_core::enums::PasskeyType;
-use secretpass_core::{SpassPasskey, SpassSession, SpassUser};
+use secretpass_core::{Passkey, Session, User};
 use secretpass_web::{PasskeyAuthorizationResult, PasskeyCreationResult, PublicKeyGenerateResult};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -36,9 +36,9 @@ pub struct BackendCreateUserRequest {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct SessionPackage {
-    pub session: Arc<SpassSession>,
-    pub user: Arc<SpassUser>,
-    pub passkeys: Arc<Vec<SpassPasskey>>,
+    pub session: Arc<Session>,
+    pub user: Arc<User>,
+    pub passkeys: Arc<Vec<Passkey>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

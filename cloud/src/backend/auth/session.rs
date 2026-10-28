@@ -3,7 +3,7 @@ use crate::db::queries::auth::{CREATE_SESSION_QUERY, LIST_USER_PASSKEYS_BY_TYPE}
 use crate::db::queries::user::GET_USER_BY_ID_QUERY;
 use secretpass_api::SessionPackage;
 use secretpass_core::enums::PasskeyType;
-use secretpass_core::{SpassPasskey, SpassSession, SpassUser};
+use secretpass_core::{Passkey, Session, User};
 use sqlx::PgPool;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -19,7 +19,7 @@ pub async fn get_session(
     id: Uuid,
 ) -> anyhow::Result<Option<SessionPackage>> {
     // TODO: Collapse these queries to one
-    let session: Option<SpassSession> = sqlx::query_as(GET_SESSION_QUERY)
+    let session: Option<Session> = sqlx::query_as(GET_SESSION_QUERY)
         .bind(id)
         .fetch_optional(pool)
         .await?;
@@ -29,7 +29,7 @@ pub async fn get_session(
         None => return Ok(None),
     };
 
-    let user: SpassUser = sqlx::query_as(GET_USER_BY_ID_QUERY)
+    let user: User = sqlx::query_as(GET_USER_BY_ID_QUERY)
         .bind(id)
         .fetch_one(pool)
         .await?;
@@ -52,7 +52,7 @@ pub async fn create_session_by_email(
         .await?
         .ok_or_else(|| anyhow::anyhow!("User not found"))?;
 
-    let session: SpassSession = sqlx::query_as(CREATE_SESSION_QUERY)
+    let session: Session = sqlx::query_as(CREATE_SESSION_QUERY)
         .bind(user.id)
         .fetch_one(pool)
         .await?;
@@ -70,12 +70,12 @@ pub async fn create_session_by_user_id(
     passkey_type: PasskeyType,
     user_id: Uuid,
 ) -> anyhow::Result<SessionPackage> {
-    let user: SpassUser = sqlx::query_as(GET_USER_BY_ID_QUERY)
+    let user: User = sqlx::query_as(GET_USER_BY_ID_QUERY)
         .bind(user_id)
         .fetch_one(pool)
         .await?;
 
-    let session: SpassSession = sqlx::query_as(CREATE_SESSION_QUERY)
+    let session: Session = sqlx::query_as(CREATE_SESSION_QUERY)
         .bind(user_id)
         .fetch_one(pool)
         .await?;
@@ -92,8 +92,8 @@ pub async fn get_passkeys_by_user_id(
     pool: &PgPool,
     passkey_type: PasskeyType,
     user_id: Uuid,
-) -> anyhow::Result<Vec<SpassPasskey>> {
-    let passkeys: Vec<SpassPasskey> = sqlx::query_as(LIST_USER_PASSKEYS_BY_TYPE)
+) -> anyhow::Result<Vec<Passkey>> {
+    let passkeys: Vec<Passkey> = sqlx::query_as(LIST_USER_PASSKEYS_BY_TYPE)
         .bind(passkey_type)
         .bind(user_id)
         .fetch_all(pool)
@@ -105,7 +105,7 @@ pub async fn get_passkeys_by_user_id(
 // language=sql
 const EXPIRE_SESSION_QUERY: &str = r#"UPDATE "UserSessions" SET expires_on=now() WHERE id=$1"#;
 
-pub async fn expire_session(pool: &PgPool, session: &SpassSession) -> anyhow::Result<()> {
+pub async fn expire_session(pool: &PgPool, session: &Session) -> anyhow::Result<()> {
     sqlx::query(EXPIRE_SESSION_QUERY)
         .bind(session.id)
         .execute(pool)

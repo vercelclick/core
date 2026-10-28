@@ -5,12 +5,12 @@ use crate::utils::error_mapper;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::{Extension, Json};
-use secretpass_core::SpassUser;
+use secretpass_core::User;
 use std::sync::Arc;
 
 pub async fn get_environment_by_name(
     State(state): State<ApiState>,
-    Extension(user): Extension<Arc<SpassUser>>,
+    Extension(user): Extension<Arc<User>>,
     Path(request): Path<GetEnvironmentRequest>,
 ) -> HttpResponse<Json<GetEnvironmentResult>> {
     let result = state

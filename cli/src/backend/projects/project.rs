@@ -6,14 +6,11 @@ use chrono::Utc;
 use secretpass_api::projects::{
     CreateProjectRequest, GetProjectResult, ListProjectsResult, ProjectListItem, ProjectPath,
 };
-use secretpass_core::enums::{AccessGrant, ProjectUserStatus};
-use secretpass_core::{
-    ProjectUserLevel, ProjectUserPasskey, SpassEnvironment, SpassPasskey, SpassProject,
-    SpassProjectUser, SpassUser,
-};
+use secretpass_core::enums::{AccessGrant, ContributorRole, ContributorStatus};
+use secretpass_core::{Contributor, ContributorPublicKey, Environment, Passkey, Project, User};
 use uuid::Uuid;
 
-pub async fn list_projects(user: &SpassUser) -> anyhow::Result<ListProjectsResult> {
+pub async fn list_projects(user: &User) -> anyhow::Result<ListProjectsResult> {
     let mut config = LocalServiceConfig::load()?;
 
     let mut should_update = false;
@@ -35,7 +32,7 @@ pub async fn list_projects(user: &SpassUser) -> anyhow::Result<ListProjectsResul
                 path: Some(path),
                 project: project_config.project.clone(),
             };
-            if project_config.get_user(user.id).is_some() {
+            if project_config.get_contributor_by_user_id(user.id).is_some() {
                 result.projects.push(item);
             } else {
                 result.inaccessible.push(item);
@@ -57,10 +54,10 @@ pub async fn list_projects(user: &SpassUser) -> anyhow::Result<ListProjectsResul
 }
 
 pub async fn create_project(
-    user: &SpassUser,
-    passkeys: &[SpassPasskey],
+    user: &User,
+    passkeys: &[Passkey],
     request: CreateProjectRequest,
-) -> anyhow::Result<SpassProject> {
+) -> anyhow::Result<Project> {
     let mut config = LocalServiceConfig::load()?;
 
     let path = request
@@ -79,7 +76,7 @@ pub async fn create_project(
         ));
     }
 
-    let project = SpassProject {
+    let project = Project {
         id: Uuid::now_v7(),
         algorithm: request.algorithm,
         name: request.name.clone(),
@@ -87,10 +84,10 @@ pub async fn create_project(
         updated_at: Utc::now(),
     };
 
-    let environments: Vec<SpassEnvironment> = request
+    let environments: Vec<Environment> = request
         .environments
         .iter()
-        .map(|env| SpassEnvironment {
+        .map(|env| Environment {
             name: env.name.clone(),
             project_id: project.id,
             created_at: Utc::now(),
@@ -100,25 +97,26 @@ pub async fn create_project(
         })
         .collect();
 
-    let project_user = SpassProjectUser {
+    let contributor = Contributor {
         id: Uuid::now_v7(),
         project_id: project.id,
         user_id: user.id,
-        status: ProjectUserStatus::Active,
-        level: ProjectUserLevel::Admin,
+        status: ContributorStatus::Active,
+        role: ContributorRole::Admin,
         environments: vec![],
         updated_at: Utc::now(),
     };
 
-    let passkeys = passkeys
+    let contributors_keys = passkeys
         .iter()
-        .map(|passkey| ProjectUserPasskey {
+        .map(|passkey| ContributorPublicKey {
             id: Uuid::now_v7(),
             name: format!("{} - {}", user.email, passkey.name),
-            user_id: project_user.id,
+            user_id: passkey.user_id,
+            cred_id: passkey.cred_id.clone(),
             ecc: request.algorithm.is_ecc().then_some(passkey.ecc.clone()),
             kem: request.algorithm.is_kem().then_some(passkey.kem.clone()),
-            passkey_id: passkey.id,
+            contributor_id: contributor.id,
             access: AccessGrant::Granted,
             granted_by: Some(user.email.clone()),
             granted_on: Some(Utc::now()),
@@ -128,12 +126,12 @@ pub async fn create_project(
     let project_conf = LocalProjectConfig {
         project: project.clone(),
         environments,
-        users: vec![(user.clone(), project_user)],
+        contributors: vec![(user.clone(), contributor)],
     };
 
     let keys_conf = LocalKeysConfig {
-        passkeys,
-        machines: vec![],
+        contributors_keys,
+        machines_keys: vec![],
     };
 
     project_conf.write(&path)?;
@@ -147,7 +145,7 @@ pub async fn create_project(
 }
 
 pub async fn get_project_by_id(
-    user: &SpassUser,
+    user: &User,
     project_id: Uuid,
 ) -> anyhow::Result<Option<GetProjectResult>> {
     let config = LocalServiceConfig::load()?;
@@ -157,16 +155,18 @@ pub async fn get_project_by_id(
         None => return Ok(None),
     };
 
-    let project_user = project_config.get_user(user.id).ok_or_else(|| {
-        anyhow::format_err!(
-            "FORBIDDEN: you do not have access to this project under {}",
-            user.email
-        )
-    })?;
+    let contributor = project_config
+        .get_contributor_by_user_id(user.id)
+        .ok_or_else(|| {
+            anyhow::format_err!(
+                "FORBIDDEN: you do not have access to this project under {}",
+                user.email
+            )
+        })?;
 
     Ok(Some(GetProjectResult {
         project: project_config.project,
-        project_user,
+        contributor,
         environments: project_config.environments,
         path: Some(ProjectPath {
             path: path.clone(),

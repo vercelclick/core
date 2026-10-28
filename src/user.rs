@@ -6,7 +6,7 @@ use tsify::Tsify;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, FromRow)]
-pub struct SpassUser {
+pub struct User {
     pub id: Uuid,      // Fixed - invalidates keys if changed
     pub email: String, // Fixed - invalidates keys if changed
     pub name: String,
@@ -14,7 +14,7 @@ pub struct SpassUser {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, FromRow)]
-pub struct SpassSession {
+pub struct Session {
     pub id: Uuid,
     pub user_id: Uuid,
     pub last_seen: DateTime<Utc>,

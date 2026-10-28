@@ -9,9 +9,8 @@ CREATE TABLE "Users"
 
 CREATE TYPE "PasskeyType" AS ENUM ('Local', 'Cloud');
 
-CREATE TABLE "UserPasskeys"
+CREATE TABLE "Passkeys"
 (
-    id         UUID PRIMARY KEY,
     user_id    UUID          NOT NULL,
     name       TEXT          NOT NULL,
     cred_id    TEXT          NOT NULL,
@@ -19,14 +18,15 @@ CREATE TABLE "UserPasskeys"
     ecc        TEXT          NOT NULL,
     kem        TEXT          NOT NULL,
     public_key TEXT          NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now(),
 
-    CONSTRAINT fk_passkey_user
+    CONSTRAINT passkeys_primary_key
+        PRIMARY KEY (cred_id, user_id),
+    CONSTRAINT fk_passkey_to_user
         FOREIGN KEY (user_id)
             REFERENCES "Users" (id)
-            ON DELETE CASCADE,
-    CONSTRAINT unique_cred_id
-        UNIQUE (cred_id, user_id)
+            ON DELETE CASCADE
 );
 
 CREATE TYPE "ChallengeKind" AS ENUM (
@@ -52,7 +52,7 @@ CREATE UNLOGGED TABLE "PendingChallenge"
 );
 
 -- If a session is lost, the user can simply create a new one
-CREATE UNLOGGED TABLE "UserSessions"
+CREATE UNLOGGED TABLE "Sessions"
 (
     id           UUID PRIMARY KEY DEFAULT uuidv7(),
     user_id      UUID NOT NULL,
@@ -60,7 +60,7 @@ CREATE UNLOGGED TABLE "UserSessions"
     last_seen    TIMESTAMPTZ      DEFAULT NOW(),
     expires_on   TIMESTAMPTZ      DEFAULT (NOW() + INTERVAL '7 days'),
 
-    CONSTRAINT fk_session_user
+    CONSTRAINT fk_session_to_user
         FOREIGN KEY (user_id)
             REFERENCES "Users" (id)
             ON DELETE CASCADE

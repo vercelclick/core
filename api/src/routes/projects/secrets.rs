@@ -6,13 +6,13 @@ use crate::utils::error_mapper;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::{Extension, Json};
-use secretpass_core::SpassUser;
+use secretpass_core::User;
 use std::sync::Arc;
 
 #[axum::debug_handler]
 pub async fn create_secret(
     State(state): State<ApiState>,
-    Extension(user): Extension<Arc<SpassUser>>,
+    Extension(user): Extension<Arc<User>>,
     Path(params): Path<CreateSecretParams>,
     Json(request): Json<CreateSecretRequest>,
 ) -> HttpResponse<Json<SecretWithEncryptedValues>> {

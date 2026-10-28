@@ -5,7 +5,7 @@ use crate::environments::{GetEnvironmentRequest, GetEnvironmentResult, SecretWit
 use crate::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
 use crate::secrets::{CreateSecretParams, CreateSecretRequest};
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
-use secretpass_core::{SpassPasskey, SpassProject, SpassSession, SpassUser};
+use secretpass_core::{Passkey, Project, Session, User};
 use uuid::Uuid;
 
 #[async_trait::async_trait]
@@ -44,7 +44,7 @@ pub trait BackendProvider: Send + Sync + 'static {
         email: String,
     ) -> anyhow::Result<SessionPackage>;
 
-    async fn get_user_email(&self, email: String) -> anyhow::Result<Option<SpassUser>>;
+    async fn get_user_email(&self, email: String) -> anyhow::Result<Option<User>>;
 
     async fn create_session_by_user_id(
         &self,
@@ -57,49 +57,49 @@ pub trait BackendProvider: Send + Sync + 'static {
         passkey_type: PasskeyType,
         cred_id: String,
         email: String,
-    ) -> anyhow::Result<Option<SpassPasskey>>;
+    ) -> anyhow::Result<Option<Passkey>>;
 
     async fn retrieve_user_and_known_passkeys(
         &self,
         email: String,
         passkey_type: PasskeyType,
-    ) -> anyhow::Result<Option<(SpassUser, Vec<SpassPasskey>)>>;
+    ) -> anyhow::Result<Option<(User, Vec<Passkey>)>>;
 
-    async fn list_projects(&self, user: &SpassUser) -> anyhow::Result<ListProjectsResult>;
+    async fn list_projects(&self, user: &User) -> anyhow::Result<ListProjectsResult>;
 
-    async fn logout_session(&self, session: &SpassSession) -> anyhow::Result<()>;
+    async fn logout_session(&self, session: &Session) -> anyhow::Result<()>;
 
     async fn save_passkey(
         &self,
-        user: &SpassUser,
+        user: &User,
         passkey_type: PasskeyType,
         passkey_name: String,
         cred_id: String,
         public_key: String,
-    ) -> anyhow::Result<SpassPasskey>;
+    ) -> anyhow::Result<Passkey>;
 
     async fn create_project(
         &self,
-        user: &SpassUser,
-        passkeys: &[SpassPasskey],
+        user: &User,
+        passkeys: &[Passkey],
         request: CreateProjectRequest,
-    ) -> anyhow::Result<SpassProject>;
+    ) -> anyhow::Result<Project>;
 
     async fn get_project_by_id(
         &self,
-        user: &SpassUser,
+        user: &User,
         project_id: Uuid,
     ) -> anyhow::Result<Option<GetProjectResult>>;
 
     async fn get_environment_by_name(
         &self,
-        user: &SpassUser,
+        user: &User,
         request: GetEnvironmentRequest,
     ) -> anyhow::Result<Option<GetEnvironmentResult>>;
 
     async fn create_secret(
         &self,
-        user: &SpassUser,
+        user: &User,
         params: CreateSecretParams,
         request: CreateSecretRequest,
     ) -> anyhow::Result<SecretWithEncryptedValues>;

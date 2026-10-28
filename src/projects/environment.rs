@@ -6,7 +6,7 @@ use tsify::Tsify;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, FromRow)]
-pub struct SpassEnvironment {
+pub struct Environment {
     pub name: String,
     pub project_id: Uuid,
     pub description: String,

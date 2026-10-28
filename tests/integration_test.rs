@@ -1,6 +1,7 @@
 use rand::Rng;
+use secretpass_core::enums::EncryptionAlgorithm;
 use secretpass_core::utils::get_global_rng;
-use secretpass_core::{EncryptionAlgorithm, PrivateKey, PrivateKeySeed, PublicKeyEncrypt};
+use secretpass_core::{PrivateKey, PrivateKeySeed, PublicKeyEncrypt};
 
 fn create_seed_keys() -> ([u8; 32], [u8; 32]) {
     let mut rng = get_global_rng().lock().unwrap();

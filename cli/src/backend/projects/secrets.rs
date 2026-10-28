@@ -5,12 +5,11 @@ use chrono::Utc;
 use secretpass_api::constants::LATEST_SECRET_TAG;
 use secretpass_api::environments::SecretWithEncryptedValues;
 use secretpass_api::secrets::{CreateSecretParams, CreateSecretRequest};
-use secretpass_core::{
-    MachineSecretValue, PasskeySecretValue, SecretDataType, SecretDefinition, SpassUser,
-};
+use secretpass_core::enums::SecretDataType;
+use secretpass_core::{ContributorSecretValue, MachineSecretValue, SecretDefinition, User};
 
 pub async fn create_secret(
-    user: &SpassUser,
+    user: &User,
     params: CreateSecretParams,
     request: CreateSecretRequest,
 ) -> anyhow::Result<SecretWithEncryptedValues> {
@@ -20,11 +19,13 @@ pub async fn create_secret(
         .get_project_by_id(params.project_id)?
         .ok_or_else(|| anyhow::anyhow!("Project not found, confirm if the project is attached"))?;
 
-    let project_user = project_conf.get_user(user.id).ok_or_else(|| {
-        anyhow::anyhow!("You don't have access to this project under the current user")
-    })?;
+    let contributor = project_conf
+        .get_contributor_by_user_id(user.id)
+        .ok_or_else(|| {
+            anyhow::anyhow!("You don't have access to this project under the current user")
+        })?;
 
-    project_user
+    contributor
         .can_access(&params.env_name)
         .ok_or_else(|| anyhow::anyhow!("You don't have access to this environment"))?;
 
@@ -37,14 +38,14 @@ pub async fn create_secret(
         .get_environment(&params.env_name)
         .ok_or_else(|| anyhow::format_err!("Environment '{}' not found", params.env_name))?;
 
-    let passkey_values = request
-        .user_values
+    let contributor_values = request
+        .contributors_values
         .iter()
-        .map(|value| PasskeySecretValue {
+        .map(|value| ContributorSecretValue {
             name: request.name.clone(),
             env_name: environment.name.clone(),
             tag: LATEST_SECRET_TAG.to_string(),
-            passkey_id: value.passkey_id,
+            target: value.target,
             encrypted_value: value.encrypted_value.clone(),
             project_id: params.project_id,
             data_type: SecretDataType::Text,
@@ -53,13 +54,13 @@ pub async fn create_secret(
         .collect();
 
     let machine_values = request
-        .machine_values
+        .machines_values
         .iter()
         .map(|value| MachineSecretValue {
             name: request.name.clone(),
             env_name: environment.name.clone(),
             tag: LATEST_SECRET_TAG.to_string(),
-            machine_id: value.machine_id.clone(),
+            target: value.target.clone(),
             encrypted_value: value.encrypted_value.clone(),
             project_id: params.project_id,
             data_type: SecretDataType::Text,
@@ -79,12 +80,13 @@ pub async fn create_secret(
     let secret_config = LocalSecretConfig {
         definition,
         machine_values,
-        passkey_values,
+        contributor_values,
     };
 
     let keys_config = LocalKeysConfig::load(&path)?;
 
     secret_config.write(&path, &environment.name)?;
 
-    Ok(secret_config.build_values_for_user(&keys_config.get_user_keys(project_user.id)))
+    Ok(secret_config
+        .build_values_for_contributors(&keys_config.get_contributor_keys(contributor.id)))
 }

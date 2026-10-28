@@ -1,12 +1,10 @@
 use crate::backend::projects::environments::environments_insert_query_builder;
-use crate::backend::projects::passkeys::project_passkeys_insert_query_builder;
+use crate::backend::projects::passkeys::contributor_public_key_insert_query_builder;
 use secretpass_api::projects::{
     CreateProjectRequest, GetProjectResult, ListProjectsResult, ProjectListItem,
 };
-use secretpass_core::enums::ProjectUserStatus;
-use secretpass_core::{
-    ProjectUserLevel, SpassEnvironment, SpassPasskey, SpassProject, SpassProjectUser, SpassUser,
-};
+use secretpass_core::enums::{ContributorRole, ContributorStatus};
+use secretpass_core::{Contributor, Environment, Passkey, Project, User};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -19,20 +17,20 @@ const CREATE_PROJECT_QUERY: &str = r#"
 
 // language=sql
 const CREATE_PROJECT_USER_QUERY: &str = r#"
-    INSERT INTO "ProjectUsers" (user_id, status, project_id, level, environments)
+    INSERT INTO "Contributors" (user_id, status, project_id, role, environments)
     VALUES ($1, $2, $3, $4, $5)
     RETURNING *
 "#;
 
 pub async fn create_project(
     pool: &PgPool,
-    user: &SpassUser,
-    passkeys: &[SpassPasskey],
+    user: &User,
+    passkeys: &[Passkey],
     request: CreateProjectRequest,
-) -> anyhow::Result<SpassProject> {
+) -> anyhow::Result<Project> {
     let mut tx = pool.begin().await?;
 
-    let project: SpassProject = sqlx::query_as(CREATE_PROJECT_QUERY)
+    let project: Project = sqlx::query_as(CREATE_PROJECT_QUERY)
         .bind(&request.name)
         .bind(&request.description)
         .bind(request.algorithm)
@@ -44,16 +42,16 @@ pub async fn create_project(
         .execute(&mut *tx)
         .await?;
 
-    sqlx::query(CREATE_PROJECT_USER_QUERY)
+    let contributor: Contributor = sqlx::query_as(CREATE_PROJECT_USER_QUERY)
         .bind(user.id)
-        .bind(ProjectUserStatus::Active)
+        .bind(ContributorStatus::Active)
         .bind(project.id)
-        .bind(ProjectUserLevel::Admin)
+        .bind(ContributorRole::Admin)
         .bind(Vec::<String>::new())
-        .execute(&mut *tx)
+        .fetch_one(&mut *tx)
         .await?;
 
-    project_passkeys_insert_query_builder(user, &project, passkeys)
+    contributor_public_key_insert_query_builder(user, &contributor, &project, passkeys)
         .build()
         .execute(&mut *tx)
         .await?;
@@ -65,13 +63,13 @@ pub async fn create_project(
 
 // language=sql
 const LIST_PROJECTS_BY_USER_ID: &str = r#"
-    SELECT project.* FROM "Projects" as project INNER JOIN "ProjectUsers" as users
+    SELECT project.* FROM "Projects" as project INNER JOIN "Contributors" as users
     ON users.project_id = project.id
     WHERE users.user_id = $1
 "#;
 
-pub async fn list_projects(pool: &PgPool, user: &SpassUser) -> anyhow::Result<ListProjectsResult> {
-    let projects: Vec<SpassProject> = sqlx::query_as(LIST_PROJECTS_BY_USER_ID)
+pub async fn list_projects(pool: &PgPool, user: &User) -> anyhow::Result<ListProjectsResult> {
+    let projects: Vec<Project> = sqlx::query_as(LIST_PROJECTS_BY_USER_ID)
         .bind(user.id)
         .fetch_all(pool)
         .await?;
@@ -93,14 +91,14 @@ pub async fn list_projects(pool: &PgPool, user: &SpassUser) -> anyhow::Result<Li
 
 // language=sql
 const GET_PROJECT_BY_USER_ID: &str = r#"
-    SELECT project.* FROM "Projects" as project INNER JOIN "ProjectUsers" as users
+    SELECT project.* FROM "Projects" as project INNER JOIN "Contributors" as users
     ON users.project_id = project.id
     WHERE project.id = $1 AND users.user_id = $2
 "#;
 
 // language=sql
 const GET_PROJECT_USER_BY_USER_ID: &str = r#"
-    SELECT * FROM "ProjectUsers"
+    SELECT * FROM "Contributors"
     WHERE project_id = $1 AND user_id = $2
 "#;
 
@@ -112,10 +110,10 @@ const GET_ENVIRONMENTS_BY_PROJECT_ID: &str = r#"
 
 pub async fn get_project_by_id(
     pool: &PgPool,
-    user: &SpassUser,
+    user: &User,
     project_id: Uuid,
 ) -> anyhow::Result<Option<GetProjectResult>> {
-    let project: Option<SpassProject> = sqlx::query_as(GET_PROJECT_BY_USER_ID)
+    let project: Option<Project> = sqlx::query_as(GET_PROJECT_BY_USER_ID)
         .bind(project_id)
         .bind(user.id)
         .fetch_optional(pool)
@@ -125,39 +123,39 @@ pub async fn get_project_by_id(
         None => return Ok(None),
     };
 
-    let project_user = match get_project_user_by_id(pool, user, project_id).await? {
+    let contributor = match get_contributor_by_id(pool, user, project_id).await? {
         Some(pu) => pu,
         None => return Ok(None),
     };
 
-    let environments: Vec<SpassEnvironment> = sqlx::query_as(GET_ENVIRONMENTS_BY_PROJECT_ID)
+    let environments: Vec<Environment> = sqlx::query_as(GET_ENVIRONMENTS_BY_PROJECT_ID)
         .bind(project_id)
         .fetch_all(pool)
         .await?;
 
     let environments = environments
         .into_iter()
-        .filter(|env| project_user.can_access(&env.name))
+        .filter(|env| contributor.can_access(&env.name))
         .collect();
 
     Ok(Some(GetProjectResult {
         path: None,
         project,
-        project_user,
+        contributor,
         environments,
     }))
 }
 
-pub async fn get_project_user_by_id(
+pub async fn get_contributor_by_id(
     pool: &PgPool,
-    user: &SpassUser,
+    user: &User,
     project_id: Uuid,
-) -> anyhow::Result<Option<SpassProjectUser>> {
-    let project_user: Option<SpassProjectUser> = sqlx::query_as(GET_PROJECT_USER_BY_USER_ID)
+) -> anyhow::Result<Option<Contributor>> {
+    let contributor: Option<Contributor> = sqlx::query_as(GET_PROJECT_USER_BY_USER_ID)
         .bind(project_id)
         .bind(user.id)
         .fetch_optional(pool)
         .await?;
 
-    Ok(project_user)
+    Ok(contributor)
 }

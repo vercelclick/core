@@ -7,12 +7,11 @@ mod user;
 pub mod utils;
 mod workspace;
 
-pub use enums::{EncryptionAlgorithm, ProjectUserLevel, SecretDataType};
-pub use keys::{PrivateKey, PrivateKeySeed, PublicKey, PublicKeyEncrypt, SpassPasskey};
+pub use keys::{Passkey, PrivateKey, PrivateKeySeed, PublicKey, PublicKeyEncrypt};
 pub use projects::{
-    MachinePublicKey, MachineSecretValue, PasskeySecretValue, ProjectUserPasskey, SecretDefinition,
-    SpassEnvironment, SpassProject, SpassProjectUser,
+    Contributor, ContributorPublicKey, ContributorSecretValue, Environment, MachinePublicKey,
+    MachineSecretValue, Project, SecretDefinition, SimplifiedEncryptedValue,
 };
 pub use types::EncryptedPackage;
-pub use user::{SpassSession, SpassUser};
-pub use workspace::SpassWorkspace;
+pub use user::{Session, User};
+pub use workspace::Workspace;

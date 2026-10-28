@@ -1,7 +1,5 @@
-use secretpass_core::{
-    EncryptionAlgorithm, SpassEnvironment, SpassProject, SpassProjectUser,
-    SpassWorkspace,
-};
+use secretpass_core::enums::EncryptionAlgorithm;
+use secretpass_core::{Contributor, Environment, Project, Workspace};
 use secretpass_web::PasskeyAuthorizationResult;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -16,15 +14,15 @@ pub struct ProjectPath {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct ProjectListItem {
-    pub project: SpassProject,
+    pub project: Project,
     pub path: Option<ProjectPath>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct WorkspaceProjectListItem {
-    pub workspace: SpassWorkspace,
-    pub projects: Vec<SpassProject>,
+    pub workspace: Workspace,
+    pub projects: Vec<Project>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -58,7 +56,7 @@ pub struct CreateProjectRequest {
 #[ts(export)]
 pub struct GetProjectResult {
     pub path: Option<ProjectPath>,
-    pub project: SpassProject,
-    pub project_user: SpassProjectUser,
-    pub environments: Vec<SpassEnvironment>,
+    pub project: Project,
+    pub contributor: Contributor,
+    pub environments: Vec<Environment>,
 }

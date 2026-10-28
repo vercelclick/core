@@ -52,8 +52,8 @@ impl EncryptionAlgorithm {
     sqlx::Type,
 )]
 #[tsify(namespace)]
-#[sqlx(type_name = r#""ProjectUserLevel""#)]
-pub enum ProjectUserLevel {
+#[sqlx(type_name = r#""ContributorRole""#)]
+pub enum ContributorRole {
     Admin,
     Standard,
 }
@@ -182,8 +182,8 @@ pub enum PasskeyType {
     sqlx::Type,
 )]
 #[tsify(namespace)]
-#[sqlx(type_name = r#""ProjectUserStatus""#)]
-pub enum ProjectUserStatus {
+#[sqlx(type_name = r#""ContributorStatus""#)]
+pub enum ContributorStatus {
     Active,
     Archived,
 }

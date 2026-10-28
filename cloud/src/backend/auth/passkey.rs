@@ -1,6 +1,6 @@
 use crate::db::queries::auth::CREATE_PASSKEY_QUERY;
 use secretpass_core::enums::PasskeyType;
-use secretpass_core::{SpassPasskey, SpassUser};
+use secretpass_core::{Passkey, User};
 use sqlx::PgPool;
 
 // language=sql
@@ -16,8 +16,8 @@ pub async fn retrieve_passkey_by_cred_id(
     passkey_type: PasskeyType,
     cred_id: String,
     email: String,
-) -> anyhow::Result<Option<SpassPasskey>> {
-    let passkey: Option<SpassPasskey> = sqlx::query_as(PASSKEY_USER_ID_PUBLIC_KEY_QUERY)
+) -> anyhow::Result<Option<Passkey>> {
+    let passkey: Option<Passkey> = sqlx::query_as(PASSKEY_USER_ID_PUBLIC_KEY_QUERY)
         .bind(passkey_type)
         .bind(cred_id)
         .bind(email)
@@ -29,13 +29,13 @@ pub async fn retrieve_passkey_by_cred_id(
 
 pub async fn create_passkey(
     pool: &PgPool,
-    user: &SpassUser,
+    user: &User,
     passkey_type: PasskeyType,
     passkey_name: String,
     cred_id: String,
     public_key: String,
-) -> anyhow::Result<SpassPasskey> {
-    let passkey: SpassPasskey = sqlx::query_as(CREATE_PASSKEY_QUERY)
+) -> anyhow::Result<Passkey> {
+    let passkey: Passkey = sqlx::query_as(CREATE_PASSKEY_QUERY)
         .bind(cred_id)
         .bind(user.id)
         .bind(passkey_name)
