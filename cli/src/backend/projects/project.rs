@@ -128,7 +128,6 @@ pub async fn create_project(
     let project_conf = LocalProjectConfig {
         project: project.clone(),
         environments,
-        machines: vec![],
         users: vec![(user.clone(), project_user)],
     };
 

@@ -4,3 +4,5 @@ mod authorize;
 mod create;
 mod encrypt;
 mod machine;
+
+pub use encrypt::{EncryptedMachineValue, EncryptedUserValue, EncryptSecretResult};

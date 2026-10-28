@@ -1,35 +1,35 @@
 {
   "project": {
-    "id": "01a17af1-1726-72c8-8acd-f021a348dbbb",
+    "id": "01a180db-016c-76d4-a906-d1ca2722220d",
     "name": "Secretpass Cli",
-    "description": "The first spass project",
+    "description": "The first project",
     "algorithm": "ECC",
-    "updated_at": "2026-10-27T01:19:42.886053Z"
+    "updated_at": "2026-10-28T04:53:18.828556Z"
   },
   "environments": [
     {
       "name": "development",
-      "project_id": "01a17af1-1726-72c8-8acd-f021a348dbbb",
+      "project_id": "01a180db-016c-76d4-a906-d1ca2722220d",
       "description": "For testing by developers before moving to QC",
       "tags": [],
-      "updated_at": "2026-10-27T01:19:42.886062Z",
-      "created_at": "2026-10-27T01:19:42.886062Z"
+      "updated_at": "2026-10-28T04:53:18.828562Z",
+      "created_at": "2026-10-28T04:53:18.828561Z"
     },
     {
       "name": "staging",
-      "project_id": "01a17af1-1726-72c8-8acd-f021a348dbbb",
+      "project_id": "01a180db-016c-76d4-a906-d1ca2722220d",
       "description": "For testing by QAs before promoting to production",
       "tags": [],
-      "updated_at": "2026-10-27T01:19:42.886065Z",
-      "created_at": "2026-10-27T01:19:42.886064Z"
+      "updated_at": "2026-10-28T04:53:18.828563Z",
+      "created_at": "2026-10-28T04:53:18.828563Z"
     },
     {
       "name": "production",
-      "project_id": "01a17af1-1726-72c8-8acd-f021a348dbbb",
+      "project_id": "01a180db-016c-76d4-a906-d1ca2722220d",
       "description": "Prod secrets, heavily restricted",
       "tags": [],
-      "updated_at": "2026-10-27T01:19:42.886066Z",
-      "created_at": "2026-10-27T01:19:42.886065Z"
+      "updated_at": "2026-10-28T04:53:18.828564Z",
+      "created_at": "2026-10-28T04:53:18.828564Z"
     }
   ],
   "users": [
@@ -41,13 +41,13 @@
         "updated_at": "2026-10-26T23:40:13.981178Z"
       },
       {
-        "id": "01a17af1-1726-72c8-8acd-f02283f457bf",
+        "id": "01a180db-016c-76d4-a906-d1cb84ace3b4",
         "user_id": "01a17a90-8d9a-73b6-9bc6-bf2fb3314c8f",
         "status": "Active",
-        "project_id": "01a17af1-1726-72c8-8acd-f021a348dbbb",
+        "project_id": "01a180db-016c-76d4-a906-d1ca2722220d",
         "level": "Admin",
         "environments": [],
-        "updated_at": "2026-10-27T01:19:42.886071Z"
+        "updated_at": "2026-10-28T04:53:18.828568Z"
       }
     ]
   ],

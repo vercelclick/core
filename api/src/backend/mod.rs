@@ -3,6 +3,7 @@ mod challenge;
 pub mod environments;
 pub mod projects;
 mod provider;
+pub mod secrets;
 
 use crate::constants::{CLOUD_RP_CONFIG, LOCAL_RP_CONFIG, RpConfig};
 pub use auth::{CreateUserRequest, SessionPackage};

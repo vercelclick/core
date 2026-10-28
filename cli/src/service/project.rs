@@ -9,22 +9,17 @@ pub struct LocalProjectConfig {
     pub project: SpassProject,
     pub environments: Vec<SpassEnvironment>,
     pub users: Vec<(SpassUser, SpassProjectUser)>,
-    pub machines: Vec<()>,
 }
 
 impl LocalProjectConfig {
     pub fn load(path: &str) -> anyhow::Result<Option<Self>> {
-        let path = Path::new(path).join(".spass");
+        let path = Path::new(path).join(".spass").join("config.json");
+
         if !path.exists() {
             return Ok(None);
         }
 
-        let config_file = path.join("config.json");
-        if !path.exists() {
-            return Ok(None);
-        }
-
-        let content = fs::read_to_string(config_file)?;
+        let content = fs::read_to_string(path)?;
         let config: Self = serde_json::from_str(&content)?;
 
         Ok(Some(config))

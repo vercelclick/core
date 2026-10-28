@@ -10,8 +10,11 @@ use crate::backend::auth::user::{retrieve_user_and_known_passkeys, retrieve_user
 use crate::backend::projects::environments::get_environment_by_name;
 use crate::backend::projects::project::{create_project, get_project_by_id, list_projects};
 use secretpass_api::auth::BackendCreateUserRequest;
-use secretpass_api::environments::{GetEnvironmentRequest, GetEnvironmentResult};
+use secretpass_api::environments::{
+    GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues,
+};
 use secretpass_api::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
+use secretpass_api::secrets::{CreateSecretParams, CreateSecretRequest};
 use secretpass_api::{BackendProvider, PendingChallenge, SessionPackage};
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
 use secretpass_core::{SpassPasskey, SpassProject, SpassSession, SpassUser};
@@ -161,5 +164,14 @@ impl BackendProvider for CloudBackendProvider {
         request: GetEnvironmentRequest,
     ) -> anyhow::Result<Option<GetEnvironmentResult>> {
         get_environment_by_name(&self.pool, user, &request).await
+    }
+
+    async fn create_secret(
+        &self,
+        user: &SpassUser,
+        params: CreateSecretParams,
+        request: CreateSecretRequest,
+    ) -> anyhow::Result<SecretWithEncryptedValues> {
+        todo!()
     }
 }

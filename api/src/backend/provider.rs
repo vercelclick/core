@@ -1,8 +1,9 @@
 use crate::auth::BackendCreateUserRequest;
 use crate::backend::auth::SessionPackage;
 use crate::backend::challenge::PendingChallenge;
-use crate::environments::{GetEnvironmentRequest, GetEnvironmentResult};
+use crate::environments::{GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues};
 use crate::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
+use crate::secrets::{CreateSecretParams, CreateSecretRequest};
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
 use secretpass_core::{SpassPasskey, SpassProject, SpassSession, SpassUser};
 use uuid::Uuid;
@@ -95,4 +96,11 @@ pub trait BackendProvider: Send + Sync + 'static {
         user: &SpassUser,
         request: GetEnvironmentRequest,
     ) -> anyhow::Result<Option<GetEnvironmentResult>>;
+
+    async fn create_secret(
+        &self,
+        user: &SpassUser,
+        params: CreateSecretParams,
+        request: CreateSecretRequest,
+    ) -> anyhow::Result<SecretWithEncryptedValues>;
 }

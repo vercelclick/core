@@ -82,13 +82,13 @@ CREATE TABLE "Environments"
 
 CREATE TABLE "SecretDefinitions"
 (
-    name        TEXT   NOT NULL,
-    env_name    TEXT   NOT NULL,
-    project_id  UUID   NOT NULL,
-    description TEXT   NOT NULL,
-    tags        TEXT[] NOT NULL,
-    created_at  TIMESTAMPTZ DEFAULT now(),
-    updated_at  TIMESTAMPTZ DEFAULT now(),
+    name       TEXT   NOT NULL,
+    env_name   TEXT   NOT NULL,
+    project_id UUID   NOT NULL,
+    comments   TEXT   NOT NULL,
+    tags       TEXT[] NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now(),
 
     CONSTRAINT secret_definitions_primary_key
         PRIMARY KEY (project_id, env_name, name),

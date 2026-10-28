@@ -3,6 +3,7 @@ use crate::passkeys::authorize::PasskeyAuthorizationResult;
 use secretpass_core::{MachinePublicKey, ProjectUserPasskey, PublicKeyEncrypt};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use ts_rs::TS;
 use tsify::{Ts, Tsify};
 use uuid::Uuid;
 use wasm_bindgen::JsError;
@@ -10,17 +11,29 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 #[derive(Deserialize, Tsify)]
 pub struct EncryptSecretRequest {
-    auth_request: AuthorizationRequest,
-    passkeys: Vec<ProjectUserPasskey>,
-    machine_keys: Vec<MachinePublicKey>,
-    secret_value: String,
+    pub auth_request: AuthorizationRequest,
+    pub passkeys: Vec<ProjectUserPasskey>,
+    pub machine_keys: Vec<MachinePublicKey>,
+    pub secret_value: String,
 }
 
-#[derive(Serialize, Tsify)]
+#[derive(Debug, Clone, Serialize, Deserialize, Tsify, TS)]
+pub struct EncryptedUserValue {
+    pub passkey_id: Uuid,
+    pub encrypted_value: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Tsify, TS)]
+pub struct EncryptedMachineValue {
+    pub machine_id: String,
+    pub encrypted_value: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Tsify, TS)]
 pub struct EncryptSecretResult {
-    auth_response: PasskeyAuthorizationResult,
-    user_values: HashMap<Uuid, String>,
-    machine_values: HashMap<String, String>,
+    pub auth_response: PasskeyAuthorizationResult,
+    pub user_values: Vec<EncryptedUserValue>,
+    pub machine_values: Vec<EncryptedMachineValue>,
 }
 
 #[wasm_bindgen]
@@ -35,20 +48,27 @@ pub async fn encrypt_secret(
         .await
         .map_err(|err| JsError::new(&format!("Error authorizing user: {}", err)))?;
 
-    let mut user_values: HashMap<Uuid, String> = HashMap::new();
+    let mut user_values: Vec<EncryptedUserValue> = Vec::new();
     for pk in request.passkeys {
         let encrypted_value = pk
             .encrypt(request.secret_value.clone().into_bytes())
             .map_err(|err| JsError::new(&format!("Error encrypting secret: {}", err)))?;
-        user_values.insert(pk.id, encrypted_value);
+        user_values.push(EncryptedUserValue {
+            passkey_id: pk.id,
+            encrypted_value,
+        });
     }
 
-    let mut machine_values: HashMap<String, String> = HashMap::new();
+    let mut machine_values: Vec<EncryptedMachineValue> = Vec::new();
     for pk in request.machine_keys {
         let encrypted_value = pk
             .encrypt(request.secret_value.clone().into_bytes())
             .map_err(|err| JsError::new(&format!("Error encrypting secret: {}", err)))?;
-        machine_values.insert(pk.id, encrypted_value);
+
+        machine_values.push(EncryptedMachineValue {
+            machine_id: pk.id,
+            encrypted_value,
+        });
     }
 
     let result = EncryptSecretResult {

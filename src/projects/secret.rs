@@ -11,7 +11,7 @@ pub struct SecretDefinition {
     pub name: String,
     pub env_name: String,
     pub project_id: Uuid,
-    pub description: String,
+    pub comments: String,
     pub updated_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
 }

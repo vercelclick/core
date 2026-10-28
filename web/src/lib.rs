@@ -9,3 +9,5 @@ pub use passkeys::{
 };
 
 pub use auth::PublicKeyGenerateResult;
+
+pub use exported::{EncryptSecretResult, EncryptedMachineValue, EncryptedUserValue};
