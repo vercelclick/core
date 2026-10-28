@@ -48,7 +48,8 @@ infra:
 	docker compose .
 
 tag:
-	git tag $(cargo metadata --format-version=1 --no-deps | jq -r '.packages[0].version')
+	@echo "==> Tagging commit with current package version"
+	git tag $$(cargo metadata --format-version=1 --no-deps | jq -r '.packages[0].version')
 
 # ------------------------------------------------------------------------------
 # Help
