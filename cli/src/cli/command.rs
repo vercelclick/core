@@ -77,7 +77,7 @@ pub enum Command {
         #[arg(long, default_value = None)]
         env: Option<String>,
 
-        /// The command to inject secrets to - supports `sh` valid syntax for unix and `cmd` for windows.
+        /// The command to inject secrets to - supports `sh` valid syntax
         #[arg(
             trailing_var_arg = true,
             allow_hyphen_values = true,
