@@ -2452,7 +2452,7 @@ dependencies = [
 
 [[package]]
 name = "secretpass-api"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2477,7 +2477,7 @@ dependencies = [
 
 [[package]]
 name = "secretpass-cli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2497,7 +2497,7 @@ dependencies = [
 
 [[package]]
 name = "secretpass-cloud"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2511,7 +2511,7 @@ dependencies = [
 
 [[package]]
 name = "secretpass-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -2536,7 +2536,7 @@ dependencies = [
 
 [[package]]
 name = "secretpass-web"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "chrono",
