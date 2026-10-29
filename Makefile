@@ -34,12 +34,6 @@ infra:
 	@echo "==> Starting docker for DB and Cache"
 	docker compose .
 
-tag:
-	@echo "==> Tagging core, cli and web-app with the current version"
-	VERSION=$$(yq ".workspace.package.version" Cargo.toml)
-	git tag $$VERSION
-	cd ../core && git tag $$VERSION
-	cd ../web-app && git tag $$VERSION
 
 # ------------------------------------------------------------------------------
 # Help
