@@ -1,0 +1,24 @@
+#! /bin/sh
+
+VERSION=$(yq ".workspace.package.version" Cargo.toml)
+# shellcheck disable=SC3011
+IFS='.' read -r major minor patch <<< "$VERSION"
+NEXT_VERSION="$major.$minor.$((patch + 1))"
+
+echo "Bumping packages $VERSION -> $NEXT_VERSION"
+
+yq -i ".workspace.package.version = \"$NEXT_VERSION\"" Cargo.toml
+cargo build
+git add Cargo.toml Cargo.lock
+
+# shellcheck disable=SC2164
+cd ../cli
+yq -i ".package.version = \"$NEXT_VERSION\"" Cargo.toml
+cargo build
+git add Cargo.toml Cargo.lock
+
+# shellcheck disable=SC2164
+cd ../web-app
+yq -i ".version = \"$NEXT_VERSION\"" package.json
+bun install
+git add package.json bun.lock

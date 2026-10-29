@@ -35,12 +35,11 @@ infra:
 	docker compose .
 
 tag:
-	@echo "==> Tagging commit with current package version"
-	CURRENT_VERSION=$$(cargo metadata --format-version=1 --no-deps | jq -r '.packages[0].version')
-	cargo bump $$CURRENT_VERSION patch --build --git-tag
-	cd ../core && cargo bump $$CURRENT_VERSION patch --build --git-tag
-	UPDATED_VERSION=$$(cargo metadata --format-version=1 --no-deps | jq -r '.packages[0].version')
-	cd ../web-app && git tag $$UPDATED_VERSION
+	@echo "==> Tagging core, cli and web-app with the current version"
+	VERSION=$$(yq ".workspace.package.version" Cargo.toml)
+	git tag $$VERSION
+	cd ../core && git tag $$VERSION
+	cd ../web-app && git tag $$VERSION
 
 # ------------------------------------------------------------------------------
 # Help
