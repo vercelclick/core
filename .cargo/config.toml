@@ -7,7 +7,7 @@ API_HOST = "localhost:20206"
 UI_ORIGIN = ""
 WEBAUTH_RP_ID = ""
 WEBAUTH_RP_ENTITY = ""
-WEBAUTH_RP_ORIGIN = ""
+
 CLOUD_PROXY_URL = "http://localhost:8080"
 SMTP_USER_NAME = ""
 SMTP_TOKEN = ""

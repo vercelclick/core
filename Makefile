@@ -10,26 +10,13 @@ WASM_TARGET    ?= web
 
 
 web-local:
-	$(MAKE) -C ./web local
+	$(MAKE) -C ./web prod-local
 
 web-cloud:
-	$(MAKE) -C ./web cloud
+	$(MAKE) -C ./web prod-cloud
 
-ui-install:
-	$(MAKE) -C ./web-app install
-
-ui-build:
-	$(MAKE) -C ./web-app build
-
-bundle: web-local ui-install ui-build
-
-cli-build:
-	@echo "==> Building cli app"
-	$(MAKE) -C ./cli build
-
-
-build:
-	RUSTFLAGS='--cfg web_sys_unstable_apis' dist build
+export-api-types:
+	$(MAKE) -C ./api export-types
 
 cli-dev:
 	@echo "==> Running cli dev"
@@ -49,7 +36,11 @@ infra:
 
 tag:
 	@echo "==> Tagging commit with current package version"
-	git tag $$(cargo metadata --format-version=1 --no-deps | jq -r '.packages[0].version')
+	CURRENT_VERSION=$$(cargo metadata --format-version=1 --no-deps | jq -r '.packages[0].version')
+	cargo bump $$CURRENT_VERSION patch --build --git-tag
+	cd ../core && cargo bump $$CURRENT_VERSION patch --build --git-tag
+	UPDATED_VERSION=$$(cargo metadata --format-version=1 --no-deps | jq -r '.packages[0].version')
+	cd ../web-app && git tag $$UPDATED_VERSION
 
 # ------------------------------------------------------------------------------
 # Help
