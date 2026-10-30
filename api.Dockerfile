@@ -5,10 +5,10 @@ FROM base AS builder
 
 COPY . .
 
-ENV CLOUD_RP_ID = "cloud.secretpass.cloud"
-ENV CLOUD_RP_ORIGIN = "https://cloud.secretpass.cloud"
-ENV LOCAL_RP_ID = "local.secretpass.cloud"
-ENV LOCAL_RP_ORIGIN = "https://local.secretpass.cloud"
+ENV CLOUD_RP_ID "cloud.secretpass.cloud"
+ENV CLOUD_RP_ORIGIN "https://cloud.secretpass.cloud"
+ENV LOCAL_RP_ID "local.secretpass.cloud"
+ENV LOCAL_RP_ORIGIN "https://local.secretpass.cloud"
 
 RUN cargo build --release -p secretpass-cloud
 
