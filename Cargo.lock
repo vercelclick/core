@@ -2537,17 +2537,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "secretpass-web"
+name = "secretpass-wasm"
 version = "0.1.4"
 dependencies = [
  "anyhow",
- "chrono",
- "ciborium",
- "coset",
- "p256",
  "secretpass-core",
  "serde",
- "sha2 0.11.0",
  "ts-rs",
  "tsify",
  "uuid",

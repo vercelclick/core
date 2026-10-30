@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["api", "local", "cloud", "web"]
+members = ["api", "local", "cloud", "wasm"]
 
 [workspace.package]
 version = "0.1.4"

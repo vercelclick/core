@@ -7,27 +7,109 @@ all: help
 
 # Shared configuration
 WASM_TARGET    ?= web
+RUN_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+LOCAL_DB_URL=postgres://api:L0calApiPass@localhost:5432/secretpass
 
 
-web-local:
-	$(MAKE) -C ./web prod-local
+api-export-types:
+	echo "==> Exporting shared types"
+	cargo test export_bindings -p secretpass-api
 
-web-cloud:
-	$(MAKE) -C ./web prod-cloud
+cloud-build:
+	echo "==> Build Cli"
+	CLOUD_RP_ID = "cloud.secretpass.cloud" \
+	CLOUD_RP_ORIGIN = "https://cloud.secretpass.cloud" \
+	LOCAL_RP_ID = "local.secretpass.cloud" \
+	LOCAL_RP_ORIGIN = "https://local.secretpass.cloud" \
+	cargo build -p secretpass-cloud --release
 
-export-api-types:
-	$(MAKE) -C ./api export-types
+cloud-run-dev:
+	echo "==> Running local cloud server"
+	DATABASE_URL=$(LOCAL_DB_URL) \
+	UI_ORIGIN=http://secretpass-cloud.localhost:3002 \
+	RUST_BACKTRACE=1 cargo run -p secretpass-cloud
 
-cli-dev:
-	@echo "==> Running cli dev"
-	$(MAKE) -C ./cli dev
+local-run-dev:
+	echo "==> Run api dev"
+	UI_ORIGIN=http://secretpass-local.localhost:3001 \
+	RUST_BACKTRACE=1 cargo run -p secretpass-local --bin spass -- start
+
+migration-create:
+	echo "==> Create migration"
+	DATABASE_URL=$(LOCAL_DB_URL) sqlx migrate add --reversible $(RUN_ARGS)
+
+migration-up:
+	echo "==> Run migration"
+	DATABASE_URL=$(LOCAL_DB_URL) sqlx migrate run
+
+migration-down:
+	echo "==> Run migration"
+	DATABASE_URL=$(LOCAL_DB_URL) sqlx migrate revert
+
+
+wasm-add-target:
+	@echo "==> add wasm target"
+	rustup target add wasm32-unknown-unknown
+
+
+wasm-build-dev-local:
+	@echo "==> Building WASM for dev server usage"
+	WEBAUTH_RP_ID="secretpass-local.localhost" \
+	WEBAUTH_RP_ENTITY="Secretpass Dev Local" \
+	RUSTFLAGS='--cfg=web_sys_unstable_apis' \
+	cargo rustc -p secretpass-wasm --crate-type cdylib --target wasm32-unknown-unknown
+	wasm-bindgen \
+      target/wasm32-unknown-unknown/release/secretpass_wasm.wasm \
+      --target bundler \
+      --out-name index \
+      --out-dir ../web-app/src/core
+
+
+wasm-build-dev-cloud:
+	@echo "==> Building WASM for dev server usage"
+	WEBAUTH_RP_ID="secretpass-cloud.localhost" \
+	WEBAUTH_RP_ENTITY="Secretpass Dev Cloud" \
+	RUSTFLAGS='--cfg=web_sys_unstable_apis' \
+	cargo rustc -p secretpass-wasm --crate-type cdylib --target wasm32-unknown-unknown
+	wasm-bindgen \
+      target/wasm32-unknown-unknown/release/secretpass_wasm.wasm \
+      --target bundler \
+      --out-name index \
+      --out-dir ../web-app/src/core
+
+
+wasm-build-prod-cloud:
+	@echo "==> Building WASM for cloud usage"
+	WEBAUTH_RP_ID="cloud.secretpass.cloud" \
+	WEBAUTH_RP_ENTITY="Secretpass Cloud" \
+	RUSTFLAGS='--cfg=web_sys_unstable_apis' \
+	cargo rustc -p secretpass-wasm --release --crate-type cdylib --target wasm32-unknown-unknown
+	wasm-bindgen \
+	  target/wasm32-unknown-unknown/release/secretpass_wasm.wasm \
+	  --target bundler \
+      --out-name index \
+	  --out-dir ../web-app/src/core
+
+
+wasm-build-prod-local:
+	@echo "==> Building WASM for local usage"
+	WEBAUTH_RP_ID="local.secretpass.cloud" \
+	WEBAUTH_RP_ENTITY="Secretpass Local" \
+	RUSTFLAGS='--cfg=web_sys_unstable_apis' \
+	cargo rustc -p secretpass-wasm --release --crate-type cdylib --target wasm32-unknown-unknown
+	wasm-bindgen \
+	  target/wasm32-unknown-unknown/release/secretpass_wasm.wasm \
+	  --target bundler \
+      --out-name index \
+	  --out-dir ../web-app/src/core
 
 # ------------------------------------------------------------------------------
 # Clean
 # ------------------------------------------------------------------------------
 clean:
 	@echo "==> Cleaning generated WASM packages and target directory..."
-	rm -rf web/pkg web/pkg-local web/pkg-sandbox
+	rm -rf ../web-app/src/core
+	rm -rf ../web-app/src/api-types
 	cargo clean
 
 infra:
