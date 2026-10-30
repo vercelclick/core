@@ -15,8 +15,9 @@ secretpass-core = { path = ".." }
 tsify = "0.5.8"
 ts-rs = { version = "12.0.1" }
 uuid = { version = "1.29.0", features = ["js", "v4", "v7"] }
-wasm-bindgen = { version = "0.2.128" }
-wasm-bindgen-futures = "0.4.78"
+# This version must be matched with the version installed in CI
+wasm-bindgen = { version = "0.2.130" }
+wasm-bindgen-futures = "0.4.80"
 
 
 [dependencies.web-sys]

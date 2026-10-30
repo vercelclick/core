@@ -54,7 +54,8 @@ migration-down:
 
 wasm-add-target:
 	@echo "==> add wasm target"
-	cargo install wasm-bindgen-cli
+	# This version must be matched with the version installed in cargo.toml
+	cargo install wasm-bindgen-cli --version 0.2.130
 	rustup target add wasm32-unknown-unknown
 
 

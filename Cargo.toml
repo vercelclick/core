@@ -3,7 +3,7 @@ resolver = "2"
 members = ["api", "local", "cloud", "wasm"]
 
 [workspace.package]
-version = "0.1.12"
+version = "0.1.13"
 edition = "2024"
 repository = "https://github.com/secretpass/core"
 authors = ["Secretpass Inc", "Billcountry Mwaniki"]
@@ -40,7 +40,7 @@ sha2 = { version = "0.11.0" }
 strum = { version = "0.28.0", features = ["derive", "strum_macros"] }
 ts-rs = { version = "12.0.1", features = ["chrono-impl", "uuid-impl", "serde-json-impl"] }
 tsify = { version = "0.5.8", features = ["wasm-bindgen"] }
-wasm-bindgen = { version = "0.2.128" }
+wasm-bindgen = { version = "0.2.130" }
 x25519-dalek = { version = "3.0.0", features = ["static_secrets"] }
 ml-kem = "0.3.3"
 sqlx = { version = "0.9.0", features = ["macros"] }
