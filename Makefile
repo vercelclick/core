@@ -18,6 +18,7 @@ api-export-types:
 
 cloud-build:
 	@echo "==> Build Cli"
+	UI_ORIGIN = "https://cloud.secretpass.cloud" \
 	CLOUD_RP_ID = "cloud.secretpass.cloud" \
 	CLOUD_RP_ORIGIN = "https://cloud.secretpass.cloud" \
 	LOCAL_RP_ID = "local.secretpass.cloud" \
