@@ -2,7 +2,7 @@ DROP TABLE "MachineSecretValues";
 
 DROP TABLE "MachinePublicKey";
 
-DROP TABLE "PasskeySecretValues";
+DROP TABLE "ContributorSecretValues";
 
 DROP TYPE "SecretDataType";
 
@@ -10,15 +10,15 @@ DROP TABLE "SecretDefinitions";
 
 DROP TABLE "Environments";
 
-DROP TABLE "ProjectUserPasskey";
+DROP TABLE "ContributorPublicKeys";
 
 DROP TYPE "AccessGrant";
 
-DROP TABLE "ProjectUsers";
+DROP TABLE "Contributors";
 
-DROP TYPE "ProjectUserStatus";
+DROP TYPE "ContributorStatus";
 
-DROP TYPE "ProjectUserLevel";
+DROP TYPE "ContributorRole";
 
 DROP TABLE "Projects";
 

@@ -1,3 +1,4 @@
+use crate::passkeys::RP_ENTITY_ID;
 use wasm_bindgen::JsCast;
 use web_sys::js_sys::Promise;
 use web_sys::{CredentialsContainer, PublicKeyCredential};
@@ -18,7 +19,11 @@ pub fn get_credentials_container() -> anyhow::Result<CredentialsContainer> {
 
 pub async fn parse_promise(promise: Promise) -> anyhow::Result<PublicKeyCredential> {
     let result = promise.await.map_err(|err| {
-        anyhow::anyhow!("Error processing passkey authentication result: {:?}", err)
+        anyhow::anyhow!(
+            "Error processing passkey authentication result({}): {:?}",
+            RP_ENTITY_ID,
+            err
+        )
     })?;
     let credential = result
         .dyn_into::<PublicKeyCredential>()

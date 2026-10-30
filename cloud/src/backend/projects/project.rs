@@ -90,14 +90,14 @@ pub async fn list_projects(pool: &PgPool, user: &User) -> anyhow::Result<ListPro
 }
 
 // language=sql
-const GET_PROJECT_BY_USER_ID: &str = r#"
-    SELECT project.* FROM "Projects" as project INNER JOIN "Contributors" as users
-    ON users.project_id = project.id
-    WHERE project.id = $1 AND users.user_id = $2
+const GET_PROJECT_BY_CONTRIBUTOR_ID: &str = r#"
+    SELECT project.* FROM "Projects" as project INNER JOIN "Contributors" as contributor
+    ON contributor.project_id = project.id
+    WHERE project.id = $1 AND contributor.user_id = $2
 "#;
 
 // language=sql
-const GET_PROJECT_USER_BY_USER_ID: &str = r#"
+const GET_CONTRIBUTOR_BY_USER_ID: &str = r#"
     SELECT * FROM "Contributors"
     WHERE project_id = $1 AND user_id = $2
 "#;
@@ -113,7 +113,7 @@ pub async fn get_project_by_id(
     user: &User,
     project_id: Uuid,
 ) -> anyhow::Result<Option<GetProjectResult>> {
-    let project: Option<Project> = sqlx::query_as(GET_PROJECT_BY_USER_ID)
+    let project: Option<Project> = sqlx::query_as(GET_PROJECT_BY_CONTRIBUTOR_ID)
         .bind(project_id)
         .bind(user.id)
         .fetch_optional(pool)
@@ -151,7 +151,7 @@ pub async fn get_contributor_by_id(
     user: &User,
     project_id: Uuid,
 ) -> anyhow::Result<Option<Contributor>> {
-    let contributor: Option<Contributor> = sqlx::query_as(GET_PROJECT_USER_BY_USER_ID)
+    let contributor: Option<Contributor> = sqlx::query_as(GET_CONTRIBUTOR_BY_USER_ID)
         .bind(project_id)
         .bind(user.id)
         .fetch_optional(pool)

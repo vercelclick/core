@@ -7,8 +7,9 @@ use crate::backend::auth::session::{
     create_session_by_email, create_session_by_user_id, expire_session, get_session,
 };
 use crate::backend::auth::user::{retrieve_user_and_known_passkeys, retrieve_user_by_email};
-use crate::backend::projects::environments::get_environment_by_name;
+use crate::backend::projects::environments::get_environment_handler;
 use crate::backend::projects::project::{create_project, get_project_by_id, list_projects};
+use crate::backend::projects::secrets::create::create_secret;
 use secretpass_api::auth::BackendCreateUserRequest;
 use secretpass_api::environments::{
     GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues,
@@ -163,15 +164,15 @@ impl BackendProvider for CloudBackendProvider {
         user: &User,
         request: GetEnvironmentRequest,
     ) -> anyhow::Result<Option<GetEnvironmentResult>> {
-        get_environment_by_name(&self.pool, user, &request).await
+        get_environment_handler(&self.pool, user, &request).await
     }
 
     async fn create_secret(
         &self,
-        _user: &User,
-        _params: CreateSecretParams,
-        _request: CreateSecretRequest,
+        user: &User,
+        params: CreateSecretParams,
+        request: CreateSecretRequest,
     ) -> anyhow::Result<SecretWithEncryptedValues> {
-        todo!()
+        create_secret(&self.pool, user, params, request).await
     }
 }

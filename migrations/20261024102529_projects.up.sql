@@ -38,7 +38,7 @@ CREATE TABLE "Contributors"
 
 CREATE TYPE "AccessGrant" as enum ('Pending', 'Granted');
 
-CREATE TABLE "ContributorPublicKey"
+CREATE TABLE "ContributorPublicKeys"
 (
     id             UUID PRIMARY KEY DEFAULT uuidv7(),
     name           TEXT          NOT NULL,
@@ -120,7 +120,7 @@ CREATE TABLE "ContributorSecretValues"
             ON DELETE CASCADE,
     CONSTRAINT fk_contributor_value_to_public_key
         FOREIGN KEY (target)
-            REFERENCES "ContributorPublicKey" (id)
+            REFERENCES "ContributorPublicKeys" (id)
             ON DELETE CASCADE
 );
 

@@ -5,7 +5,7 @@ use sqlx::{Postgres, QueryBuilder};
 
 // language=sql
 const CREATE_CONTRIBUTOR_PUBLIC_KEY_QUERY: &str = r#"
-INSERT INTO "ContributorPublicKey" (name, user_id, cred_id, contributor_id, access, ecc, kem, granted_by, granted_on)
+INSERT INTO "ContributorPublicKeys" (name, user_id, cred_id, contributor_id, access, ecc, kem, granted_by, granted_on)
 "#;
 
 pub fn contributor_public_key_insert_query_builder(

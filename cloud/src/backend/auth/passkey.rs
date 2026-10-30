@@ -7,7 +7,7 @@ use sqlx::PgPool;
 const PASSKEY_USER_ID_PUBLIC_KEY_QUERY: &str = r#"
     SELECT
         PK.*
-    FROM "UserPasskeys" PK INNER JOIN "Users" U on U.id = PK.user_id
+    FROM "Passkeys" PK INNER JOIN "Users" U on U.id = PK.user_id
     WHERE PK.type = $1 AND cred_id = $2 AND U.email = $3
 "#;
 

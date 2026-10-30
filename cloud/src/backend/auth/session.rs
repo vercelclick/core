@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 // language=sql
 const GET_SESSION_QUERY: &str = r#"
-    UPDATE "UserSessions" SET last_seen = now() WHERE "id" = $1 AND expires_on > now() RETURNING *
+    UPDATE "Sessions" SET last_seen = now() WHERE "id" = $1 AND expires_on > now() RETURNING *
 "#;
 
 pub async fn get_session(
@@ -30,7 +30,7 @@ pub async fn get_session(
     };
 
     let user: User = sqlx::query_as(GET_USER_BY_ID_QUERY)
-        .bind(id)
+        .bind(session.user_id)
         .fetch_one(pool)
         .await?;
 
@@ -103,7 +103,8 @@ pub async fn get_passkeys_by_user_id(
 }
 
 // language=sql
-const EXPIRE_SESSION_QUERY: &str = r#"UPDATE "UserSessions" SET expires_on=now() WHERE id=$1"#;
+const EXPIRE_SESSION_QUERY: &str =
+    r#"UPDATE "Sessions" SET last_seen=now(), expires_on=now() WHERE id=$1"#;
 
 pub async fn expire_session(pool: &PgPool, session: &Session) -> anyhow::Result<()> {
     sqlx::query(EXPIRE_SESSION_QUERY)
