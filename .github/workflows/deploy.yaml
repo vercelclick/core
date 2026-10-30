@@ -2,8 +2,8 @@ name: Build and Deploy to Scaleway Serverless Containers
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - "**[0-9]+.[0-9]+.[0-9]+*"
 
 env:
   IMAGE_NAME: cloud-api
@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       # 1. Authenticate with Scaleway CLI & Export Config
       - name: Use Scaleway CLI
@@ -39,12 +39,13 @@ jobs:
 
       # 3. Build and Push Docker Image
       - name: Build and Push Docker Image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
+          file: api.Dockerfile
           push: true
           tags: |
-            ${{ vars.SCW_REGISTRY_ENDPOINT }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ vars.SCW_REGISTRY_ENDPOINT }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
             ${{ vars.SCW_REGISTRY_ENDPOINT }}/${{ env.IMAGE_NAME }}:latest
 
       # 4. Deploy or Update Container in Scaleway Serverless Containers
