@@ -6,14 +6,13 @@ use uuid::Uuid;
 pub struct PrfDeriveConfig {
     pub cred_id: String,
     pub user_id: Uuid,
-    pub passkey_id: Uuid,
 }
 
 impl PrfDeriveConfig {
     pub(crate) fn get_salts(&self) -> (Vec<String>, Vec<String>) {
         (
             vec![self.user_id.to_string()],
-            vec![self.passkey_id.to_string()],
+            vec![self.cred_id.to_string()],
         )
     }
 }

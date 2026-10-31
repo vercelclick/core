@@ -3,7 +3,6 @@ use secretpass_core::{
     SimplifiedEncryptedValue,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -17,7 +16,7 @@ pub struct GetEnvironmentRequest {
 #[ts(export)]
 pub struct SecretWithEncryptedValues {
     pub definition: SecretDefinition,
-    pub contributor_values: HashMap<String, HashMap<String, SimplifiedEncryptedValue>>,
+    pub contributor_values: Vec<SimplifiedEncryptedValue>,
 }
 
 impl SecretWithEncryptedValues {
@@ -26,8 +25,7 @@ impl SecretWithEncryptedValues {
         public_keys: &[ContributorPublicKey],
         mixed_passkey_values: &[ContributorSecretValue],
     ) -> Self {
-        let mut contributor_values: HashMap<String, HashMap<String, SimplifiedEncryptedValue>> =
-            Default::default();
+        let mut contributor_values: Vec<SimplifiedEncryptedValue> = Default::default();
 
         for value in mixed_passkey_values {
             if value.name != definition.name {
@@ -40,8 +38,7 @@ impl SecretWithEncryptedValues {
                 None => continue,
             };
 
-            let cred_values = contributor_values.entry(cred_id).or_default();
-            cred_values.insert(value.tag.clone(), value.simplify());
+            contributor_values.push(value.simplify(cred_id));
         }
 
         Self {

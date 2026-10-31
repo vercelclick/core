@@ -50,7 +50,6 @@ pub async fn create_user(
                 user_id: request.id,
                 user_email: request.email,
                 user_name: request.name,
-                passkey_id: request.passkey_id,
                 passkey_type: rp_config.passkey_type,
                 passkey_cred_id: cred_id,
                 passkey_name: request.passkey_name,

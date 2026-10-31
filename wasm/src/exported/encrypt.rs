@@ -72,21 +72,31 @@ pub async fn encrypt_secret(
 #[derive(Deserialize, Tsify)]
 pub struct DecryptSecretRequest {
     auth_request: DecryptionAuthorizationRequest,
-    encrypted_secret: String,
+    encrypted_secrets: Vec<(String, String)>,
 }
 
 #[wasm_bindgen]
 pub async fn decrypt_secret(ts_request: Ts<DecryptSecretRequest>) -> Result<String, JsError> {
     let request: DecryptSecretRequest = ts_request.to_rust()?;
 
-    let (_, session) = request
+    let (auth_response, session) = request
         .auth_request
         .authorize()
         .await
         .map_err(|err| JsError::new(&format!("Error authorizing user: {}", err)))?;
 
+    let (_, encrypted_secret) = request
+        .encrypted_secrets
+        .iter()
+        .find(|(cred_id, _)| cred_id == &auth_response.id)
+        .ok_or_else(|| {
+            JsError::new(
+                "Encrypted value not found for this passkey, please try a different passkey",
+            )
+        })?;
+
     let plain_value = session
-        .decrypt(&request.encrypted_secret)
+        .decrypt(encrypted_secret)
         .map_err(|err| JsError::new(&format!("Error decrypting secret: {}", err)))?;
 
     String::from_utf8(plain_value)

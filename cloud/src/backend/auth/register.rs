@@ -24,7 +24,6 @@ pub async fn create_user(
         .await?;
 
     let passkey: Passkey = sqlx::query_as(CREATE_PASSKEY_QUERY)
-        .bind(request.passkey_id)
         .bind(user.id)
         .bind(&request.passkey_name)
         .bind(&request.passkey_cred_id)

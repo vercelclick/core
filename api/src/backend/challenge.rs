@@ -78,15 +78,17 @@ impl PendingChallenge {
             } else {
                 OperationMode::Cloud
             };
+
+            let name = name.trim().split(" ").next().unwrap().to_string();
             let template = match kind {
                 ChallengeKind::EmailSignup => emails::EmailTemplate::Create {
-                    subject: format!("Secretpass {operation_mode} Email Confirmation"),
+                    subject: "Verify your email".to_string(),
                     name,
                     code: code.clone(),
                     operation_mode,
                 },
                 ChallengeKind::EmailSignIn => emails::EmailTemplate::Confirm {
-                    subject: format!("Secretpass {operation_mode} Sign In"),
+                    subject: "Confirm sign in".to_string(),
                     name,
                     code: code.clone(),
                     operation: "attempted to sign in with email".to_string(),
@@ -97,7 +99,7 @@ impl PendingChallenge {
                         anyhow::anyhow!("Operation required for email authorize challenge")
                     })?;
                     emails::EmailTemplate::Confirm {
-                        subject: format!("Secretpass {operation_mode} Sign In"),
+                        subject: "Authorize operation".to_string(),
                         name,
                         code: code.clone(),
                         operation,

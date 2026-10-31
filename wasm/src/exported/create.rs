@@ -13,7 +13,7 @@ pub async fn create_passkey(
     let response = request
         .attempt()
         .await
-        .map_err(|err| JsError::new(&format!("Error registering user: {:?}", err)))?;
+        .map_err(|err| JsError::new(&err.to_string()))?;
     let response = response.into_ts()?;
 
     Ok(response)

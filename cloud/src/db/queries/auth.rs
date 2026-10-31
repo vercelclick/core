@@ -1,7 +1,7 @@
 // language=sql
 pub const CREATE_PASSKEY_QUERY: &str = r#"
     INSERT INTO "Passkeys" (user_id, name, cred_id, type, ecc, kem, public_key)
-        VALUES ($2, $3, $4, $5, $6, $7, $8)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
     RETURNING *
 "#;
 

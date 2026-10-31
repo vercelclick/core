@@ -1,4 +1,7 @@
 use crate::emails::template::EmailTemplate;
+use lettre::Message;
+use lettre::message::Mailbox;
+use lettre::message::header::ContentType;
 use lettre::{AsyncSmtpTransport, AsyncTransport, Tokio1Executor};
 use secretpass_core::enums::OperationMode;
 use std::env;
@@ -17,13 +20,10 @@ static MAILER: LazyLock<AsyncSmtpTransport<Tokio1Executor>> = LazyLock::new(|| {
 });
 
 pub(crate) async fn send_email(recipient: &str, template: EmailTemplate) -> anyhow::Result<()> {
-    use lettre::Message;
-    use lettre::message::header::ContentType;
-
     let (mode, subject, content) = template.build();
 
     let message = Message::builder()
-        .from(get_sender(mode).parse()?)
+        .from(get_sender(mode)?)
         .to(recipient.parse()?)
         .subject(subject)
         .header(ContentType::TEXT_HTML)
@@ -34,9 +34,17 @@ pub(crate) async fn send_email(recipient: &str, template: EmailTemplate) -> anyh
     Ok(())
 }
 
-fn get_sender(operation_mode: OperationMode) -> &'static str {
-    match operation_mode {
-        OperationMode::Local => "no-reply@local.secretpass.cloud",
-        OperationMode::Cloud => "no-reply@cloud.secretpass.cloud",
-    }
+fn get_sender(operation_mode: OperationMode) -> anyhow::Result<Mailbox> {
+    let mbox = match operation_mode {
+        OperationMode::Local => Mailbox::new(
+            Some("Secretpass Local".to_string()),
+            "no-reply@local.secretpass.cloud".parse()?,
+        ),
+        OperationMode::Cloud => Mailbox::new(
+            Some("Secretpass Cloud".to_string()),
+            "no-reply@cloud.secretpass.cloud".parse()?,
+        ),
+    };
+
+    Ok(mbox)
 }

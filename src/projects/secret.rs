@@ -18,9 +18,11 @@ pub struct SecretDefinition {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, FromRow)]
 pub struct SimplifiedEncryptedValue {
-    data_type: SecretDataType,
-    value: String,
-    created_at: DateTime<Utc>,
+    pub tag: String,
+    pub cred_id: String,
+    pub data_type: SecretDataType,
+    pub value: String,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, FromRow)]
@@ -36,8 +38,10 @@ pub struct ContributorSecretValue {
 }
 
 impl ContributorSecretValue {
-    pub fn simplify(&self) -> SimplifiedEncryptedValue {
+    pub fn simplify(&self, cred_id: String) -> SimplifiedEncryptedValue {
         SimplifiedEncryptedValue {
+            tag: self.tag.clone(),
+            cred_id,
             data_type: self.data_type,
             value: self.encrypted_value.clone(),
             created_at: self.created_at,
