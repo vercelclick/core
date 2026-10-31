@@ -1,11 +1,10 @@
 use crate::ApiState;
 use crate::api_types::HttpError;
-use crate::emails;
 use crate::utils::error_mapper;
 use axum::http::StatusCode;
 use chrono::{DateTime, Utc};
 use rand::RngExt;
-use secretpass_core::enums::{ChallengeKind, OperationMode};
+use secretpass_core::enums::ChallengeKind;
 use secretpass_core::utils::{bin_encode, fill_random_bytes, get_global_rng, sha256_digest};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
@@ -51,6 +50,7 @@ impl PendingChallenge {
         Ok((value, pc))
     }
 
+    #[allow(unused)]
     pub(crate) async fn send_email_code(
         kind: ChallengeKind,
         owner: String,
@@ -69,13 +69,15 @@ impl PendingChallenge {
             code
         };
 
-        let operation_mode = if is_proxied {
-            OperationMode::Local
-        } else {
-            OperationMode::Cloud
-        };
-
-        if cfg!(feature = "email") {
+        #[cfg(feature = "email")]
+        {
+            use crate::emails;
+            use secretpass_core::enums::OperationMode;
+            let operation_mode = if is_proxied {
+                OperationMode::Local
+            } else {
+                OperationMode::Cloud
+            };
             let template = match kind {
                 ChallengeKind::EmailSignup => emails::EmailTemplate::Create {
                     subject: format!("Secretpass {operation_mode} Email Confirmation"),
@@ -110,8 +112,6 @@ impl PendingChallenge {
             };
 
             emails::send_email(&owner.clone(), template).await?;
-        } else {
-            return Err(anyhow::anyhow!("Sending email code not supported"));
         }
 
         let value_hash = sha256_digest(&[code]);

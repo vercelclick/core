@@ -4,7 +4,6 @@ use secretpass_core::enums::OperationMode;
 use std::env;
 use std::sync::LazyLock;
 
-#[cfg(feature = "email")]
 static MAILER: LazyLock<AsyncSmtpTransport<Tokio1Executor>> = LazyLock::new(|| {
     let creds = lettre::transport::smtp::authentication::Credentials::new(
         env::var("SMTP_USERNAME").unwrap(),
@@ -17,7 +16,6 @@ static MAILER: LazyLock<AsyncSmtpTransport<Tokio1Executor>> = LazyLock::new(|| {
         .build()
 });
 
-#[cfg(feature = "email")]
 pub(crate) async fn send_email(recipient: &str, template: EmailTemplate) -> anyhow::Result<()> {
     use lettre::Message;
     use lettre::message::header::ContentType;
