@@ -44,7 +44,7 @@ pub fn build_daemon() -> Daemon {
     Daemon::new(config)
 }
 
-pub fn start_service_command(silent: bool) {
+pub fn start_service_command(foreground: bool, silent: bool) {
     let daemon = build_daemon();
 
     if let Some(pid) = daemon.running_pid() {
@@ -61,7 +61,7 @@ pub fn start_service_command(silent: bool) {
     eprintln!("You can manage secrets through https:://local.secretpass.cloud");
 
     daemon
-        .start(cfg!(debug_assertions), || {
+        .start(foreground, || {
             // We're now in a background process
             let rt = Runtime::new().expect("Failed to create Tokio runtime");
 
