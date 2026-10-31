@@ -136,6 +136,7 @@ pub async fn login_user_with_passkey(
     Ok(Json(result))
 }
 
+#[axum::debug_handler]
 pub async fn start_login(
     State(state): State<ApiState>,
     Extension(proxy): Extension<CloudProxy>,
@@ -166,6 +167,8 @@ pub async fn start_login(
         PendingChallenge::send_email_code(
             ChallengeKind::EmailSignIn,
             user.email,
+            user.name,
+            None,
             proxy.is_proxied(),
         )
         .await

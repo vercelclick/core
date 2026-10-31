@@ -7,6 +7,9 @@ authors.workspace = true
 description.workspace = true
 homepage.workspace = true
 
+[features]
+email = []
+
 [dependencies]
 anyhow = "1.0.104"
 async-trait = "0.1.92"
@@ -17,6 +20,7 @@ secretpass-core = { path = ".." }
 serde = { version = "1.0.229", features = ["derive"] }
 rand = { version = "0.10.3" }
 reqwest = { version = "0.13.5", features = ["json", "cookies"] }
+lettre = { version = "0.11.23", default-features = false, features = ["smtp-transport", "builder", "tokio1", "rustls", "rustls-tls", "tokio1-rustls-tls"] }
 sqlx = { version = "0.9.0", features = ["chrono", "uuid", "macros"] }
 tower-http = { version = "0.7.1", features = ["cors", "trace"] }
 tower-cookies = { version = "0.11.0" }

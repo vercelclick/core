@@ -14,6 +14,10 @@ use ts_rs::TS;
 pub struct GenerateChallengeRequest {
     pub kind: ChallengeKind,
     pub owner: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub operation: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
@@ -22,6 +26,7 @@ pub struct GenerateChallengeResponse {
     pub challenge: String,
 }
 
+#[axum::debug_handler]
 pub async fn generate_challenge_handler(
     State(state): State<ApiState>,
     Extension(proxy): Extension<CloudProxy>,
@@ -32,27 +37,50 @@ pub async fn generate_challenge_handler(
         return Ok(Json(response));
     }
 
-    if request.kind.is_new_user_only() {
-        let user = state
-            .backend
-            .get_user_email(request.owner.clone())
-            .await
-            .map_err(error_mapper(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Error checking user exists",
-            ))?;
-        if user.is_some() {
-            return Err((
-                StatusCode::FORBIDDEN,
-                "You already have an account under this email address, login in instead."
-                    .to_string(),
-            ));
-        }
+    let user = state
+        .backend
+        .get_user_email(request.owner.clone())
+        .await
+        .map_err(error_mapper(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Error checking user exists",
+        ))?;
+
+    if request.kind.is_new_user_only() && user.is_some() {
+        return Err((
+            StatusCode::FORBIDDEN,
+            "You already have an account under this email address, login in instead.".to_string(),
+        ));
+    } else if !request.kind.is_new_user_only() && user.is_none() {
+        return Err((StatusCode::BAD_REQUEST, "User not found".to_string()));
     }
 
     let (challenge, pending_challenge) = match request.kind {
-        ChallengeKind::EmailSignup | ChallengeKind::EmailSignIn => {
-            PendingChallenge::send_email_code(request.kind, request.owner, proxy.is_proxied()).await
+        ChallengeKind::EmailSignIn => {
+            PendingChallenge::send_email_code(
+                request.kind,
+                request.owner,
+                user.unwrap().name,
+                None,
+                proxy.is_proxied(),
+            )
+            .await
+        }
+        ChallengeKind::EmailSignup => {
+            let name = request.name.clone().ok_or_else(|| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    "Name missing for email signup challenge".to_string(),
+                )
+            })?;
+            PendingChallenge::send_email_code(
+                request.kind,
+                request.owner,
+                name,
+                request.operation.clone(),
+                proxy.is_proxied(),
+            )
+            .await
         }
         _ => PendingChallenge::generate_webauthn(request.kind, request.owner).await,
     }

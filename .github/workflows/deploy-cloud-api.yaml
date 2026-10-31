@@ -49,4 +49,3 @@ jobs:
         run: |
           scw container container update ${{ secrets.SCW_CONTAINER_ID }} region=${{ vars.SCW_REGION }} \
             image=${{ vars.SCW_REGISTRY_ENDPOINT }}/${{ vars.IMAGE_NAME }}:${{ github.ref_name }}
-          scw container container redeploy ${{ secrets.SCW_CONTAINER_ID }} region=${{ vars.SCW_REGION }}

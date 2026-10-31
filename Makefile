@@ -27,9 +27,7 @@ cloud-build:
 
 cloud-run-dev:
 	echo "==> Running local cloud server"
-	DATABASE_URL=postgres://api:L0calApiPass@localhost:5432/secretpass \
-	UI_ORIGIN=http://secretpass-cloud.localhost:3002 \
-	RUST_BACKTRACE=1 cargo run -p secretpass-cloud
+	export $$(cat .env | xargs) && cargo run -p secretpass-cloud
 
 local-run-dev:
 	@echo "==> Run api dev"

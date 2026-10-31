@@ -31,6 +31,7 @@ pub struct CreatePasskeyResponse {
     passkey: Passkey,
 }
 
+#[axum::debug_handler]
 pub async fn create_passkey_start_handler(
     State(state): State<ApiState>,
     Extension(proxy): Extension<CloudProxy>,
@@ -61,6 +62,8 @@ pub async fn create_passkey_start_handler(
     let (_, email_challenge) = PendingChallenge::send_email_code(
         ChallengeKind::EmailAuthorize,
         user.email.clone(),
+        user.name.clone(),
+        Some("attempted to create a new passkey".to_string()),
         proxy.is_proxied(),
     )
     .await
