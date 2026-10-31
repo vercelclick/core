@@ -9,7 +9,7 @@ use crate::routes::auth::auth_router;
 use crate::routes::auth::middleware::AuthLayer;
 use crate::routes::projects::project_routes;
 use crate::routes::user::user_routes;
-use crate::routes::utils::{health_endpoint, ping_endpoint};
+use crate::routes::utils::{add_version_header, health_endpoint, ping_endpoint};
 use crate::utils::CloudProxyLayer;
 use axum::http::header;
 use axum::http::{HeaderValue, Method};
@@ -81,6 +81,7 @@ pub fn create_backend_app(state: ApiStateInner) -> Router {
         .layer(CookieManagerLayer::new())
         .layer(cors)
         .layer(trace_layer)
+        .layer(axum::middleware::from_fn(add_version_header))
         .with_state(state)
 }
 
