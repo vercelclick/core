@@ -5,6 +5,7 @@ FROM base AS builder
 
 COPY . .
 
+ENV UI_ORIGIN "https://cloud.secretpass.cloud"
 ENV CLOUD_RP_ID "cloud.secretpass.cloud"
 ENV CLOUD_RP_ORIGIN "https://cloud.secretpass.cloud"
 ENV LOCAL_RP_ID "local.secretpass.cloud"
