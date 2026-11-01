@@ -91,7 +91,7 @@ pub async fn get_environment_handler(
     .await?;
 
     let machines_keys: Vec<MachinePublicKey> = sqlx::query_as(
-        r#"SELECT * FROM "MachinePublicKey" WHERE project_id = $1 AND $2 = ANY(environments)"#,
+        r#"SELECT * FROM "MachinePublicKeys" WHERE project_id = $1 AND $2 = ANY(environments)"#,
     )
     .bind(contributor.project_id)
     .bind(&request.env_name)

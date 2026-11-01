@@ -14,16 +14,8 @@ RUN_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 
 api-export-types:
 	@echo "==> Exporting shared types"
+	rm -rf ../web-app/src/api-types
 	cargo test export_bindings -p secretpass-api
-
-cloud-build:
-	@echo "==> Build Cloud Prod"
-	UI_ORIGIN="https://cloud.secretpass.cloud" \
-	CLOUD_RP_ID="cloud.secretpass.cloud" \
-	CLOUD_RP_ORIGIN="https://cloud.secretpass.cloud" \
-	LOCAL_RP_ID="local.secretpass.cloud" \
-	LOCAL_RP_ORIGIN="https://local.secretpass.cloud" \
-	cargo build -p secretpass-cloud --release
 
 cloud-run-dev:
 	echo "==> Running local cloud server"
@@ -47,7 +39,7 @@ migration-up:
 	sqlx migrate run
 
 migration-down:
-	@echo "==> Run migration up"
+	@echo "==> Run migration down"
 	sqlx migrate revert
 
 

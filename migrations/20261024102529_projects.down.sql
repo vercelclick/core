@@ -1,6 +1,6 @@
 DROP TABLE "MachineSecretValues";
 
-DROP TABLE "MachinePublicKey";
+DROP TABLE "MachinePublicKeys";
 
 DROP TABLE "ContributorSecretValues";
 

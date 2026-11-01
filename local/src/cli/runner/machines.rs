@@ -105,8 +105,8 @@ pub fn get_values_from_cloud_project(
         .machine_key_id();
 
     let url = format!(
-        "{endpoint}/project/{}/env/{env}/tag/{tag}/machine-values/{ecc_id}/{kem_id}/{hybrid_id}",
-        project_id.to_string()
+        "{endpoint}/api/projects/{}/env/{env}/tag/{tag}/secrets/machine/{ecc_id}/{kem_id}/{hybrid_id}",
+        project_id
     );
 
     let response = reqwest::blocking::get(url)

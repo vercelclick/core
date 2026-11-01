@@ -1,7 +1,7 @@
+use axum::Router;
 use axum::extract::{Query, State};
 use axum::response::Redirect;
 use axum::routing::get;
-use axum::Router;
 use secretpass_api::constants::{CLOUD_RP_CONFIG, LOCAL_RP_CONFIG};
 use secretpass_core::enums::{EncryptionAlgorithm, OperationMode};
 use secretpass_core::{PrivateKey, PrivateKeySeed, SimpleMachinePublicKey};
@@ -52,11 +52,11 @@ async fn get_values_from_web_async(
                     let _ = state.tx.send(encrypted_secrets).await;
                     let redirect_url = if let Some(command) = redirect_command {
                         format!(
-                            "{endpoint}/run/success?command={}",
+                            "{endpoint}/?run=success&command={}",
                             urlencoding::encode(&command)
                         )
                     } else {
-                        format!("{endpoint}/export/success")
+                        format!("{endpoint}/?export=success")
                     };
                     Redirect::temporary(&redirect_url)
                 },
@@ -79,13 +79,13 @@ async fn get_values_from_web_async(
         serde_json::to_string(&simple_key).expect("Error encoding temporary public key, please raise a support ticket through support@secretpass.cloud");
     let url = if let Some(command) = command {
         format!(
-            "{endpoint}/run/{port}?command={}&public_key={}",
+            "{endpoint}/?run={port}&command={}&public_key={}",
             urlencoding::encode(&command),
             urlencoding::encode(&simple_key)
         )
     } else {
         format!(
-            "{endpoint}/export/{port}?public_key={}",
+            "{endpoint}/?export={port}&public_key={}",
             urlencoding::encode(&simple_key)
         )
     };

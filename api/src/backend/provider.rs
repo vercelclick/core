@@ -3,9 +3,10 @@ use crate::backend::auth::SessionPackage;
 use crate::backend::challenge::PendingChallenge;
 use crate::environments::{GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues};
 use crate::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
-use crate::secrets::{CreateSecretParams, CreateSecretRequest};
+use crate::secrets::{CreateSecretParams, CreateSecretRequest, GetMachineSecretParams};
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
 use secretpass_core::{Passkey, Project, Session, User};
+use std::collections::HashMap;
 use uuid::Uuid;
 
 #[async_trait::async_trait]
@@ -103,4 +104,9 @@ pub trait BackendProvider: Send + Sync + 'static {
         params: CreateSecretParams,
         request: CreateSecretRequest,
     ) -> anyhow::Result<SecretWithEncryptedValues>;
+
+    async fn get_machine_secrets(
+        &self,
+        params: GetMachineSecretParams,
+    ) -> anyhow::Result<HashMap<String, String>>;
 }

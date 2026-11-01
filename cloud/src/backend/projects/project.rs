@@ -121,7 +121,7 @@ const GET_CONTRIBUTORS_QUERY: &str = r#"
 
 // language=sql
 const GET_MACHINES_QUERY: &str = r#"
-    SELECT * FROM "MachinePublicKey" WHERE project_id = $1
+    SELECT * FROM "MachinePublicKeys" WHERE project_id = $1
 "#;
 
 pub async fn get_project_by_id(

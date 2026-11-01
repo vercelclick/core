@@ -124,9 +124,9 @@ CREATE TABLE "ContributorSecretValues"
             ON DELETE CASCADE
 );
 
-CREATE TABLE "MachinePublicKey"
+CREATE TABLE "MachinePublicKeys"
 (
-    id           BYTEA PRIMARY KEY,
+    id           TEXT PRIMARY KEY,
     name         TEXT   NOT NULL,
     description  TEXT   NOT NULL,
     project_id   UUID   NOT NULL,
@@ -145,10 +145,10 @@ CREATE TABLE "MachinePublicKey"
 
 CREATE TABLE "MachineSecretValues"
 (
-    name            TEXT  NOT NULL,
-    env_name        TEXT  NOT NULL,
-    target          BYTEA NOT NULL,
-    project_id      UUID  NOT NULL,
+    name            TEXT NOT NULL,
+    env_name        TEXT NOT NULL,
+    target          TEXT NOT NULL,
+    project_id      UUID NOT NULL,
     tag             TEXT,
     data_type       "SecretDataType",
     encrypted_value TEXT,
@@ -161,7 +161,7 @@ CREATE TABLE "MachineSecretValues"
             ON DELETE CASCADE,
     CONSTRAINT fk_machine_values_to_public_key
         FOREIGN KEY (target)
-            REFERENCES "MachinePublicKey" (id)
+            REFERENCES "MachinePublicKeys" (id)
             ON DELETE CASCADE
 );
 

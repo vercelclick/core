@@ -20,3 +20,14 @@ pub struct CreateSecretRequest {
     pub contributors_values: Vec<ContributorUpdateValue>,
     pub machines_values: Vec<MachineUpdateValue>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct GetMachineSecretParams {
+    pub env_name: String,
+    pub project_id: Uuid,
+    pub tag: String,
+    pub key_a: String,
+    pub key_b: String,
+    pub key_c: String,
+}

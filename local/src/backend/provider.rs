@@ -8,10 +8,11 @@ use secretpass_api::environments::{
     GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues,
 };
 use secretpass_api::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
-use secretpass_api::secrets::{CreateSecretParams, CreateSecretRequest};
+use secretpass_api::secrets::{CreateSecretParams, CreateSecretRequest, GetMachineSecretParams};
 use secretpass_api::{BackendProvider, PendingChallenge, SessionPackage};
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
 use secretpass_core::{Passkey, Project, Session, User};
+use std::collections::HashMap;
 use uuid::Uuid;
 
 #[derive(Default)]
@@ -164,5 +165,14 @@ impl BackendProvider for LocalBackendProvider {
         request: CreateSecretRequest,
     ) -> anyhow::Result<SecretWithEncryptedValues> {
         create_secret(user, params, request).await
+    }
+
+    async fn get_machine_secrets(
+        &self,
+        _params: GetMachineSecretParams,
+    ) -> anyhow::Result<HashMap<String, String>> {
+        Err(anyhow::anyhow!(
+            "Secrets API not supported on local server. Use `spass local run/export`"
+        ))
     }
 }

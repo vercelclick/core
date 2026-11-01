@@ -6,6 +6,7 @@ use sqlx::FromRow;
 use std::collections::HashMap;
 use ts_rs::TS;
 use tsify::Tsify;
+use uuid::Uuid;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS)]
@@ -22,7 +23,7 @@ pub struct MachinePublicKey {
     pub id: String,
     pub name: String,
     pub description: String,
-    pub project_id: Vec<String>,
+    pub project_id: Uuid,
     pub environments: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub kem: Option<String>,

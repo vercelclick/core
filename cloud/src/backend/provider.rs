@@ -10,16 +10,18 @@ use crate::backend::auth::user::{retrieve_user_and_known_passkeys, retrieve_user
 use crate::backend::projects::environments::get_environment_handler;
 use crate::backend::projects::project::{create_project, get_project_by_id, list_projects};
 use crate::backend::projects::secrets::create::create_secret;
+use crate::backend::projects::secrets::read::get_machine_secrets;
 use secretpass_api::auth::BackendCreateUserRequest;
 use secretpass_api::environments::{
     GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues,
 };
 use secretpass_api::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
-use secretpass_api::secrets::{CreateSecretParams, CreateSecretRequest};
+use secretpass_api::secrets::{CreateSecretParams, CreateSecretRequest, GetMachineSecretParams};
 use secretpass_api::{BackendProvider, PendingChallenge, SessionPackage};
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
 use secretpass_core::{Passkey, Project, Session, User};
 use sqlx::PgPool;
+use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -174,5 +176,12 @@ impl BackendProvider for CloudBackendProvider {
         request: CreateSecretRequest,
     ) -> anyhow::Result<SecretWithEncryptedValues> {
         create_secret(&self.pool, user, params, request).await
+    }
+
+    async fn get_machine_secrets(
+        &self,
+        params: GetMachineSecretParams,
+    ) -> anyhow::Result<HashMap<String, String>> {
+        get_machine_secrets(&self.pool, params).await
     }
 }

@@ -7,7 +7,7 @@ pub mod utils;
 use crate::ApiStateInner;
 use crate::routes::auth::auth_router;
 use crate::routes::auth::middleware::AuthLayer;
-use crate::routes::projects::project_routes;
+use crate::routes::projects::{project_routes, public_project_routes};
 use crate::routes::user::user_routes;
 use crate::routes::utils::{add_version_header, health_endpoint, ping_endpoint};
 use crate::utils::CloudProxyLayer;
@@ -74,6 +74,7 @@ pub fn create_backend_app(state: ApiStateInner) -> Router {
         .nest("/api/projects", project_routes())
         .nest("/api/users", user_routes())
         .layer(auth_layer.clone())
+        .nest("/api/projects", public_project_routes())
         .nest("/api/auth", auth_router(auth_layer.clone()))
         .route("/health", get(health_endpoint))
         .route("/ping", post(ping_endpoint))
