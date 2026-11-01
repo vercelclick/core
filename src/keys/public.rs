@@ -117,20 +117,20 @@ fn generate_nonce_bytes() -> anyhow::Result<[u8; 12]> {
 }
 
 pub trait PublicKeyEncrypt {
-    fn encrypt(&self, payload: Vec<u8>) -> anyhow::Result<String>;
+    fn encrypt(&self, payload: String) -> anyhow::Result<String>;
     fn encrypt_package(
         &self,
-        decrypted_package: HashMap<String, Vec<u8>>,
+        decrypted_package: HashMap<String, String>,
     ) -> anyhow::Result<HashMap<String, String>>;
 }
 
 impl PublicKeyEncrypt for PublicKey {
-    fn encrypt(&self, payload: Vec<u8>) -> anyhow::Result<String> {
+    fn encrypt(&self, payload: String) -> anyhow::Result<String> {
         let nonce_bytes = generate_nonce_bytes()?;
 
         let (ecc_public_key, ecc_shared_secret) = self.get_ecc_aes_keys();
         let (kem_ciphertext, kem_shared_secret) = self.get_kem_aes_keys();
-        let mut payload = payload.clone();
+        let mut payload = payload.clone().into_bytes();
 
         // Order of events - ECC encrypts first decrypts last, KEM encrypts last decrypts first
         for shared_secret in [ecc_shared_secret, kem_shared_secret].into_iter().flatten() {
@@ -145,7 +145,7 @@ impl PublicKeyEncrypt for PublicKey {
 
     fn encrypt_package(
         &self,
-        decrypted_package: HashMap<String, Vec<u8>>,
+        decrypted_package: HashMap<String, String>,
     ) -> anyhow::Result<HashMap<String, String>> {
         let mut encrypted_package = HashMap::new();
         for (name, value) in decrypted_package {

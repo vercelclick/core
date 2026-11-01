@@ -1,6 +1,5 @@
 use secretpass_core::{
     ContributorPublicKey, ContributorSecretValue, Environment, MachinePublicKey, SecretDefinition,
-    SimplifiedEncryptedValue,
 };
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -16,7 +15,7 @@ pub struct GetEnvironmentRequest {
 #[ts(export)]
 pub struct SecretWithEncryptedValues {
     pub definition: SecretDefinition,
-    pub contributor_values: Vec<SimplifiedEncryptedValue>,
+    pub contributor_values: Vec<(ContributorPublicKey, ContributorSecretValue)>,
 }
 
 impl SecretWithEncryptedValues {
@@ -25,7 +24,8 @@ impl SecretWithEncryptedValues {
         public_keys: &[ContributorPublicKey],
         mixed_passkey_values: &[ContributorSecretValue],
     ) -> Self {
-        let mut contributor_values: Vec<SimplifiedEncryptedValue> = Default::default();
+        let mut contributor_values: Vec<(ContributorPublicKey, ContributorSecretValue)> =
+            Default::default();
 
         for value in mixed_passkey_values {
             if value.name != definition.name {
@@ -33,12 +33,12 @@ impl SecretWithEncryptedValues {
             }
 
             // TODO! Let's make this a more efficient map
-            let cred_id = match public_keys.iter().find(|key| key.id == value.target) {
-                Some(pk) => pk.cred_id.clone(),
+            let public_key = match public_keys.iter().find(|key| key.id == value.target) {
+                Some(pk) => pk.clone(),
                 None => continue,
             };
 
-            contributor_values.push(value.simplify(cred_id));
+            contributor_values.push((public_key, value.clone()));
         }
 
         Self {

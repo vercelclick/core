@@ -26,22 +26,21 @@ fn create_same_seed_key() -> anyhow::Result<PrivateKey> {
 fn test_ecc_encryption_decryption() {
     let private_key = create_same_seed_key().unwrap();
 
-    let original_payload = b"Basic Elliptic-curve cryptography test";
+    let original_payload = "Basic Elliptic-curve cryptography test".to_string();
 
     let encrypted_payload = private_key
         .public_key(EncryptionAlgorithm::ECC)
-        .encrypt(original_payload.to_vec())
+        .encrypt(original_payload.clone())
         .unwrap();
     assert_ne!(
-        original_payload,
-        encrypted_payload.as_bytes(),
+        original_payload, encrypted_payload,
         "encrypted payload cannot be equal to the clear payload"
     );
     assert_ne!(
         encrypted_payload,
         private_key
             .public_key(EncryptionAlgorithm::ECC)
-            .encrypt(original_payload.to_vec())
+            .encrypt(original_payload.clone())
             .unwrap(),
         "encrypted payload should change with every encryption run"
     );
@@ -57,22 +56,21 @@ fn test_ecc_encryption_decryption() {
 fn test_kem_encryption_decryption() {
     let private_key = create_same_seed_key().unwrap();
 
-    let original_payload = b"Basic Key-Encapsulation Mechanism cryptography test";
+    let original_payload = "Basic Key-Encapsulation Mechanism cryptography test".to_string();
 
     let encrypted_payload = private_key
         .public_key(EncryptionAlgorithm::KEM)
-        .encrypt(original_payload.to_vec())
+        .encrypt(original_payload.clone())
         .unwrap();
     assert_ne!(
-        original_payload,
-        encrypted_payload.as_bytes(),
+        original_payload, encrypted_payload,
         "encrypted payload cannot be equal to the clear payload"
     );
     assert_ne!(
         encrypted_payload,
         private_key
             .public_key(EncryptionAlgorithm::KEM)
-            .encrypt(original_payload.to_vec())
+            .encrypt(original_payload.clone())
             .unwrap(),
         "encrypted payload should change with every encryption run"
     );
@@ -88,22 +86,21 @@ fn test_kem_encryption_decryption() {
 fn test_hybrid_encryption_decryption() {
     let private_key = create_same_seed_key().unwrap();
 
-    let original_payload = b"Basic Key-Encapsulation Mechanism cryptography test";
+    let original_payload = "Basic Key-Encapsulation Mechanism cryptography test".to_string();
 
     let encrypted_payload = private_key
         .public_key(EncryptionAlgorithm::Hybrid)
-        .encrypt(original_payload.to_vec())
+        .encrypt(original_payload.clone())
         .unwrap();
     assert_ne!(
-        original_payload,
-        encrypted_payload.as_bytes(),
+        original_payload, encrypted_payload,
         "encrypted payload cannot be equal to the clear payload"
     );
     assert_ne!(
         encrypted_payload,
         private_key
             .public_key(EncryptionAlgorithm::Hybrid)
-            .encrypt(original_payload.to_vec())
+            .encrypt(original_payload.clone())
             .unwrap(),
         "encrypted payload should change with every encryption run"
     );

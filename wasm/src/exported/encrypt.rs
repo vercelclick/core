@@ -1,9 +1,11 @@
 use crate::auth::{AuthorizationRequest, DecryptionAuthorizationRequest};
+use secretpass_core::enums::SecretDataType;
 use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
-use secretpass_core::web::{EncryptedContributorValue, EncryptedMachineValue};
-use secretpass_core::{ContributorPublicKey, MachinePublicKey, PublicKeyEncrypt};
+use secretpass_core::{
+    ContributorPublicKey, ContributorSecretValue, ContributorUpdateValue, MachineUpdateValue,
+    PublicKeyEncrypt, SimpleContributorPublicKey, SimpleMachinePublicKey,
+};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use ts_rs::TS;
 use tsify::{Ts, Tsify};
 use wasm_bindgen::JsError;
@@ -12,16 +14,19 @@ use wasm_bindgen::prelude::wasm_bindgen;
 #[derive(Deserialize, Tsify)]
 pub struct EncryptSecretRequest {
     pub auth_request: AuthorizationRequest,
-    pub machines_keys: Vec<MachinePublicKey>,
-    pub contributors_keys: Vec<ContributorPublicKey>,
+    pub machines_keys: Vec<SimpleMachinePublicKey>,
+    pub contributors_keys: Vec<SimpleContributorPublicKey>,
+    pub name: String,
+    pub env_name: String,
+    pub tag_name: String,
     pub secret_value: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Tsify, TS)]
 pub struct EncryptSecretResult {
     pub auth_response: PasskeyAuthorizationResult,
-    pub machines_values: Vec<EncryptedMachineValue>,
-    pub contributors_values: Vec<EncryptedContributorValue>,
+    pub machines_values: Vec<MachineUpdateValue>,
+    pub contributors_values: Vec<ContributorUpdateValue>,
 }
 
 #[wasm_bindgen]
@@ -36,26 +41,34 @@ pub async fn encrypt_secret(
         .await
         .map_err(|err| JsError::new(&format!("Error authorizing user: {}", err)))?;
 
-    let mut contributors_values: Vec<EncryptedContributorValue> = Vec::new();
+    let mut contributors_values: Vec<ContributorUpdateValue> = Vec::new();
     for pk in request.contributors_keys {
         let encrypted_value = pk
-            .encrypt(request.secret_value.clone().into_bytes())
+            .encrypt(request.secret_value.clone())
             .map_err(|err| JsError::new(&format!("Error encrypting secret: {}", err)))?;
-        contributors_values.push(EncryptedContributorValue {
+        contributors_values.push(ContributorUpdateValue {
             target: pk.id,
             encrypted_value,
+            data_type: SecretDataType::Text,
+            name: request.name.clone(),
+            environment: request.env_name.clone(),
+            tag: request.tag_name.clone(),
         });
     }
 
-    let mut machines_values: Vec<EncryptedMachineValue> = Vec::new();
+    let mut machines_values: Vec<MachineUpdateValue> = Vec::new();
     for pk in request.machines_keys {
         let encrypted_value = pk
-            .encrypt(request.secret_value.clone().into_bytes())
+            .encrypt(request.secret_value.clone())
             .map_err(|err| JsError::new(&format!("Error encrypting secret: {}", err)))?;
 
-        machines_values.push(EncryptedMachineValue {
+        machines_values.push(MachineUpdateValue {
             target: pk.id,
             encrypted_value,
+            data_type: SecretDataType::Text,
+            name: request.name.clone(),
+            environment: request.env_name.clone(),
+            tag: request.tag_name.clone(),
         });
     }
 
@@ -72,11 +85,26 @@ pub async fn encrypt_secret(
 #[derive(Deserialize, Tsify)]
 pub struct DecryptSecretRequest {
     auth_request: DecryptionAuthorizationRequest,
-    encrypted_secrets: Vec<(String, String)>,
+    encrypted_secrets: Vec<(ContributorPublicKey, ContributorSecretValue)>,
+}
+
+#[derive(Deserialize, Serialize, Tsify)]
+pub struct DecryptedSecret {
+    env_name: String,
+    name: String,
+    tag: String,
+    plain_value: String,
+}
+
+#[derive(Deserialize, Serialize, Tsify)]
+pub struct DecryptSecretResult {
+    decrypted_secrets: Vec<DecryptedSecret>,
 }
 
 #[wasm_bindgen]
-pub async fn decrypt_secret(ts_request: Ts<DecryptSecretRequest>) -> Result<String, JsError> {
+pub async fn decrypt_secrets(
+    ts_request: Ts<DecryptSecretRequest>,
+) -> Result<Ts<DecryptSecretResult>, JsError> {
     let request: DecryptSecretRequest = ts_request.to_rust()?;
 
     let (auth_response, session) = request
@@ -85,41 +113,43 @@ pub async fn decrypt_secret(ts_request: Ts<DecryptSecretRequest>) -> Result<Stri
         .await
         .map_err(|err| JsError::new(&format!("Error authorizing user: {}", err)))?;
 
-    let (_, encrypted_secret) = request
+    let cred_secrets = request
         .encrypted_secrets
         .iter()
-        .find(|(cred_id, _)| cred_id == &auth_response.id)
-        .ok_or_else(|| {
-            JsError::new(
-                "Encrypted value not found for this passkey, please try a different passkey",
-            )
-        })?;
+        .filter(|(key, _)| &key.cred_id == &auth_response.id);
 
-    let plain_value = session
-        .decrypt(encrypted_secret)
-        .map_err(|err| JsError::new(&format!("Error decrypting secret: {}", err)))?;
+    let mut decrypted_secrets: Vec<DecryptedSecret> = Vec::new();
 
-    String::from_utf8(plain_value)
-        .map_err(|err| JsError::new(&format!("Error decoding decrypted secret: {}", err)))
-}
+    for (_, value) in cred_secrets {
+        let plain_value = session
+            .decrypt(&value.encrypted_value)
+            .map_err(|err| JsError::new(&format!("Error decrypting secret: {}", err)))?;
+        decrypted_secrets.push(DecryptedSecret {
+            tag: value.tag.clone(),
+            plain_value,
+            name: value.name.clone(),
+            env_name: value.env_name.clone(),
+        });
+    }
 
-#[derive(Deserialize, Tsify)]
-enum TargetKey {
-    Contributor(ContributorPublicKey),
-    Machine(MachinePublicKey),
+    let result = DecryptSecretResult { decrypted_secrets };
+
+    Ok(result.into_ts()?)
 }
 
 #[derive(Deserialize, Tsify)]
 pub struct ReEncryptPackageRequest {
     auth_request: DecryptionAuthorizationRequest,
-    target_key: TargetKey,
-    secrets_package: HashMap<String, HashMap<String, HashMap<String, String>>>,
+    machine_keys: Vec<SimpleMachinePublicKey>,
+    contributor_keys: Vec<SimpleContributorPublicKey>,
+    encrypted_secrets: Vec<(ContributorPublicKey, ContributorSecretValue)>,
 }
 
 #[derive(Serialize, Tsify)]
 pub struct ReEncryptPackageResult {
     auth_response: PasskeyAuthorizationResult,
-    secrets_package: HashMap<String, HashMap<String, HashMap<String, String>>>,
+    machines_values: Vec<MachineUpdateValue>,
+    contributors_values: Vec<ContributorUpdateValue>,
 }
 
 #[wasm_bindgen]
@@ -134,81 +164,61 @@ pub async fn reencrypt_package(
         .await
         .map_err(|err| JsError::new(&format!("Error authorizing user: {}", err)))?;
 
-    let mut output: HashMap<String, HashMap<String, HashMap<String, String>>> = Default::default();
-    for (workspace, workspace_package) in &request.secrets_package {
-        let mut workspace_output: HashMap<String, HashMap<String, String>> = HashMap::new();
+    let mut machines_values: Vec<MachineUpdateValue> = Default::default();
+    let mut contributors_values: Vec<ContributorUpdateValue> = Default::default();
 
-        for (env, encrypted_package) in workspace_package {
-            let decrypted_package = session.decrypt_package(encrypted_package).map_err(|err| {
-                JsError::new(&format!("Error decrypting secrets from {}: {}", env, err))
-            })?;
+    let cred_secrets = request
+        .encrypted_secrets
+        .iter()
+        .filter(|(key, _)| key.cred_id == auth_response.id);
 
-            let encrypted_package = match &request.target_key {
-                TargetKey::Machine(machine_key) => machine_key.encrypt_package(decrypted_package),
-                TargetKey::Contributor(contributor_key) => {
-                    contributor_key.encrypt_package(decrypted_package)
-                }
-            }
-            .map_err(|err| {
-                JsError::new(&format!("Error encrypting secrets for {}: {}", env, err))
+    for (_, value) in cred_secrets {
+        let plain_value = session.decrypt(&value.encrypted_value).map_err(|err| {
+            JsError::new(&format!(
+                "Error decrypting {}/{}/{}: {}",
+                value.env_name, value.name, value.tag, err
+            ))
+        })?;
+        for machine_key in request.machine_keys.iter() {
+            let encrypted_value = machine_key.encrypt(plain_value.clone()).map_err(|err| {
+                JsError::new(&format!(
+                    "Error encrypting {}/{}/{}: {}",
+                    value.env_name, value.name, value.tag, err
+                ))
             })?;
-            workspace_output.insert(env.clone(), encrypted_package);
+            machines_values.push(MachineUpdateValue {
+                tag: value.tag.clone(),
+                name: value.name.clone(),
+                environment: value.env_name.clone(),
+                encrypted_value,
+                data_type: SecretDataType::Text,
+                target: machine_key.id.clone(),
+            })
         }
-        output.insert(workspace.clone(), workspace_output);
+        for contributor_key in request.contributor_keys.iter() {
+            let encrypted_value = contributor_key
+                .encrypt(plain_value.clone())
+                .map_err(|err| {
+                    JsError::new(&format!(
+                        "Error encrypting {}/{}/{}: {}",
+                        value.env_name, value.name, value.tag, err
+                    ))
+                })?;
+            contributors_values.push(ContributorUpdateValue {
+                tag: value.tag.clone(),
+                name: value.name.clone(),
+                environment: value.env_name.clone(),
+                encrypted_value,
+                data_type: SecretDataType::Text,
+                target: contributor_key.id,
+            })
+        }
     }
 
     let result = ReEncryptPackageResult {
         auth_response,
-        secrets_package: output,
-    }
-    .into_ts()?;
-
-    Ok(result)
-}
-
-#[derive(Deserialize, Tsify)]
-pub struct DecryptEnvPackageRequest {
-    auth_request: DecryptionAuthorizationRequest,
-    secrets_package: HashMap<String, String>,
-}
-
-#[derive(Serialize, Tsify)]
-pub struct DecryptEnvPackageResult {
-    auth_response: PasskeyAuthorizationResult,
-    secrets_package: HashMap<String, String>,
-}
-
-#[wasm_bindgen]
-pub async fn decrypt_env_package(
-    request: Ts<DecryptEnvPackageRequest>,
-) -> Result<Ts<DecryptEnvPackageResult>, JsError> {
-    let request: DecryptEnvPackageRequest = request.to_rust()?;
-
-    let (auth_response, session) = request
-        .auth_request
-        .authorize()
-        .await
-        .map_err(|err| JsError::new(&format!("Error authorizing user: {}", err)))?;
-
-    let mut output: HashMap<String, String> = Default::default();
-    let decrypted_package = session
-        .decrypt_package(&request.secrets_package)
-        .map_err(|err| JsError::new(&format!("Error decrypting secrets: {}", err)))?;
-    for (env, decrypted_secret) in decrypted_package {
-        output.insert(
-            env.clone(),
-            String::from_utf8(decrypted_secret).map_err(|err| {
-                JsError::new(&format!(
-                    "Error converting decrypted secret to string: {}",
-                    err
-                ))
-            })?,
-        );
-    }
-
-    let result = DecryptEnvPackageResult {
-        auth_response,
-        secrets_package: output,
+        machines_values,
+        contributors_values,
     }
     .into_ts()?;
 

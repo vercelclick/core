@@ -4,9 +4,12 @@ use crate::backend::projects::secrets::read::get_secret_by_name;
 use secretpass_api::environments::SecretWithEncryptedValues;
 use secretpass_api::secrets::{CreateSecretParams, CreateSecretRequest};
 use secretpass_core::enums::SecretDataType;
-use secretpass_core::web::{EncryptedContributorValue, EncryptedMachineValue};
-use secretpass_core::{ContributorPublicKey, ContributorSecretValue, SecretDefinition, User};
+use secretpass_core::{
+    ContributorPublicKey, ContributorSecretValue, ContributorUpdateValue, MachineUpdateValue,
+    SecretDefinition, User,
+};
 use sqlx::{PgPool, Postgres, QueryBuilder};
+use uuid::Uuid;
 
 // language=sql
 const CREATE_SECRET_QUERY: &str = r#"
@@ -49,13 +52,13 @@ pub async fn create_secret(
         .await?;
 
     let contributor_values: Vec<ContributorSecretValue> =
-        contributor_values_insert_query_builder(&definition, &request.contributors_values)
+        contributor_values_insert_query_builder(params.project_id, &request.contributors_values)
             .build_query_as()
             .fetch_all(&mut *tx)
             .await?;
 
     if !request.machines_values.is_empty() {
-        machine_values_insert_query_builder(&definition, &request.machines_values)
+        machine_values_insert_query_builder(params.project_id, &request.machines_values)
             .build()
             .execute(&mut *tx)
             .await?;
@@ -77,8 +80,8 @@ pub async fn create_secret(
 }
 
 pub fn contributor_values_insert_query_builder(
-    definition: &SecretDefinition,
-    values: &[EncryptedContributorValue],
+    project_id: Uuid,
+    values: &[ContributorUpdateValue],
 ) -> QueryBuilder<Postgres> {
     // language=sql
     let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
@@ -86,10 +89,10 @@ pub fn contributor_values_insert_query_builder(
     );
 
     query_builder.push_values(values, |mut b, value| {
-        b.push_bind(&definition.name)
-            .push_bind(&definition.env_name)
+        b.push_bind(&value.name)
+            .push_bind(&value.environment)
             .push_bind(value.target)
-            .push_bind(definition.project_id)
+            .push_bind(project_id)
             .push_bind("latest")
             .push_bind(SecretDataType::Text)
             .push_bind(&value.encrypted_value);
@@ -101,8 +104,8 @@ pub fn contributor_values_insert_query_builder(
 }
 
 pub fn machine_values_insert_query_builder(
-    definition: &SecretDefinition,
-    values: &[EncryptedMachineValue],
+    project_id: Uuid,
+    values: &[MachineUpdateValue],
 ) -> QueryBuilder<Postgres> {
     // language=sql
     let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
@@ -110,10 +113,10 @@ pub fn machine_values_insert_query_builder(
     );
 
     query_builder.push_values(values, |mut b, value| {
-        b.push_bind(&definition.name)
-            .push_bind(&definition.env_name)
-            .push_bind(value.target.clone())
-            .push_bind(definition.project_id)
+        b.push_bind(&value.name)
+            .push_bind(&value.environment)
+            .push_bind(&value.target)
+            .push_bind(project_id)
             .push_bind("latest")
             .push_bind(SecretDataType::Text)
             .push_bind(&value.encrypted_value);

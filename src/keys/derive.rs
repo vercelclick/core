@@ -6,10 +6,11 @@ pub(crate) use ml_kem::ml_kem_768::{
 use ml_kem::{FromSeed, MlKem768, Seed};
 
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 pub(crate) use x25519_dalek::{PublicKey as EccPublicKey, StaticSecret as EccPrivateKey};
 
 #[derive(Clone, Serialize, Deserialize)]
-struct MachineKey([u8; 32], [u8; 32]);
+struct MachineKey(Uuid, [u8; 32], [u8; 32]);
 
 #[derive(Clone, Deserialize)]
 pub struct PrivateKeySeed {
@@ -41,24 +42,26 @@ impl PrivateKeySeed {
         Ok((public_key, private_key))
     }
 
-    pub fn generate_machine_key() -> anyhow::Result<(String, Self)> {
+    pub fn generate_machine_key(project_id: Uuid) -> anyhow::Result<(String, Self)> {
         let mut first = [0u8; 32];
         fill_random_bytes(&mut first);
 
         let mut second = [0u8; 32];
         fill_random_bytes(&mut second);
 
-        let machine_key = MachineKey(first, second);
+        let machine_key = MachineKey(project_id, first, second);
         let encoded = bin_serialize(&machine_key)?;
         let seed = Self { first, second };
         Ok((encoded, seed))
     }
 
-    pub fn from_machine_key(encoded: String) -> anyhow::Result<Self> {
+    pub fn from_machine_key(encoded: String) -> anyhow::Result<(Uuid, Self)> {
         let machine_key: MachineKey = bin_deserialize(&encoded)?;
-        Ok(Self {
-            first: machine_key.0,
-            second: machine_key.1,
-        })
+        let seed = Self {
+            first: machine_key.1,
+            second: machine_key.2,
+        };
+
+        Ok((machine_key.0, seed))
     }
 }

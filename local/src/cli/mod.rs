@@ -1,5 +1,6 @@
-pub mod command;
-pub mod service;
 pub mod attach;
+pub mod command;
+pub mod runner;
+pub mod service;
 
 pub use command::Cli;

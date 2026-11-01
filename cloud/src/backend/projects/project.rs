@@ -4,8 +4,8 @@ use secretpass_api::projects::{
     CreateProjectRequest, GetProjectResult, ListProjectsResult, ProjectListItem,
 };
 use secretpass_core::enums::{ContributorRole, ContributorStatus};
-use secretpass_core::{Contributor, Environment, Passkey, Project, User};
-use sqlx::PgPool;
+use secretpass_core::{Contributor, Environment, MachinePublicKey, Passkey, Project, User};
+use sqlx::{FromRow, PgPool, Row};
 use uuid::Uuid;
 
 // language=sql
@@ -108,6 +108,22 @@ const GET_ENVIRONMENTS_BY_PROJECT_ID: &str = r#"
     WHERE project_id = $1
 "#;
 
+// language=sql
+const GET_CONTRIBUTORS_QUERY: &str = r#"
+    SELECT
+        contributors.*,
+        users.name as user_name, users.email as user_email, users.updated_at as user_updated_at
+    FROM "Contributors" contributors
+        INNER JOIN "Users" users ON contributors.user_id = users.id
+    WHERE
+        project_id = $1
+"#;
+
+// language=sql
+const GET_MACHINES_QUERY: &str = r#"
+    SELECT * FROM "MachinePublicKey" WHERE project_id = $1
+"#;
+
 pub async fn get_project_by_id(
     pool: &PgPool,
     user: &User,
@@ -138,11 +154,37 @@ pub async fn get_project_by_id(
         .filter(|env| contributor.can_access(&env.name))
         .collect();
 
+    let rows = sqlx::query(GET_CONTRIBUTORS_QUERY)
+        .bind(project_id)
+        .fetch_all(pool)
+        .await?;
+
+    let contributors: Vec<(User, Contributor)> = rows
+        .iter()
+        .map(|row| {
+            let user = User {
+                id: row.get("user_id"),
+                email: row.get("user_email"),
+                name: row.get("user_name"),
+                updated_at: row.get("user_updated_at"),
+            };
+            let contributor = Contributor::from_row(row).unwrap();
+            (user, contributor)
+        })
+        .collect();
+
+    let machines: Vec<MachinePublicKey> = sqlx::query_as(GET_MACHINES_QUERY)
+        .bind(project_id)
+        .fetch_all(pool)
+        .await?;
+
     Ok(Some(GetProjectResult {
         path: None,
         project,
         contributor,
         environments,
+        contributors,
+        machines,
     }))
 }
 

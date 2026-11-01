@@ -155,6 +155,8 @@ pub async fn get_project_by_id(
         None => return Ok(None),
     };
 
+    let keys_config = LocalKeysConfig::load(&path)?;
+
     let contributor = project_config
         .get_contributor_by_user_id(user.id)
         .ok_or_else(|| {
@@ -165,12 +167,14 @@ pub async fn get_project_by_id(
         })?;
 
     Ok(Some(GetProjectResult {
-        project: project_config.project,
+        project: project_config.project.clone(),
         contributor,
-        environments: project_config.environments,
+        environments: project_config.environments.clone(),
         path: Some(ProjectPath {
             path: path.clone(),
             short_path: short_path(&path),
         }),
+        contributors: project_config.contributors,
+        machines: keys_config.machines_keys,
     }))
 }

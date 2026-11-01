@@ -34,7 +34,7 @@ impl PrivateKey {
         Ok(private_key)
     }
 
-    pub fn decrypt(&self, payload: &str) -> anyhow::Result<Vec<u8>> {
+    pub fn decrypt(&self, payload: &str) -> anyhow::Result<String> {
         let encrypted_package: EncryptedPackage = bin_deserialize(payload)?;
 
         let ecc_shared_secret = self.get_ecc_aes_shared_secret(&encrypted_package);
@@ -46,13 +46,13 @@ impl PrivateKey {
                 Self::aes_decrypt_payload(encrypted_package.2, &shared_secret, decrypted_payload)?
         }
 
-        Ok(decrypted_payload)
+        Ok(String::from_utf8(decrypted_payload)?)
     }
 
     pub fn decrypt_package(
         &self,
         secrets_package: &HashMap<String, String>,
-    ) -> anyhow::Result<HashMap<String, Vec<u8>>> {
+    ) -> anyhow::Result<HashMap<String, String>> {
         let mut decrypted_secrets = HashMap::new();
 
         for (key, value) in secrets_package {

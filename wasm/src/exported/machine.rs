@@ -5,11 +5,13 @@ use secretpass_core::{PrivateKey, PrivateKeySeed, PublicKeyEncrypt};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tsify::{Ts, Tsify};
+use uuid::Uuid;
 use wasm_bindgen::JsError;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 #[derive(Deserialize, Tsify)]
 pub struct GenerateMachineKeyRequest {
+    project_id: Uuid,
     algorithm: EncryptionAlgorithm,
     auth_request: DecryptionAuthorizationRequest,
     secrets_package: HashMap<String, HashMap<String, String>>,
@@ -27,9 +29,9 @@ pub struct GenerateMachineKeyResult {
 
 #[wasm_bindgen]
 pub async fn generate_machine_key(
-    request: Ts<GenerateMachineKeyRequest>,
+    ts_request: Ts<GenerateMachineKeyRequest>,
 ) -> Result<Ts<GenerateMachineKeyResult>, JsError> {
-    let request: GenerateMachineKeyRequest = request.to_rust()?;
+    let request: GenerateMachineKeyRequest = ts_request.to_rust()?;
 
     let (auth_response, session) = request
         .auth_request
@@ -37,7 +39,7 @@ pub async fn generate_machine_key(
         .await
         .map_err(|err| JsError::new(&format!("Error authorizing user: {}", err)))?;
 
-    let (machine_key, seed) = PrivateKeySeed::generate_machine_key()
+    let (machine_key, seed) = PrivateKeySeed::generate_machine_key(request.project_id)
         .map_err(|err| JsError::new(&format!("Error generating machine key: {}", err)))?;
 
     let private_key = PrivateKey::from_seed(seed)

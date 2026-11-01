@@ -1,4 +1,7 @@
 use crate::cli::attach::attach_project;
+use crate::cli::runner::export::export_secrets;
+use crate::cli::runner::run_command::run_command_with_secrets;
+use crate::cli::runner::values::{get_cloud_values, get_local_values};
 use crate::cli::service::{check_status_command, start_service_command, stop_service_command};
 use clap::{Parser, Subcommand, ValueEnum};
 
@@ -15,7 +18,7 @@ pub enum ExportFormat {
     DotEnv,
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Debug, Clone, Subcommand)]
 pub enum LocalCommand {
     /// Start secretpass service
     Start {
@@ -71,11 +74,11 @@ pub enum LocalCommand {
             allow_hyphen_values = true,
             allow_negative_numbers = true
         )]
-        target: Vec<String>,
+        command: Vec<String>,
     },
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Debug, Clone, Subcommand)]
 pub enum CloudCommand {
     /// Export exposed secrets to a file or pipe them to another command
     Export {
@@ -107,11 +110,11 @@ pub enum CloudCommand {
             allow_hyphen_values = true,
             allow_negative_numbers = true
         )]
-        target: Vec<String>,
+        command: Vec<String>,
     },
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Debug, Clone, Subcommand)]
 pub enum Command {
     /// Group of commands to manage and inject secrets stored locally
     Local {
@@ -130,27 +133,67 @@ pub enum Command {
 
 impl Cli {
     pub fn execute(&self) {
-        match &self.command {
+        match self.command.clone() {
             Command::Local { command } => match command {
-                LocalCommand::Run { .. } => {
-                    todo!("Implement run")
+                LocalCommand::Run {
+                    private_key,
+                    command,
+                    env,
+                    project_dir,
+                } => {
+                    let command = parse_command(&command);
+                    let (private_key, encrypted_values) =
+                        get_local_values(project_dir, private_key, env, Some(command.clone()));
+
+                    run_command_with_secrets(private_key, encrypted_values, command)
                 }
-                LocalCommand::Export { .. } => {
-                    todo!("Implement export")
+                LocalCommand::Export {
+                    private_key,
+                    env,
+                    project_dir,
+                    format,
+                } => {
+                    let (private_key, encrypted_values) =
+                        get_local_values(project_dir, private_key, env, None);
+
+                    export_secrets(private_key, encrypted_values, format)
                 }
-                LocalCommand::Start { foreground } => start_service_command(*foreground, false),
+                LocalCommand::Start { foreground } => start_service_command(foreground, false),
                 LocalCommand::Stop => stop_service_command(),
                 LocalCommand::Status => check_status_command(),
-                LocalCommand::Attach { silent } => attach_project(*silent),
+                LocalCommand::Attach { silent } => attach_project(silent),
             },
             Command::Cloud { command, endpoint } => match command {
-                CloudCommand::Run { .. } => {
-                    todo!("Implement run {endpoint}")
+                CloudCommand::Run {
+                    private_key,
+                    env,
+                    command,
+                } => {
+                    let command = parse_command(&command);
+                    let (private_key, encrypted_values) =
+                        get_cloud_values(endpoint, private_key, env, Some(command.clone()));
+
+                    run_command_with_secrets(private_key, encrypted_values, command)
                 }
-                CloudCommand::Export { .. } => {
-                    todo!("Implement export {endpoint}")
+                CloudCommand::Export {
+                    private_key,
+                    env,
+                    format,
+                } => {
+                    let (private_key, encrypted_values) =
+                        get_cloud_values(endpoint, private_key, env, None);
+
+                    export_secrets(private_key, encrypted_values, format)
                 }
             },
         }
     }
+}
+
+fn parse_command(args: &[String]) -> String {
+    if args.is_empty() {
+        panic!("Command is required")
+    }
+
+    args.join(" ")
 }

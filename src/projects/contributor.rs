@@ -29,6 +29,15 @@ impl Contributor {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS)]
+pub struct SimpleContributorPublicKey {
+    pub id: Uuid,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub ecc: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub kem: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, FromRow)]
 pub struct ContributorPublicKey {
     pub id: Uuid,
@@ -45,20 +54,20 @@ pub struct ContributorPublicKey {
     pub granted_on: Option<DateTime<Utc>>,
 }
 
-impl ContributorPublicKey {
+impl SimpleContributorPublicKey {
     fn public_key(&self) -> anyhow::Result<PublicKey> {
         PublicKey::from_encoded(self.ecc.clone(), self.kem.clone())
     }
 }
 
-impl PublicKeyEncrypt for ContributorPublicKey {
-    fn encrypt(&self, payload: Vec<u8>) -> anyhow::Result<String> {
+impl PublicKeyEncrypt for SimpleContributorPublicKey {
+    fn encrypt(&self, payload: String) -> anyhow::Result<String> {
         self.public_key()?.encrypt(payload)
     }
 
     fn encrypt_package(
         &self,
-        decrypted_package: HashMap<String, Vec<u8>>,
+        decrypted_package: HashMap<String, String>,
     ) -> anyhow::Result<HashMap<String, String>> {
         self.public_key()?.encrypt_package(decrypted_package)
     }

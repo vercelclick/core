@@ -8,6 +8,15 @@ use ts_rs::TS;
 use tsify::Tsify;
 use wasm_bindgen::prelude::wasm_bindgen;
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS)]
+pub struct SimpleMachinePublicKey {
+    pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub kem: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub ecc: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, FromRow)]
 pub struct MachinePublicKey {
     pub id: String,
@@ -24,19 +33,25 @@ pub struct MachinePublicKey {
 }
 
 impl MachinePublicKey {
+    pub fn can_access(&self, env: &String) -> bool {
+        self.environments.contains(env)
+    }
+}
+
+impl SimpleMachinePublicKey {
     fn public_key(&self) -> anyhow::Result<PublicKey> {
         PublicKey::from_encoded(self.ecc.clone(), self.kem.clone())
     }
 }
 
-impl PublicKeyEncrypt for MachinePublicKey {
-    fn encrypt(&self, payload: Vec<u8>) -> anyhow::Result<String> {
+impl PublicKeyEncrypt for SimpleMachinePublicKey {
+    fn encrypt(&self, payload: String) -> anyhow::Result<String> {
         self.public_key()?.encrypt(payload)
     }
 
     fn encrypt_package(
         &self,
-        decrypted_package: HashMap<String, Vec<u8>>,
+        decrypted_package: HashMap<String, String>,
     ) -> anyhow::Result<HashMap<String, String>> {
         self.public_key()?.encrypt_package(decrypted_package)
     }

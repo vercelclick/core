@@ -20,14 +20,14 @@ impl SecureSession {
         Ok(Self { private_key })
     }
 
-    pub fn decrypt(&self, cipher: &str) -> anyhow::Result<Vec<u8>> {
+    pub fn decrypt(&self, cipher: &str) -> anyhow::Result<String> {
         self.private_key.decrypt(cipher)
     }
 
     pub fn decrypt_package(
         &self,
         secrets_package: &HashMap<String, String>,
-    ) -> anyhow::Result<HashMap<String, Vec<u8>>> {
+    ) -> anyhow::Result<HashMap<String, String>> {
         self.private_key.decrypt_package(secrets_package)
     }
 

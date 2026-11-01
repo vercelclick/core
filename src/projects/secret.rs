@@ -16,13 +16,12 @@ pub struct SecretDefinition {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, FromRow)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS)]
 pub struct SimplifiedEncryptedValue {
     pub tag: String,
     pub cred_id: String,
     pub data_type: SecretDataType,
-    pub value: String,
-    pub created_at: DateTime<Utc>,
+    pub encrypted_value: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, FromRow)]
@@ -43,8 +42,7 @@ impl ContributorSecretValue {
             tag: self.tag.clone(),
             cred_id,
             data_type: self.data_type,
-            value: self.encrypted_value.clone(),
-            created_at: self.created_at,
+            encrypted_value: self.encrypted_value.clone(),
         }
     }
 }
@@ -59,4 +57,24 @@ pub struct MachineSecretValue {
     pub data_type: SecretDataType,
     pub encrypted_value: String,
     pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS)]
+pub struct ContributorUpdateValue {
+    pub target: Uuid,
+    pub name: String,
+    pub environment: String,
+    pub tag: String,
+    pub data_type: SecretDataType,
+    pub encrypted_value: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS)]
+pub struct MachineUpdateValue {
+    pub target: String,
+    pub environment: String,
+    pub name: String,
+    pub tag: String,
+    pub data_type: SecretDataType,
+    pub encrypted_value: String,
 }

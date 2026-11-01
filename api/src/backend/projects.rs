@@ -1,6 +1,6 @@
 use secretpass_core::enums::EncryptionAlgorithm;
 use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
-use secretpass_core::{Contributor, Environment, Project, Workspace};
+use secretpass_core::{Contributor, Environment, MachinePublicKey, Project, User, Workspace};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -59,4 +59,6 @@ pub struct GetProjectResult {
     pub project: Project,
     pub contributor: Contributor,
     pub environments: Vec<Environment>,
+    pub machines: Vec<MachinePublicKey>,
+    pub contributors: Vec<(User, Contributor)>
 }

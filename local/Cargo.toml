@@ -25,10 +25,12 @@ chrono = { version = "0.4.45", features = ["serde", "now"] }
 clap = { version = "4.6.6", features = ["derive"] }
 daemon-kit = "0.1.4"
 dirs = "7.0.0"
+reqwest = { version = "0.13.5", features = ["json", "blocking"] }
 secretpass-api = { path = "../api" }
 secretpass-core = { path = ".." }
 serde = { version = "1.0.229" }
 serde_json = "1.0.151"
 tokio = { version = "1.53.1", features = ["full"] }
 webbrowser = "1.2.4"
-uuid = { version = "1.28.0", features = ["v4"] }
+urlencoding = "2.1.3"
+uuid = { version = "1.28.0", features = ["v4", "v7"] }
