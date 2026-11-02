@@ -1,3 +1,5 @@
+pub mod certificates;
+
 pub fn short_path(path: &String) -> String {
     if let Some(home_dir) = dirs::home_dir() {
         let home_dir = format!("{}", home_dir.display());

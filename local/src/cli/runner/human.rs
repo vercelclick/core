@@ -1,13 +1,17 @@
+use crate::utils::certificates::get_certificates;
 use axum::extract::State;
 use axum::http::{HeaderValue, Method, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
+use axum_server::tls_rustls::RustlsConfig;
 use secretpass_api::constants::{CLOUD_RP_CONFIG, LOCAL_RP_CONFIG};
 use secretpass_core::enums::{EncryptionAlgorithm, OperationMode};
 use secretpass_core::{PrivateKey, PrivateKeySeed, SimpleMachinePublicKey};
 use serde::Serialize;
 use std::collections::HashMap;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Sender;
 use tower_http::cors::{AllowHeaders, CorsLayer};
@@ -28,6 +32,10 @@ async fn get_values_from_web_async(
     mode: OperationMode,
     command: Option<String>,
 ) -> (PrivateKey, HashMap<String, String>) {
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("Failed to install default crypto provider");
+
     let endpoint = match mode {
         OperationMode::Local => LOCAL_RP_CONFIG.origin,
         OperationMode::Cloud => CLOUD_RP_CONFIG.origin,
@@ -78,13 +86,22 @@ async fn get_values_from_web_async(
         .layer(cors_layer)
         .with_state(AppState { tx });
 
-    let listener = tokio::net::TcpListener::bind("localhost:0").await.expect(
+    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 0);
+    let listener = TcpListener::bind(addr).await.expect(
         "Unable to bind to an open port, this is required to decrypt secrets from the browser",
     );
 
+    let (cert_path, key_path) = get_certificates();
+    let tls_config = RustlsConfig::from_pem_file(cert_path, key_path).await
+        .expect("Error parsing TLS certificate, please raise a support ticket with support@secretpass.cloud");
     let port = listener.local_addr().unwrap().port();
 
-    let child = tokio::spawn(axum::serve(listener, app).into_future());
+    let child = tokio::spawn(
+        axum_server::from_tcp_rustls(listener.into_std().unwrap(), tls_config)
+            .unwrap()
+            .serve(app.into_make_service())
+            .into_future(),
+    );
 
     let url = format!("{endpoint}/?target={port}");
     eprintln!("Open {url} to decrypt secrets. Use --private-key to run directly");

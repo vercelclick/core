@@ -3,6 +3,7 @@ use crate::cli::runner::export::export_secrets;
 use crate::cli::runner::run_command::run_command_with_secrets;
 use crate::cli::runner::values::{get_cloud_values, get_local_values};
 use crate::cli::service::{check_status_command, start_service_command, stop_service_command};
+use crate::utils::certificates::install_macos_certificates;
 use clap::{Parser, Subcommand, ValueEnum};
 
 #[derive(Debug, Parser)]
@@ -129,6 +130,10 @@ pub enum Command {
         #[command(subcommand)]
         command: CloudCommand,
     },
+    #[cfg(target_os = "macos")]
+    /// For macOS Safari blocks calls to local service from https://local.secretpass.cloud
+    /// Install these certificates to trust the local https certificate
+    InstallCertificates,
 }
 
 impl Cli {
@@ -173,7 +178,7 @@ impl Cli {
                     let (private_key, encrypted_values) =
                         get_cloud_values(endpoint, private_key, env, Some(command.clone()));
 
-                    run_command_with_secrets(private_key, encrypted_values, command)
+                    run_command_with_secrets(private_key, encrypted_values, command);
                 }
                 CloudCommand::Export {
                     private_key,
@@ -183,9 +188,13 @@ impl Cli {
                     let (private_key, encrypted_values) =
                         get_cloud_values(endpoint, private_key, env, None);
 
-                    export_secrets(private_key, encrypted_values, format)
+                    export_secrets(private_key, encrypted_values, format);
                 }
             },
+            #[cfg(target_os = "macos")]
+            Command::InstallCertificates => {
+                install_macos_certificates();
+            }
         }
     }
 }
