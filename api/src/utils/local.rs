@@ -73,13 +73,6 @@ impl CloudProxy {
         Self::proxy_inner::<O>(self.builder().json(json)).await
     }
 
-    pub async fn send<T>(self) -> HttpResponse<T>
-    where
-        T: DeserializeOwned,
-    {
-        Self::proxy_inner::<T>(self.builder()).await
-    }
-
     async fn proxy_inner<T>(builder: RequestBuilder) -> HttpResponse<T>
     where
         T: DeserializeOwned,

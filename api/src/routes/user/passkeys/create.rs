@@ -1,17 +1,15 @@
 use crate::api_types::HttpResponse;
-use crate::routes::auth::challenge::GenerateChallengeResponse;
 use crate::routes::auth::register::{
     PasskeyCreateValidationRequest, validate_passkey_creation_details,
 };
 use crate::utils::{CloudProxy, error_mapper};
-use crate::{ApiState, PendingChallenge, SessionPackage};
+use crate::{ApiState, SessionPackage};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::{Extension, Json};
-use secretpass_core::enums::ChallengeKind;
 use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
 use secretpass_core::passkeys::create::PasskeyCreationResult;
-use secretpass_core::{Passkey, User};
+use secretpass_core::Passkey;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use ts_rs::TS;
@@ -31,60 +29,7 @@ pub struct CreatePasskeyResponse {
     passkey: Passkey,
 }
 
-#[axum::debug_handler]
-pub async fn create_passkey_start_handler(
-    State(state): State<ApiState>,
-    Extension(proxy): Extension<CloudProxy>,
-    Extension(user): Extension<Arc<User>>,
-) -> HttpResponse<Json<GenerateChallengeResponse>> {
-    if proxy.is_local() {
-        let result: GenerateChallengeResponse = proxy.send().await?;
-        return Ok(Json(result));
-    }
-
-    let (challenge, passkey_challenge) =
-        PendingChallenge::generate_webauthn(ChallengeKind::PasskeyCreate, user.email.clone())
-            .await
-            .map_err(error_mapper(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Error generating passkey challenge",
-            ))?;
-
-    state
-        .backend
-        .record_pending_challenge(&passkey_challenge)
-        .await
-        .map_err(error_mapper(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Error recording passkey challenge",
-        ))?;
-
-    let (_, email_challenge) = PendingChallenge::send_email_code(
-        ChallengeKind::EmailAuthorize,
-        user.email.clone(),
-        user.name.clone(),
-        Some("attempted to create a new passkey".to_string()),
-        proxy.is_proxied(),
-    )
-    .await
-    .map_err(error_mapper(
-        StatusCode::INTERNAL_SERVER_ERROR,
-        "Error sending email confirmation code",
-    ))?;
-
-    state
-        .backend
-        .record_pending_challenge(&email_challenge)
-        .await
-        .map_err(error_mapper(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Error recording email challenge",
-        ))?;
-
-    Ok(Json(GenerateChallengeResponse { challenge }))
-}
-
-pub async fn create_passkey_complete_handler(
+pub async fn create_passkey_handler(
     State(state): State<ApiState>,
     Extension(proxy): Extension<CloudProxy>,
     Extension(package): Extension<Arc<SessionPackage>>,
