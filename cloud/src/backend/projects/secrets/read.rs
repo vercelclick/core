@@ -49,7 +49,7 @@ pub async fn get_machine_secrets(
     .bind(machine_key.project_id)
     .bind(machine_key.id)
     .bind(&params.env_name)
-    .bind(&params.tag)
+    .bind(&params.tag_name)
     .fetch_all(pool)
     .await?;
 

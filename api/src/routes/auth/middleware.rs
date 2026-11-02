@@ -1,9 +1,9 @@
-use std::sync::Arc;
 use crate::ApiState;
 use crate::routes::auth::session::get_session;
 use axum::body::Body;
 use axum::extract::Request;
 use axum::http::StatusCode;
+use std::sync::Arc;
 
 use axum::response::{IntoResponse, Response};
 use futures_util::future::BoxFuture;
@@ -12,7 +12,6 @@ use std::task::{Context, Poll};
 use tower_cookies::Cookies;
 use tower_layer::Layer;
 use tower_service::Service;
-use crate::constants::PROXY_REQUEST_HEADER;
 
 #[derive(Clone)]
 pub struct AuthLayer {
@@ -71,13 +70,7 @@ where
                 }
             };
 
-            let is_proxied = req
-                .headers()
-                .get(PROXY_REQUEST_HEADER)
-                .map(|value| value == "true")
-                .unwrap_or(false);
-
-            let package = match get_session(&state, &cookies, is_proxied).await {
+            let package = match get_session(&state, &cookies).await {
                 Ok(package) => package,
                 Err((status_code, body)) => {
                     return Ok((status_code, body).into_response());

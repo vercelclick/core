@@ -1,8 +1,7 @@
 use crate::backend::auth::user::retrieve_user_by_email;
-use crate::db::queries::auth::{CREATE_SESSION_QUERY, LIST_USER_PASSKEYS_BY_TYPE};
+use crate::db::queries::auth::{CREATE_SESSION_QUERY, LIST_USER_PASSKEYS_BY_USER_ID};
 use crate::db::queries::user::GET_USER_BY_ID_QUERY;
 use secretpass_api::SessionPackage;
-use secretpass_core::enums::PasskeyType;
 use secretpass_core::{Passkey, Session, User};
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -13,11 +12,7 @@ const GET_SESSION_QUERY: &str = r#"
     UPDATE "Sessions" SET last_seen = now() WHERE "id" = $1 AND expires_on > now() RETURNING *
 "#;
 
-pub async fn get_session(
-    pool: &PgPool,
-    passkey_type: PasskeyType,
-    id: Uuid,
-) -> anyhow::Result<Option<SessionPackage>> {
+pub async fn get_session(pool: &PgPool, id: Uuid) -> anyhow::Result<Option<SessionPackage>> {
     // TODO: Collapse these queries to one
     let session: Option<Session> = sqlx::query_as(GET_SESSION_QUERY)
         .bind(id)
@@ -34,7 +29,7 @@ pub async fn get_session(
         .fetch_one(pool)
         .await?;
 
-    let passkeys = get_passkeys_by_user_id(pool, passkey_type, user.id).await?;
+    let passkeys = get_passkeys_by_user_id(pool, user.id).await?;
 
     Ok(Some(SessionPackage {
         user: Arc::new(user),
@@ -45,7 +40,6 @@ pub async fn get_session(
 
 pub async fn create_session_by_email(
     pool: &PgPool,
-    passkey_type: PasskeyType,
     email: String,
 ) -> anyhow::Result<SessionPackage> {
     let user = retrieve_user_by_email(pool, email)
@@ -57,7 +51,7 @@ pub async fn create_session_by_email(
         .fetch_one(pool)
         .await?;
 
-    let passkeys = get_passkeys_by_user_id(pool, passkey_type, user.id).await?;
+    let passkeys = get_passkeys_by_user_id(pool, user.id).await?;
     Ok(SessionPackage {
         user: Arc::new(user),
         session: Arc::new(session),
@@ -67,7 +61,6 @@ pub async fn create_session_by_email(
 
 pub async fn create_session_by_user_id(
     pool: &PgPool,
-    passkey_type: PasskeyType,
     user_id: Uuid,
 ) -> anyhow::Result<SessionPackage> {
     let user: User = sqlx::query_as(GET_USER_BY_ID_QUERY)
@@ -80,7 +73,7 @@ pub async fn create_session_by_user_id(
         .fetch_one(pool)
         .await?;
 
-    let passkeys = get_passkeys_by_user_id(pool, passkey_type, user_id).await?;
+    let passkeys = get_passkeys_by_user_id(pool, user_id).await?;
     Ok(SessionPackage {
         user: Arc::new(user),
         session: Arc::new(session),
@@ -88,13 +81,8 @@ pub async fn create_session_by_user_id(
     })
 }
 
-pub async fn get_passkeys_by_user_id(
-    pool: &PgPool,
-    passkey_type: PasskeyType,
-    user_id: Uuid,
-) -> anyhow::Result<Vec<Passkey>> {
-    let passkeys: Vec<Passkey> = sqlx::query_as(LIST_USER_PASSKEYS_BY_TYPE)
-        .bind(passkey_type)
+pub async fn get_passkeys_by_user_id(pool: &PgPool, user_id: Uuid) -> anyhow::Result<Vec<Passkey>> {
+    let passkeys: Vec<Passkey> = sqlx::query_as(LIST_USER_PASSKEYS_BY_USER_ID)
         .bind(user_id)
         .fetch_all(pool)
         .await?;

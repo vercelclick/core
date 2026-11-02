@@ -17,23 +17,17 @@ pub(crate) async fn get_session_handler(
     Ok(Json((*package).clone()))
 }
 
-pub async fn get_session(
-    state: &ApiState,
-    cookies: &Cookies,
-    is_proxied: bool,
-) -> HttpResponse<SessionPackage> {
+pub async fn get_session(state: &ApiState, cookies: &Cookies) -> HttpResponse<SessionPackage> {
     let session_cookie = cookies
         .get(SESSION_COOKIE_NAME)
         .ok_or_else(|| (StatusCode::UNAUTHORIZED, "Unauthorized request".to_string()))?;
-
-    let rp_config = state.get_rp_config(is_proxied);
 
     let session_id = Uuid::parse_str(session_cookie.value())
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Invalid session ID".to_string()))?;
 
     let package = state
         .backend
-        .get_session(rp_config.passkey_type, session_id)
+        .get_session(session_id)
         .await
         .map_err(error_mapper(
             StatusCode::INTERNAL_SERVER_ERROR,

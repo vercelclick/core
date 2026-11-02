@@ -4,13 +4,13 @@ use crate::service::secrets::LocalSecretConfig;
 use chrono::Utc;
 use secretpass_api::constants::LATEST_SECRET_TAG;
 use secretpass_api::environments::SecretWithEncryptedValues;
-use secretpass_api::secrets::{CreateSecretParams, CreateSecretRequest};
+use secretpass_api::secrets::{CreateSecretRequest, ProjectEnvPathParams};
 use secretpass_core::enums::SecretDataType;
 use secretpass_core::{ContributorSecretValue, MachineSecretValue, SecretDefinition, User};
 
 pub async fn create_secret(
     user: &User,
-    params: CreateSecretParams,
+    params: ProjectEnvPathParams,
     request: CreateSecretRequest,
 ) -> anyhow::Result<SecretWithEncryptedValues> {
     let local_config = LocalServiceConfig::load()?;

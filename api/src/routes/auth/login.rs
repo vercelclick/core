@@ -43,11 +43,9 @@ pub async fn login_user_with_email(
             ));
         }
 
-        let rp_config = state.get_rp_config(proxy.is_proxied());
-
         state
             .backend
-            .create_session_by_email(rp_config.passkey_type, request.email_address)
+            .create_session_by_email(request.email_address)
             .await
             .map_err(error_mapper(
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -87,14 +85,9 @@ pub async fn login_user_with_passkey(
                 )
             })?;
 
-        let rp_config = state.get_rp_config(proxy.is_proxied());
         let passkey = state
             .backend
-            .retrieve_passkey_by_cred_id(
-                rp_config.passkey_type,
-                request.auth_response.id.clone(),
-                request.owner.clone(),
-            )
+            .retrieve_passkey_by_cred_id(request.auth_response.id.clone(), request.owner.clone())
             .await
             .map_err(error_mapper(
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -106,6 +99,8 @@ pub async fn login_user_with_passkey(
                     "Passkey not found on your account".to_string(),
                 )
             })?;
+
+        let rp_config = state.get_rp_config(proxy.is_proxied());
 
         request
             .auth_response
@@ -123,7 +118,7 @@ pub async fn login_user_with_passkey(
 
         state
             .backend
-            .create_session_by_user_id(rp_config.passkey_type, passkey.user_id)
+            .create_session_by_user_id(passkey.user_id)
             .await
             .map_err(error_mapper(
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -147,10 +142,9 @@ pub async fn start_login(
         return Ok(Json(result));
     }
 
-    let rp_config = state.get_rp_config(proxy.is_proxied());
     let (user, passkeys) = state
         .backend
-        .retrieve_user_and_known_passkeys(request.email_address, rp_config.passkey_type)
+        .retrieve_user_and_known_passkeys(request.email_address)
         .await
         .map_err(error_mapper(
             StatusCode::INTERNAL_SERVER_ERROR,

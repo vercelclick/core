@@ -16,6 +16,6 @@ pub const GET_PASSKEY_BY_CRED_ID_QUERY: &str = r#"
 "#;
 
 // language=sql
-pub const LIST_USER_PASSKEYS_BY_TYPE: &str = r#"
-    SELECT * FROM "Passkeys" WHERE type = $1 AND user_id = $2
+pub const LIST_USER_PASSKEYS_BY_USER_ID: &str = r#"
+    SELECT * FROM "Passkeys" WHERE user_id = $1
 "#;

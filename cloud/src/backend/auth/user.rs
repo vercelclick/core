@@ -1,20 +1,18 @@
 use crate::backend::auth::session::get_passkeys_by_user_id;
 use crate::db::queries::user::GET_USER_BY_EMAIL_QUERY;
-use secretpass_core::enums::PasskeyType;
 use secretpass_core::{Passkey, User};
 use sqlx::PgPool;
 
 pub async fn retrieve_user_and_known_passkeys(
     pool: &PgPool,
     email: String,
-    passkey_type: PasskeyType,
 ) -> anyhow::Result<Option<(User, Vec<Passkey>)>> {
     let user = match retrieve_user_by_email(pool, email).await? {
         Some(res) => res,
         None => return Ok(None),
     };
 
-    let passkeys = get_passkeys_by_user_id(pool, passkey_type, user.id).await?;
+    let passkeys = get_passkeys_by_user_id(pool, user.id).await?;
 
     Ok(Some((user, passkeys)))
 }

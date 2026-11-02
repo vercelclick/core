@@ -8,6 +8,7 @@ use crate::backend::auth::session::{
 };
 use crate::backend::auth::user::{retrieve_user_and_known_passkeys, retrieve_user_by_email};
 use crate::backend::projects::environments::get_environment_handler;
+use crate::backend::projects::machine::create_machine_public_key;
 use crate::backend::projects::project::{create_project, get_project_by_id, list_projects};
 use crate::backend::projects::secrets::create::create_secret;
 use crate::backend::projects::secrets::read::get_machine_secrets;
@@ -16,10 +17,13 @@ use secretpass_api::environments::{
     GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues,
 };
 use secretpass_api::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
-use secretpass_api::secrets::{CreateSecretParams, CreateSecretRequest, GetMachineSecretParams};
+use secretpass_api::secrets::{
+    CreateMachinePublicKeyRequest, CreateSecretRequest, GetMachineSecretParams,
+    ProjectEnvPathParams, ProjectPathParams,
+};
 use secretpass_api::{BackendProvider, PendingChallenge, SessionPackage};
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
-use secretpass_core::{Passkey, Project, Session, User};
+use secretpass_core::{MachinePublicKey, Passkey, Project, Session, User};
 use sqlx::PgPool;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -72,49 +76,35 @@ impl BackendProvider for CloudBackendProvider {
         ))
     }
 
-    async fn get_session(
-        &self,
-        passkey_type: PasskeyType,
-        id: Uuid,
-    ) -> anyhow::Result<Option<SessionPackage>> {
-        get_session(&self.pool, passkey_type, id).await
+    async fn get_session(&self, id: Uuid) -> anyhow::Result<Option<SessionPackage>> {
+        get_session(&self.pool, id).await
     }
 
-    async fn create_session_by_email(
-        &self,
-        passkey_type: PasskeyType,
-        email: String,
-    ) -> anyhow::Result<SessionPackage> {
-        create_session_by_email(&self.pool, passkey_type, email).await
+    async fn create_session_by_email(&self, email: String) -> anyhow::Result<SessionPackage> {
+        create_session_by_email(&self.pool, email).await
     }
 
     async fn get_user_email(&self, email: String) -> anyhow::Result<Option<User>> {
         retrieve_user_by_email(&self.pool, email).await
     }
 
-    async fn create_session_by_user_id(
-        &self,
-        passkey_type: PasskeyType,
-        user_id: Uuid,
-    ) -> anyhow::Result<SessionPackage> {
-        create_session_by_user_id(&self.pool, passkey_type, user_id).await
+    async fn create_session_by_user_id(&self, user_id: Uuid) -> anyhow::Result<SessionPackage> {
+        create_session_by_user_id(&self.pool, user_id).await
     }
 
     async fn retrieve_passkey_by_cred_id(
         &self,
-        passkey_type: PasskeyType,
         cred_id: String,
         email: String,
     ) -> anyhow::Result<Option<Passkey>> {
-        retrieve_passkey_by_cred_id(&self.pool, passkey_type, cred_id, email).await
+        retrieve_passkey_by_cred_id(&self.pool, cred_id, email).await
     }
 
     async fn retrieve_user_and_known_passkeys(
         &self,
         email: String,
-        passkey_type: PasskeyType,
     ) -> anyhow::Result<Option<(User, Vec<Passkey>)>> {
-        retrieve_user_and_known_passkeys(&self.pool, email, passkey_type).await
+        retrieve_user_and_known_passkeys(&self.pool, email).await
     }
 
     async fn list_projects(&self, user: &User) -> anyhow::Result<ListProjectsResult> {
@@ -172,7 +162,7 @@ impl BackendProvider for CloudBackendProvider {
     async fn create_secret(
         &self,
         user: &User,
-        params: CreateSecretParams,
+        params: ProjectEnvPathParams,
         request: CreateSecretRequest,
     ) -> anyhow::Result<SecretWithEncryptedValues> {
         create_secret(&self.pool, user, params, request).await
@@ -183,5 +173,14 @@ impl BackendProvider for CloudBackendProvider {
         params: GetMachineSecretParams,
     ) -> anyhow::Result<HashMap<String, String>> {
         get_machine_secrets(&self.pool, params).await
+    }
+
+    async fn create_machine_public_key(
+        &self,
+        user: &User,
+        params: ProjectPathParams,
+        request: CreateMachinePublicKeyRequest,
+    ) -> anyhow::Result<MachinePublicKey> {
+        create_machine_public_key(&self.pool, user, params.project_id, request).await
     }
 }

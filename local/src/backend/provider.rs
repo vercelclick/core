@@ -8,12 +8,13 @@ use secretpass_api::environments::{
     GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues,
 };
 use secretpass_api::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
-use secretpass_api::secrets::{CreateSecretParams, CreateSecretRequest, GetMachineSecretParams};
+use secretpass_api::secrets::{CreateMachinePublicKeyRequest, CreateSecretRequest, GetMachineSecretParams, ProjectEnvPathParams, ProjectPathParams};
 use secretpass_api::{BackendProvider, PendingChallenge, SessionPackage};
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
-use secretpass_core::{Passkey, Project, Session, User};
+use secretpass_core::{MachinePublicKey, Passkey, Project, Session, User};
 use std::collections::HashMap;
 use uuid::Uuid;
+use crate::backend::projects::machine::create_machine_public_key;
 
 #[derive(Default)]
 pub struct LocalBackendProvider {}
@@ -64,7 +65,6 @@ impl BackendProvider for LocalBackendProvider {
 
     async fn get_session(
         &self,
-        _passkey_type: PasskeyType,
         id: Uuid,
     ) -> anyhow::Result<Option<SessionPackage>> {
         let config = LocalServiceConfig::load()?;
@@ -75,7 +75,6 @@ impl BackendProvider for LocalBackendProvider {
 
     async fn create_session_by_email(
         &self,
-        _passkey_type: PasskeyType,
         _email: String,
     ) -> anyhow::Result<SessionPackage> {
         Err(not_supported("Create session by email"))
@@ -87,7 +86,6 @@ impl BackendProvider for LocalBackendProvider {
 
     async fn create_session_by_user_id(
         &self,
-        _passkey_type: PasskeyType,
         _user_id: Uuid,
     ) -> anyhow::Result<SessionPackage> {
         Err(not_supported("Create session by passkey"))
@@ -95,7 +93,6 @@ impl BackendProvider for LocalBackendProvider {
 
     async fn retrieve_passkey_by_cred_id(
         &self,
-        _passkey_type: PasskeyType,
         _cred_id: String,
         _email: String,
     ) -> anyhow::Result<Option<Passkey>> {
@@ -105,7 +102,6 @@ impl BackendProvider for LocalBackendProvider {
     async fn retrieve_user_and_known_passkeys(
         &self,
         _email: String,
-        _passkey_type: PasskeyType,
     ) -> anyhow::Result<Option<(User, Vec<Passkey>)>> {
         Err(not_supported("Retrieve user with passkeys"))
     }
@@ -161,7 +157,7 @@ impl BackendProvider for LocalBackendProvider {
     async fn create_secret(
         &self,
         user: &User,
-        params: CreateSecretParams,
+        params: ProjectEnvPathParams,
         request: CreateSecretRequest,
     ) -> anyhow::Result<SecretWithEncryptedValues> {
         create_secret(user, params, request).await
@@ -174,5 +170,9 @@ impl BackendProvider for LocalBackendProvider {
         Err(anyhow::anyhow!(
             "Secrets API not supported on local server. Use `spass local run/export`"
         ))
+    }
+
+    async fn create_machine_public_key(&self, user: &User, params: ProjectPathParams, request: CreateMachinePublicKeyRequest) -> anyhow::Result<MachinePublicKey> {
+        create_machine_public_key(user, params.project_id, request).await
     }
 }

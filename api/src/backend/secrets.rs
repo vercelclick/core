@@ -1,13 +1,19 @@
 use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
-use secretpass_core::{ContributorUpdateValue, MachineUpdateValue};
+use secretpass_core::{ContributorUpdateValue, MachineUpdateValue, SimpleMachinePublicKey};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
-pub struct CreateSecretParams {
+pub struct ProjectEnvPathParams {
     pub env_name: String,
+    pub project_id: Uuid,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ProjectPathParams {
     pub project_id: Uuid,
 }
 
@@ -26,8 +32,19 @@ pub struct CreateSecretRequest {
 pub struct GetMachineSecretParams {
     pub env_name: String,
     pub project_id: Uuid,
-    pub tag: String,
+    pub tag_name: String,
     pub key_a: String,
     pub key_b: String,
     pub key_c: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct CreateMachinePublicKeyRequest {
+    pub name: String,
+    pub description: String,
+    pub environments: Vec<String>,
+    pub auth_response: PasskeyAuthorizationResult,
+    pub public_key: SimpleMachinePublicKey,
+    pub machine_secrets: Vec<MachineUpdateValue>,
 }

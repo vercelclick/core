@@ -8,17 +8,15 @@ const PASSKEY_USER_ID_PUBLIC_KEY_QUERY: &str = r#"
     SELECT
         PK.*
     FROM "Passkeys" PK INNER JOIN "Users" U on U.id = PK.user_id
-    WHERE PK.type = $1 AND cred_id = $2 AND U.email = $3
+    WHERE cred_id = $1 AND U.email = $2
 "#;
 
 pub async fn retrieve_passkey_by_cred_id(
     pool: &PgPool,
-    passkey_type: PasskeyType,
     cred_id: String,
     email: String,
 ) -> anyhow::Result<Option<Passkey>> {
     let passkey: Option<Passkey> = sqlx::query_as(PASSKEY_USER_ID_PUBLIC_KEY_QUERY)
-        .bind(passkey_type)
         .bind(cred_id)
         .bind(email)
         .fetch_optional(pool)

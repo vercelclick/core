@@ -1,7 +1,7 @@
 use crate::ApiState;
 use crate::api_types::HttpResponse;
 use crate::environments::SecretWithEncryptedValues;
-use crate::secrets::{CreateSecretParams, CreateSecretRequest};
+use crate::secrets::{CreateSecretRequest, ProjectEnvPathParams};
 use crate::utils::error_mapper;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -13,9 +13,11 @@ use std::sync::Arc;
 pub async fn create_secret(
     State(state): State<ApiState>,
     Extension(user): Extension<Arc<User>>,
-    Path(params): Path<CreateSecretParams>,
+    Path(params): Path<ProjectEnvPathParams>,
     Json(request): Json<CreateSecretRequest>,
 ) -> HttpResponse<Json<SecretWithEncryptedValues>> {
+    // TODO: Verify auth result
+
     let result = state
         .backend
         .create_secret(&user, params, request)

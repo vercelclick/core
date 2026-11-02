@@ -2,7 +2,7 @@ use crate::backend::projects::environments::get_environment_by_name;
 use crate::backend::projects::project::get_contributor_by_id;
 use crate::backend::projects::secrets::read::get_secret_by_name;
 use secretpass_api::environments::SecretWithEncryptedValues;
-use secretpass_api::secrets::{CreateSecretParams, CreateSecretRequest};
+use secretpass_api::secrets::{CreateSecretRequest, ProjectEnvPathParams};
 use secretpass_core::enums::SecretDataType;
 use secretpass_core::{
     ContributorPublicKey, ContributorSecretValue, ContributorUpdateValue, MachineUpdateValue,
@@ -21,7 +21,7 @@ const CREATE_SECRET_QUERY: &str = r#"
 pub async fn create_secret(
     pool: &PgPool,
     user: &User,
-    params: CreateSecretParams,
+    params: ProjectEnvPathParams,
     request: CreateSecretRequest,
 ) -> anyhow::Result<SecretWithEncryptedValues> {
     let mut tx = pool.begin().await?;
