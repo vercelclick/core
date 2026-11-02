@@ -8,6 +8,7 @@ use crate::secrets::{
     ProjectEnvPathParams, ProjectPathParams,
 };
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
+use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
 use secretpass_core::{MachinePublicKey, Passkey, Project, Session, User};
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -66,6 +67,7 @@ pub trait BackendProvider: Send + Sync + 'static {
         passkey_name: String,
         cred_id: String,
         public_key: String,
+        public_key_result: PublicKeyGenerateResult,
     ) -> anyhow::Result<Passkey>;
 
     async fn create_project(

@@ -6,6 +6,7 @@ use crate::{ApiState, PendingChallenge, SessionPackage};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::{Extension, Json};
+use secretpass_core::Passkey;
 use secretpass_core::enums::ChallengeKind;
 use tower_cookies::Cookies;
 
@@ -142,6 +143,8 @@ pub async fn start_login(
         return Ok(Json(result));
     }
 
+    let rp_config = state.get_rp_config(proxy.is_proxied());
+
     let (user, passkeys) = state
         .backend
         .retrieve_user_and_known_passkeys(request.email_address)
@@ -156,6 +159,12 @@ pub async fn start_login(
                 "User not found, try a different email or create a new account".to_string(),
             )
         })?;
+
+    let passkeys: Vec<Passkey> = passkeys
+        .iter()
+        .filter(|passkey| passkey.type_ == rp_config.passkey_type)
+        .cloned()
+        .collect();
 
     let (challenge, pending_challenge) = if request.email_only || passkeys.is_empty() {
         PendingChallenge::send_email_code(

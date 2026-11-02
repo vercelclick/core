@@ -1,0 +1,54 @@
+{
+  "project": {
+    "id": "01a19ab4-8156-7004-afea-8ca8b5ace182",
+    "name": "Spass Core",
+    "description": "The core logic of secretpass compromising of a unified API and wasm logic",
+    "algorithm": "ECC",
+    "updated_at": "2026-11-02T05:21:23.286349Z"
+  },
+  "environments": [
+    {
+      "name": "development",
+      "project_id": "01a19ab4-8156-7004-afea-8ca8b5ace182",
+      "description": "For testing by developers before moving to QC",
+      "tags": [],
+      "updated_at": "2026-11-02T05:21:23.286368Z",
+      "created_at": "2026-11-02T05:21:23.286368Z"
+    },
+    {
+      "name": "staging",
+      "project_id": "01a19ab4-8156-7004-afea-8ca8b5ace182",
+      "description": "For testing by QAs before promoting to production",
+      "tags": [],
+      "updated_at": "2026-11-02T05:21:23.286370Z",
+      "created_at": "2026-11-02T05:21:23.286370Z"
+    },
+    {
+      "name": "production",
+      "project_id": "01a19ab4-8156-7004-afea-8ca8b5ace182",
+      "description": "Prod secrets, heavily restricted",
+      "tags": [],
+      "updated_at": "2026-11-02T05:21:23.286371Z",
+      "created_at": "2026-11-02T05:21:23.286371Z"
+    }
+  ],
+  "contributors": [
+    [
+      {
+        "id": "01a199d6-c41d-73d2-a5de-09a20f484b31",
+        "email": "billcountry@secretpass.cloud",
+        "name": "Billcountry Official",
+        "updated_at": "2026-11-02T01:20:31.319660Z"
+      },
+      {
+        "id": "01a19ab4-8156-7004-afea-8ca9fa7d1003",
+        "user_id": "01a199d6-c41d-73d2-a5de-09a20f484b31",
+        "status": "Active",
+        "project_id": "01a19ab4-8156-7004-afea-8ca8b5ace182",
+        "role": "Admin",
+        "environments": [],
+        "updated_at": "2026-11-02T05:21:23.286376Z"
+      }
+    ]
+  ]
+}

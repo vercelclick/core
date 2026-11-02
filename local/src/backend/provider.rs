@@ -1,5 +1,6 @@
 use crate::backend::challenge::{get_pending_challenge, save_pending_challenge};
 use crate::backend::environments::get_environment_by_name;
+use crate::backend::projects::machine::create_machine_public_key;
 use crate::backend::projects::project::{create_project, get_project_by_id, list_projects};
 use crate::backend::projects::secrets::create_secret;
 use crate::config::LocalServiceConfig;
@@ -8,13 +9,16 @@ use secretpass_api::environments::{
     GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues,
 };
 use secretpass_api::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
-use secretpass_api::secrets::{CreateMachinePublicKeyRequest, CreateSecretRequest, GetMachineSecretParams, ProjectEnvPathParams, ProjectPathParams};
+use secretpass_api::secrets::{
+    CreateMachinePublicKeyRequest, CreateSecretRequest, GetMachineSecretParams,
+    ProjectEnvPathParams, ProjectPathParams,
+};
 use secretpass_api::{BackendProvider, PendingChallenge, SessionPackage};
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
+use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
 use secretpass_core::{MachinePublicKey, Passkey, Project, Session, User};
 use std::collections::HashMap;
 use uuid::Uuid;
-use crate::backend::projects::machine::create_machine_public_key;
 
 #[derive(Default)]
 pub struct LocalBackendProvider {}
@@ -63,31 +67,28 @@ impl BackendProvider for LocalBackendProvider {
         config.write()
     }
 
-    async fn get_session(
-        &self,
-        id: Uuid,
-    ) -> anyhow::Result<Option<SessionPackage>> {
+    async fn get_session(&self, id: Uuid) -> anyhow::Result<Option<SessionPackage>> {
         let config = LocalServiceConfig::load()?;
 
         let response = config.sessions.get(&id);
         Ok(response.cloned())
     }
 
-    async fn create_session_by_email(
-        &self,
-        _email: String,
-    ) -> anyhow::Result<SessionPackage> {
+    async fn create_session_by_email(&self, _email: String) -> anyhow::Result<SessionPackage> {
         Err(not_supported("Create session by email"))
     }
 
-    async fn get_user_email(&self, _email: String) -> anyhow::Result<Option<User>> {
-        Err(not_supported("Retrieve user by email"))
+    async fn get_user_email(&self, email: String) -> anyhow::Result<Option<User>> {
+        let local_conf = LocalServiceConfig::load()?;
+        for (_, package) in local_conf.sessions {
+            if package.user.email == email {
+                return Ok(Some((*package.user).clone()));
+            }
+        }
+        Ok(None)
     }
 
-    async fn create_session_by_user_id(
-        &self,
-        _user_id: Uuid,
-    ) -> anyhow::Result<SessionPackage> {
+    async fn create_session_by_user_id(&self, _user_id: Uuid) -> anyhow::Result<SessionPackage> {
         Err(not_supported("Create session by passkey"))
     }
 
@@ -125,8 +126,9 @@ impl BackendProvider for LocalBackendProvider {
         _passkey_name: String,
         _cred_id: String,
         _public_key: String,
+        _public_key_result: PublicKeyGenerateResult,
     ) -> anyhow::Result<Passkey> {
-        Err(not_supported("Retrieve user with passkeys"))
+        Err(not_supported("Save passkey"))
     }
 
     async fn create_project(
@@ -172,7 +174,12 @@ impl BackendProvider for LocalBackendProvider {
         ))
     }
 
-    async fn create_machine_public_key(&self, user: &User, params: ProjectPathParams, request: CreateMachinePublicKeyRequest) -> anyhow::Result<MachinePublicKey> {
+    async fn create_machine_public_key(
+        &self,
+        user: &User,
+        params: ProjectPathParams,
+        request: CreateMachinePublicKeyRequest,
+    ) -> anyhow::Result<MachinePublicKey> {
         create_machine_public_key(user, params.project_id, request).await
     }
 }

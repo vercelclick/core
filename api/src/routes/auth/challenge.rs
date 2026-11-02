@@ -66,6 +66,22 @@ pub async fn generate_challenge_handler(
             )
             .await
         }
+        ChallengeKind::EmailAuthorize => {
+            let operation = request.operation.clone().ok_or_else(|| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    "Operation required for email authorize challenge".to_string(),
+                )
+            })?;
+            PendingChallenge::send_email_code(
+                request.kind,
+                request.owner,
+                user.unwrap().name,
+                Some(operation),
+                proxy.is_proxied(),
+            )
+            .await
+        }
         ChallengeKind::EmailSignup => {
             let name = request.name.clone().ok_or_else(|| {
                 (

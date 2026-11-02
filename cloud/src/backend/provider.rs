@@ -23,6 +23,7 @@ use secretpass_api::secrets::{
 };
 use secretpass_api::{BackendProvider, PendingChallenge, SessionPackage};
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
+use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
 use secretpass_core::{MachinePublicKey, Passkey, Project, Session, User};
 use sqlx::PgPool;
 use std::collections::HashMap;
@@ -122,6 +123,7 @@ impl BackendProvider for CloudBackendProvider {
         passkey_name: String,
         cred_id: String,
         public_key: String,
+        public_key_result: PublicKeyGenerateResult,
     ) -> anyhow::Result<Passkey> {
         create_passkey(
             &self.pool,
@@ -130,6 +132,7 @@ impl BackendProvider for CloudBackendProvider {
             passkey_name,
             cred_id,
             public_key,
+            public_key_result,
         )
         .await
     }

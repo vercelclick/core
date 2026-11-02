@@ -7,9 +7,9 @@ use crate::{ApiState, SessionPackage};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::{Extension, Json};
-use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
-use secretpass_core::passkeys::create::PasskeyCreationResult;
 use secretpass_core::Passkey;
+use secretpass_core::passkeys::create::PasskeyCreationResult;
+use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use ts_rs::TS;
@@ -19,8 +19,8 @@ use ts_rs::TS;
 pub struct CreatePasskeyRequest {
     name: String,
     confirmation_code: String,
-    auth_response: PasskeyAuthorizationResult,
     create_response: PasskeyCreationResult,
+    public_key_result: PublicKeyGenerateResult,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -62,7 +62,7 @@ pub async fn create_passkey_handler(
         PasskeyCreateValidationRequest {
             create_result: request.create_response,
             email_address: package.user.email.clone(),
-            auth_result: request.auth_response,
+            auth_result: request.public_key_result.auth_response.clone(),
             user_id: package.user.id,
             confirmation_code: request.confirmation_code,
         },
@@ -77,6 +77,7 @@ pub async fn create_passkey_handler(
             request.name,
             cred_id,
             public_key,
+            request.public_key_result,
         )
         .await
         .map_err(error_mapper(
