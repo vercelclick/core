@@ -3,7 +3,6 @@ use crate::cli::runner::export::export_secrets;
 use crate::cli::runner::run_command::run_command_with_secrets;
 use crate::cli::runner::values::{get_cloud_values, get_local_values};
 use crate::cli::service::{check_status_command, start_service_command, stop_service_command};
-use crate::utils::certificates::install_macos_certificates;
 use clap::{Parser, Subcommand, ValueEnum};
 
 #[derive(Debug, Parser)]
@@ -193,7 +192,7 @@ impl Cli {
             },
             #[cfg(target_os = "macos")]
             Command::InstallCertificates => {
-                install_macos_certificates();
+                crate::utils::certificates::install_macos_certificates();
             }
         }
     }
