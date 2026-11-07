@@ -2,7 +2,8 @@ use crate::backend::challenge::{get_pending_challenge, save_pending_challenge};
 use crate::backend::environments::get_environment_by_name;
 use crate::backend::projects::machine::create_machine_public_key;
 use crate::backend::projects::project::{create_project, get_project_by_id, list_projects};
-use crate::backend::projects::secrets::create_secret;
+use crate::backend::projects::secrets::create::create_secret;
+use crate::backend::projects::secrets::update::{update_secret, update_secret_value};
 use crate::config::LocalServiceConfig;
 use secretpass_api::auth::BackendCreateUserRequest;
 use secretpass_api::environments::{
@@ -11,7 +12,8 @@ use secretpass_api::environments::{
 use secretpass_api::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
 use secretpass_api::secrets::{
     CreateMachinePublicKeyRequest, CreateSecretRequest, GetMachineSecretParams,
-    ProjectEnvPathParams, ProjectPathParams,
+    ProjectEnvPathParams, ProjectPathParams, ProjectSecretPathParams, UpdateSecretRequest,
+    UpdateSecretValueRequest,
 };
 use secretpass_api::{BackendProvider, PendingChallenge, SessionPackage};
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
@@ -181,5 +183,23 @@ impl BackendProvider for LocalBackendProvider {
         request: CreateMachinePublicKeyRequest,
     ) -> anyhow::Result<MachinePublicKey> {
         create_machine_public_key(user, params.project_id, request).await
+    }
+
+    async fn update_secret(
+        &self,
+        user: &User,
+        params: ProjectSecretPathParams,
+        request: UpdateSecretRequest,
+    ) -> anyhow::Result<SecretWithEncryptedValues> {
+        update_secret(user, params, request).await
+    }
+
+    async fn update_secret_value(
+        &self,
+        user: &User,
+        params: ProjectSecretPathParams,
+        request: UpdateSecretValueRequest,
+    ) -> anyhow::Result<SecretWithEncryptedValues> {
+        update_secret_value(user, params, request).await
     }
 }

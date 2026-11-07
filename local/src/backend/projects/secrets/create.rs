@@ -15,15 +15,8 @@ pub async fn create_secret(
 ) -> anyhow::Result<SecretWithEncryptedValues> {
     let local_config = LocalServiceConfig::load()?;
 
-    let (path, project_conf) = local_config
-        .get_project_by_id(params.project_id)?
-        .ok_or_else(|| anyhow::anyhow!("Project not found, confirm if the project is attached"))?;
-
-    let contributor = project_conf
-        .get_contributor_by_user_id(user.id)
-        .ok_or_else(|| {
-            anyhow::anyhow!("You don't have access to this project under the current user")
-        })?;
+    let (path, project_conf, contributor) =
+        local_config.get_project_and_contributor(params.project_id, user.id)?;
 
     contributor
         .can_access(&params.env_name)

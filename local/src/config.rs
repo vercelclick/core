@@ -1,5 +1,6 @@
 use crate::service::project::LocalProjectConfig;
 use secretpass_api::SessionPackage;
+use secretpass_core::Contributor;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -87,5 +88,22 @@ impl LocalServiceConfig {
         }
 
         Ok(None)
+    }
+
+    pub fn get_project_and_contributor(
+        &self,
+        project_id: Uuid,
+        user_id: Uuid,
+    ) -> anyhow::Result<(String, LocalProjectConfig, Contributor)> {
+        let (path, project_conf) = self.get_project_by_id(project_id)?.ok_or_else(|| {
+            anyhow::anyhow!("Project not found, confirm if the project is attached")
+        })?;
+
+        let contributor = project_conf
+            .get_contributor_by_user_id(user_id)
+            .ok_or_else(|| {
+                anyhow::anyhow!("You don't have access to this project under the current user")
+            })?;
+        Ok((path, project_conf, contributor))
     }
 }

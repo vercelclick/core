@@ -27,9 +27,9 @@ impl PasskeyCreationResult {
     /// On success, returns the credential ID and the public key
     pub fn validate(
         &self,
-        challenge_hash: String,
-        rp_id: String,
-        rp_origin: String,
+        challenge_hash: &str,
+        rp_id: &str,
+        rp_origin: &str,
     ) -> anyhow::Result<(String, String)> {
         verify_client_data(
             &self.response.client_data_json,

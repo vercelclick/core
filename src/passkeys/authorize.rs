@@ -32,9 +32,9 @@ pub struct PasskeyAuthorizationResult {
 impl PasskeyAuthorizationResult {
     fn verify_challenge_and_config(
         &self,
-        challenge_hash: String,
-        rp_id: String,
-        rp_origin: String,
+        challenge_hash: &str,
+        rp_id: &str,
+        rp_origin: &str,
     ) -> anyhow::Result<String> {
         verify_client_data(
             &self.response.client_data_json,
@@ -67,10 +67,10 @@ impl PasskeyAuthorizationResult {
     pub fn validate(
         &self,
         user_id: Uuid,
-        public_key: String,
-        challenge_hash: String,
-        rp_id: String,
-        rp_origin: String,
+        public_key: &str,
+        challenge_hash: &str,
+        rp_id: &str,
+        rp_origin: &str,
     ) -> anyhow::Result<()> {
         let passkey_user_id = self.verify_challenge_and_config(challenge_hash, rp_id, rp_origin)?;
         if user_id.to_string() != passkey_user_id {

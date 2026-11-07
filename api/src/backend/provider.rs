@@ -5,7 +5,8 @@ use crate::environments::{GetEnvironmentRequest, GetEnvironmentResult, SecretWit
 use crate::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
 use crate::secrets::{
     CreateMachinePublicKeyRequest, CreateSecretRequest, GetMachineSecretParams,
-    ProjectEnvPathParams, ProjectPathParams,
+    ProjectEnvPathParams, ProjectPathParams, ProjectSecretPathParams, UpdateSecretRequest,
+    UpdateSecretValueRequest,
 };
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
 use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
@@ -107,4 +108,18 @@ pub trait BackendProvider: Send + Sync + 'static {
         params: ProjectPathParams,
         request: CreateMachinePublicKeyRequest,
     ) -> anyhow::Result<MachinePublicKey>;
+
+    async fn update_secret(
+        &self,
+        user: &User,
+        params: ProjectSecretPathParams,
+        request: UpdateSecretRequest,
+    ) -> anyhow::Result<SecretWithEncryptedValues>;
+
+    async fn update_secret_value(
+        &self,
+        user: &User,
+        params: ProjectSecretPathParams,
+        request: UpdateSecretValueRequest,
+    ) -> anyhow::Result<SecretWithEncryptedValues>;
 }

@@ -137,9 +137,9 @@ pub async fn validate_passkey_creation_details(
     let (passkey_cred_id, passkey_public_key) = request
         .create_result
         .validate(
-            passkey_challenge.value_hash.clone(),
-            rp_config.id.to_string(),
-            rp_config.origin.to_string(),
+            &passkey_challenge.value_hash,
+            rp_config.id,
+            rp_config.origin,
         )
         .map_err(error_mapper(
             StatusCode::BAD_REQUEST,
@@ -150,10 +150,10 @@ pub async fn validate_passkey_creation_details(
         .auth_result
         .validate(
             request.user_id,
-            passkey_public_key.clone(),
-            passkey_challenge.value_hash.clone(),
-            rp_config.id.to_string(),
-            rp_config.origin.to_string(),
+            &passkey_public_key,
+            &passkey_challenge.value_hash,
+            rp_config.id,
+            rp_config.origin,
         )
         .map_err(error_mapper(
             StatusCode::INTERNAL_SERVER_ERROR,

@@ -107,10 +107,10 @@ pub async fn login_user_with_passkey(
             .auth_response
             .validate(
                 passkey.user_id,
-                passkey.public_key.clone(),
-                pending_challenge.value_hash,
-                rp_config.id.to_string(),
-                rp_config.origin.to_string(),
+                &passkey.public_key,
+                &pending_challenge.value_hash,
+                rp_config.id,
+                rp_config.origin,
             )
             .map_err(error_mapper(
                 StatusCode::CONFLICT,

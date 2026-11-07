@@ -77,10 +77,12 @@ where
                 }
             };
 
+            let package = Arc::new(package);
+
             req.extensions_mut().insert(package.user.clone());
             req.extensions_mut().insert(package.session.clone());
             req.extensions_mut().insert(package.passkeys.clone());
-            req.extensions_mut().insert(Arc::new(package));
+            req.extensions_mut().insert(package);
 
             inner.call(req).await
         })

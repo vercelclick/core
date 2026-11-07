@@ -26,7 +26,7 @@ impl ClientData {
 
 pub fn verify_client_data(
     bytes: &[u8],
-    expected_challenge_hash: String,
+    expected_challenge_hash: &str,
     expected_type: &str,
     expected_origin: &str,
 ) -> anyhow::Result<()> {
@@ -58,7 +58,7 @@ pub fn verify_client_data(
 
 pub fn parse_auth_data(
     raw: &[u8],
-    expected_rp_id: String,
+    expected_rp_id: &str,
 ) -> anyhow::Result<(PasskeyFlags, Option<Vec<u8>>)> {
     if raw.len() < 37 {
         return Err(anyhow::anyhow!("authData too short"));
@@ -78,7 +78,7 @@ pub fn parse_auth_data(
     Ok((flags, credential_data))
 }
 
-fn verify_rp_id_hash(hash: &[u8], expected_rp_id: String) -> anyhow::Result<()> {
+fn verify_rp_id_hash(hash: &[u8], expected_rp_id: &str) -> anyhow::Result<()> {
     let expected = Sha256::digest(expected_rp_id.as_bytes());
     if hash != expected.as_ref() as &[u8] {
         return Err(anyhow::anyhow!("RP ID hash mismatch"));

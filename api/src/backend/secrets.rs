@@ -13,6 +13,14 @@ pub struct ProjectEnvPathParams {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
+pub struct ProjectSecretPathParams {
+    pub env_name: String,
+    pub project_id: Uuid,
+    pub secret_name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct ProjectPathParams {
     pub project_id: Uuid,
 }
@@ -25,6 +33,20 @@ pub struct CreateSecretRequest {
     pub auth_result: PasskeyAuthorizationResult,
     pub contributors_values: Vec<ContributorUpdateValue>,
     pub machines_values: Vec<MachineUpdateValue>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct UpdateSecretValueRequest {
+    pub auth_result: PasskeyAuthorizationResult,
+    pub contributors_values: Vec<ContributorUpdateValue>,
+    pub machines_values: Vec<MachineUpdateValue>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct UpdateSecretRequest {
+    pub comments: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
