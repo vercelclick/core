@@ -8,17 +8,12 @@
 <div style="background-color: #f5f5f5;">
     <div style="max-width: 32em; margin: 4em auto; font-family: -apple-system,Arial,serif; background: white; padding: 1em; border-radius: 1em;">
         <div style="display: flex; gap: 0.25em; align-items: center; font-size: 1.35em; margin-bottom: 2em;">
-            <svg fill="none" height="24" viewBox="0 0 64 64" width="24" xmlns="http://www.w3.org/2000/svg">
-                <title>Secret Pass Spot</title>
-                <circle cx="32" cy="32" fill="#ffffff" r="26" stroke="#000000" stroke-width="10"/>
-                <line stroke="#ffffff" stroke-linecap="round" stroke-width="4" x1="14" x2="50" y1="50" y2="14"/>
-                <circle cx="32" cy="32" fill="#000000" r="12"/>
-            </svg>
+            <img alt="" height="24" src="https://secretpass.cloud/secretpass.png" style="height: 24px; width: auto;"/>
 
             <span style="font-weight: bold; color: #222222;">
             Secretpass
         </span>
-            <span style="font-weight: bold; color: #666666;">
+            <span style="font-weight: bold; color: #660000;">
             {{operation_mode}}
         </span>
         </div>
@@ -28,20 +23,20 @@
 
         <p>
             You've received this email because you've {{operation}} on <a href="{{origin}}"
-                                                                          style="color: #444444;">Secretpass
+                                                                          style="color: #660000;">Secretpass
             {{operation_mode}}</a>.
         </p>
         <p style="line-height: 1.25">
             Below is your verification code. If you didn't create this request, please raise
             a ticket with our support team
-            through <a href="mailto:support@secretpass.cloud" style="color: #444444;">support@secretpass.cloud</a>
+            through <a href="mailto:support@secretpass.cloud" style="color: #660000;">support@secretpass.cloud</a>
         </p>
 
         <pre style="font-family: monospace; font-size: 2em; margin: 1em auto;">{{code}}</pre>
 
         <p style="line-height: 1.25;">
             Keep your secrets!<br/>
-            <strong>Secretpass Team</strong>
+            <span style="font-weight: bold; color: #660000;">Secretpass Team</span>
         </p>
     </div>
 </div>
