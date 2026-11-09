@@ -5,3 +5,4 @@ mod create;
 mod encrypt;
 mod machine;
 pub mod public_key;
+pub mod utils;

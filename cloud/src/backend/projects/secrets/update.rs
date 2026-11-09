@@ -1,15 +1,13 @@
 use crate::backend::projects::project::get_contributor_by_id;
-use crate::backend::projects::secrets::create::{
-    contributor_values_insert_query_builder, machine_values_insert_query_builder,
-};
+use crate::backend::projects::secrets::create::secret_values_insert_query_builder;
 use secretpass_api::constants::{LATEST_SECRET_TAG, PREVIOUS_SECRET_TAG};
 use secretpass_api::environments::SecretWithEncryptedValues;
 use secretpass_api::secrets::{
     ProjectSecretPathParams, UpdateSecretRequest, UpdateSecretValueRequest,
 };
 use secretpass_core::{
-    ContributorPublicKey, ContributorSecretValue, InternalError, InternalResult, SecretDefinition,
-    SecretValue, StatusCode, User, source,
+    ContributorPublicKey, InternalError, InternalResult, SecretDefinition, SecretValue, StatusCode,
+    User, source,
 };
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -125,9 +123,16 @@ pub async fn update_secret_value(
     })?;
 
     // Delete previous values
-    sqlx::query(r#"DELETE FROM "ContributorSecretValues" WHERE project_id=$1 AND env_name=$2 AND name=$3 AND tag=$4"#).bind(params.project_id)
-        .bind(&params.env_name)
-        .bind(&params.secret_name).bind(PREVIOUS_SECRET_TAG).execute(&mut *tx).await.map_err(|err| {
+    sqlx::query(
+        r#"DELETE FROM "SecretValues" WHERE project_id=$1 AND env_name=$2 AND name=$3 AND tag=$4"#,
+    )
+    .bind(params.project_id)
+    .bind(&params.env_name)
+    .bind(&params.secret_name)
+    .bind(PREVIOUS_SECRET_TAG)
+    .execute(&mut *tx)
+    .await
+    .map_err(|err| {
         InternalError::trace(
             source!(),
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -136,20 +141,9 @@ pub async fn update_secret_value(
         )
     })?;
 
-    sqlx::query(r#"DELETE FROM "MachineSecretValues" WHERE project_id=$1 AND env_name=$2 AND name=$3 AND tag=$4"#).bind(params.project_id)
-        .bind(&params.env_name)
-        .bind(&params.secret_name).bind(PREVIOUS_SECRET_TAG).execute(&mut *tx).await.map_err(|err| {
-        InternalError::trace(
-            source!(),
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Internal error pruning access key values",
-            err,
-        )
-    })?;
-
     // Set latest values to previous values
     sqlx::query(
-        r#"UPDATE "ContributorSecretValues" SET tag=$1 WHERE project_id=$2 AND env_name=$3 AND name=$4 AND tag=$5"#
+        r#"UPDATE "SecretValues" SET tag=$1 WHERE project_id=$2 AND env_name=$3 AND name=$4 AND tag=$5"#
     ).bind(PREVIOUS_SECRET_TAG).bind(params.project_id)
         .bind(&params.env_name)
         .bind(&params.secret_name).bind(LATEST_SECRET_TAG).execute(&mut *tx).await.map_err(|err| {
@@ -161,23 +155,7 @@ pub async fn update_secret_value(
         )
     })?;
 
-    sqlx::query(
-        r#"UPDATE "MachineSecretValues" SET tag=$1 WHERE project_id=$2 AND env_name=$3 AND name=$4 AND tag=$5"#
-    ).bind(PREVIOUS_SECRET_TAG).bind(params.project_id)
-        .bind(&params.env_name)
-        .bind(&params.secret_name).bind(LATEST_SECRET_TAG).execute(&mut *tx).await.map_err(|err| {
-        InternalError::trace(
-            source!(),
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Internal error updating previous access key values",
-            err,
-        )
-    })?;
-
-    let (contributors_values, machines_values) =
-        SecretValue::separate_targets(&request.encrypted_values);
-
-    contributor_values_insert_query_builder(params.project_id, &contributors_values)
+    secret_values_insert_query_builder(params.project_id, &request.encrypted_values)
         .build()
         .execute(&mut *tx)
         .await
@@ -189,21 +167,6 @@ pub async fn update_secret_value(
                 err,
             )
         })?;
-
-    if !machines_values.is_empty() {
-        machine_values_insert_query_builder(params.project_id, &machines_values)
-            .build()
-            .execute(&mut *tx)
-            .await
-            .map_err(|err| {
-                InternalError::trace(
-                    source!(),
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Internal error adding access key values",
-                    err,
-                )
-            })?;
-    }
 
     tx.commit().await.map_err(|err| {
         InternalError::trace(
@@ -222,10 +185,10 @@ async fn build_return_value(
     contributor_id: Uuid,
     definition: SecretDefinition,
 ) -> InternalResult<SecretWithEncryptedValues> {
-    let contributor_values: Vec<ContributorSecretValue> = sqlx::query_as(
-        r#"SELECT * FROM "ContributorSecretValues" WHERE target=$1 AND env_name=$2 AND name=$3"#,
+    let contributor_values: Vec<SecretValue> = sqlx::query_as(
+        r#"SELECT * FROM "SecretValues" WHERE target=$1 AND env_name=$2 AND name=$3"#,
     )
-    .bind(definition.project_id)
+    .bind(contributor_id)
     .bind(&definition.env_name)
     .bind(&definition.name)
     .fetch_all(pool)

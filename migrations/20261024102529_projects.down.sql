@@ -1,8 +1,8 @@
-DROP TABLE "MachineSecretValues";
+DROP TABLE "FederatedAccessKeys";
 
-DROP TABLE "MachinePublicKeys";
+DROP TABLE "AccessKeys";
 
-DROP TABLE "ContributorSecretValues";
+DROP TABLE "SecretValues";
 
 DROP TYPE "SecretDataType";
 
@@ -20,6 +20,8 @@ DROP TYPE "ContributorStatus";
 
 DROP TYPE "ContributorRole";
 
-DROP TABLE "Projects";
+DROP TYPE "EnvironmentAccess";
 
-DROP TYPE "EncryptionAlgorithm";
+DROP TYPE "EnvironmentAccessLevel";
+
+DROP TABLE "Projects";

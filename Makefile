@@ -23,9 +23,7 @@ cloud-run-dev:
 
 local-run-dev:
 	@echo "==> Run api dev"
-	UI_ORIGIN=http://secretpass-local.localhost:3001 \
 	RUST_BACKTRACE=1 cargo run -p secretpass-local --bin spass -- local start --foreground
-
 
 db-export-url:
 	export DATABASE_URL=postgres://api:L0calApiPass@localhost:5432/secretpass

@@ -124,6 +124,8 @@ pub async fn create_project(
             name: format!("{} - {}", user.email, passkey.name),
             user_id: passkey.user_id,
             cred_id: passkey.cred_id.clone(),
+            user_salt: user.key_salt.clone(),
+            passkey_salt: passkey.key_salt.clone(),
             public_key: passkey.public_key.clone(),
             contributor_id: contributor.id,
             access: AccessGrant::Granted,
@@ -140,7 +142,8 @@ pub async fn create_project(
 
     let keys_conf = LocalKeysConfig {
         contributors_keys,
-        machines_keys: vec![],
+        access_keys: vec![],
+        federated_keys: vec![],
     };
 
     project_conf.write(&path)?;
@@ -185,6 +188,7 @@ pub async fn get_project_by_id(
             short_path: short_path(&path),
         }),
         contributors: project_config.contributors,
-        machines: keys_config.machines_keys,
+        access_keys: keys_config.access_keys,
+        federated_keys: keys_config.federated_keys,
     }))
 }

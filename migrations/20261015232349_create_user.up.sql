@@ -3,23 +3,21 @@ CREATE TABLE "Users"
     id         UUID PRIMARY KEY,
     name       TEXT,
     email      TEXT UNIQUE,
+    key_salt   TEXT,
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 
-CREATE TYPE "PasskeyType" AS ENUM ('Local', 'Cloud');
-
 CREATE TABLE "Passkeys"
 (
-    user_id    UUID          NOT NULL,
-    name       TEXT          NOT NULL,
-    cred_id    TEXT          NOT NULL,
-    "type"     "PasskeyType" NOT NULL,
-    ecc        TEXT          NOT NULL,
-    kem        TEXT          NOT NULL,
-    public_key TEXT          NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now(),
+    user_id        UUID NOT NULL,
+    name           TEXT NOT NULL,
+    cred_id        TEXT NOT NULL,
+    key_salt       TEXT NOT NULL,
+    public_key     TEXT NOT NULL,
+    web_public_key TEXT NOT NULL,
+    created_at     TIMESTAMPTZ DEFAULT now(),
+    updated_at     TIMESTAMPTZ DEFAULT now(),
 
     CONSTRAINT passkeys_primary_key
         PRIMARY KEY (cred_id, user_id),

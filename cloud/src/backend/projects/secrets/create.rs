@@ -5,8 +5,8 @@ use secretpass_api::environments::SecretWithEncryptedValues;
 use secretpass_api::secrets::{CreateSecretRequest, ProjectEnvPathParams};
 use secretpass_core::enums::SecretDataType;
 use secretpass_core::{
-    ContributorPublicKey, ContributorSecretValue, InternalError, InternalResult, SecretDefinition,
-    SecretValue, StatusCode, User, source,
+    ContributorPublicKey, InternalError, InternalResult, SecretDefinition, SecretValue, StatusCode,
+    User, source,
 };
 use sqlx::{PgPool, Postgres, QueryBuilder};
 use uuid::Uuid;
@@ -92,11 +92,8 @@ pub async fn create_secret(
             )
         })?;
 
-    let (contributors_values, machines_values) =
-        SecretValue::separate_targets(&request.encrypted_values);
-
-    let contributor_values: Vec<ContributorSecretValue> =
-        contributor_values_insert_query_builder(params.project_id, &contributors_values)
+    let contributor_values: Vec<SecretValue> =
+        secret_values_insert_query_builder(params.project_id, &request.encrypted_values)
             .build_query_as()
             .fetch_all(&mut *tx)
             .await
@@ -108,21 +105,6 @@ pub async fn create_secret(
                     err,
                 )
             })?;
-
-    if !machines_values.is_empty() {
-        machine_values_insert_query_builder(params.project_id, &machines_values)
-            .build()
-            .execute(&mut *tx)
-            .await
-            .map_err(|err| {
-                InternalError::trace(
-                    source!(),
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Internal error saving access key values",
-                    err,
-                )
-            })?;
-    }
 
     tx.commit().await.map_err(|err| {
         InternalError::trace(
@@ -154,18 +136,18 @@ pub async fn create_secret(
     ))
 }
 
-pub fn contributor_values_insert_query_builder(
+pub fn secret_values_insert_query_builder(
     project_id: Uuid,
     values: &[SecretValue],
 ) -> QueryBuilder<Postgres> {
     // language=sql
     let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-        r#"INSERT INTO "ContributorSecretValues" (name, env_name, target, project_id, tag, data_type, encrypted_value) "#,
+        r#"INSERT INTO "SecretValues" (name, env_name, target, project_id, tag, data_type, encrypted_value) "#,
     );
 
     query_builder.push_values(values, |mut b, value| {
         b.push_bind(&value.name)
-            .push_bind(&value.environment)
+            .push_bind(&value.env_name)
             .push_bind(value.target)
             .push_bind(project_id)
             .push_bind("latest")
@@ -174,28 +156,6 @@ pub fn contributor_values_insert_query_builder(
     });
 
     query_builder.push(" RETURNING *");
-
-    query_builder
-}
-
-pub fn machine_values_insert_query_builder(
-    project_id: Uuid,
-    values: &[SecretValue],
-) -> QueryBuilder<Postgres> {
-    // language=sql
-    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
-        r#"INSERT INTO "MachineSecretValues" (name, env_name, target, project_id, tag, data_type, encrypted_value) "#,
-    );
-
-    query_builder.push_values(values, |mut b, value| {
-        b.push_bind(&value.name)
-            .push_bind(&value.environment)
-            .push_bind(&value.target)
-            .push_bind(project_id)
-            .push_bind("latest")
-            .push_bind(SecretDataType::Text)
-            .push_bind(&value.encrypted_value);
-    });
 
     query_builder
 }

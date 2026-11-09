@@ -59,7 +59,7 @@ pub(crate) async fn send_email(recipient: &str, template: EmailTemplate) -> Inte
 fn get_sender() -> InternalResult<Mailbox> {
     let mbox = Mailbox::new(
         Some("Secretpass Secret Manager".to_string()),
-        "no-reply@app.secretpass.cloud".parse().map_err(|err| {
+        "no-reply@vault.secretpass.cloud".parse().map_err(|err| {
             InternalError::trace(
                 source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,

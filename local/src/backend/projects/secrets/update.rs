@@ -1,4 +1,3 @@
-use crate::backend::projects::secrets::utils::build_latest_attributed_values;
 use crate::config::LocalServiceConfig;
 use crate::service::keys::LocalKeysConfig;
 use crate::service::secrets::LocalSecretConfig;
@@ -84,26 +83,15 @@ pub async fn update_secret_value(
     let mut secret_config = get_permitted_secret(&path, &contributor, &params)?;
 
     // Update the latest values to previous and remove all previous values
-    for value in secret_config.machine_values.iter_mut() {
-        if value.tag == LATEST_SECRET_TAG {
-            value.tag = PREVIOUS_SECRET_TAG.to_string();
-        }
-    }
-    for value in secret_config.contributor_values.iter_mut() {
+    for value in secret_config.values.iter_mut() {
         if value.tag == LATEST_SECRET_TAG {
             value.tag = PREVIOUS_SECRET_TAG.to_string();
         }
     }
 
-    let (contributor_values, machine_values) =
-        build_latest_attributed_values(params.project_id, &request.encrypted_values);
-
     secret_config
-        .machine_values
-        .extend_from_slice(&machine_values);
-    secret_config
-        .contributor_values
-        .extend_from_slice(&contributor_values);
+        .values
+        .extend_from_slice(&request.encrypted_values);
 
     secret_config.definition.updated_at = Utc::now();
     secret_config.write(&path)?;

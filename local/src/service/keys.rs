@@ -1,7 +1,7 @@
 use secretpass_core::enums::ContributorRole;
 use secretpass_core::{
-    Contributor, ContributorPublicKey, InternalError, InternalResult, MachinePublicKey, StatusCode,
-    source,
+    AccessKey, Contributor, ContributorPublicKey, FederatedAccessKey, InternalError,
+    InternalResult, StatusCode, source,
 };
 use std::fs;
 use std::path::Path;
@@ -10,7 +10,8 @@ use uuid::Uuid;
 #[derive(Debug, Default)]
 pub struct LocalKeysConfig {
     pub contributors_keys: Vec<ContributorPublicKey>,
-    pub machines_keys: Vec<MachinePublicKey>,
+    pub access_keys: Vec<AccessKey>,
+    pub federated_keys: Vec<FederatedAccessKey>,
 }
 
 impl LocalKeysConfig {
@@ -20,23 +21,31 @@ impl LocalKeysConfig {
             return Ok(Self::default());
         }
 
-        let [contributors_content, machines_content]: [InternalResult<String>; 2] =
-            ["contributors.json", "machines.json"].map(|file_name| {
-                let file_path = path.join(file_name);
-                let content = if !file_path.is_file() {
-                    "[]".to_string()
-                } else {
-                    fs::read_to_string(file_path.clone()).map_err(|err| {
-                        InternalError::trace(
-                            source!(),
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            &format!("Error reading keys config {}", file_path.display()),
-                            err,
-                        )
-                    })?
-                };
-                Ok(content)
-            });
+        let [
+            contributors_content,
+            access_keys_content,
+            federated_keys_content,
+        ]: [InternalResult<String>; 3] = [
+            "contributors.json",
+            "access_keys.json",
+            "federated_keys.json",
+        ]
+        .map(|file_name| {
+            let file_path = path.join(file_name);
+            let content = if !file_path.is_file() {
+                "[]".to_string()
+            } else {
+                fs::read_to_string(file_path.clone()).map_err(|err| {
+                    InternalError::trace(
+                        source!(),
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        &format!("Error reading keys config {}", file_path.display()),
+                        err,
+                    )
+                })?
+            };
+            Ok(content)
+        });
 
         let contributors_keys: Vec<ContributorPublicKey> =
             serde_json::from_str(&contributors_content?).map_err(|err| {
@@ -50,14 +59,27 @@ impl LocalKeysConfig {
                     err,
                 )
             })?;
-        let machines_keys: Vec<MachinePublicKey> = serde_json::from_str(&machines_content?)
-            .map_err(|err| {
+        let access_keys: Vec<AccessKey> =
+            serde_json::from_str(&access_keys_content?).map_err(|err| {
                 InternalError::trace(
                     source!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     &format!(
                         "Error deserializing access keys config {}",
-                        path.join("machines.json").display()
+                        path.join("access_keys.json").display()
+                    ),
+                    err,
+                )
+            })?;
+
+        let federated_keys: Vec<FederatedAccessKey> =
+            serde_json::from_str(&federated_keys_content?).map_err(|err| {
+                InternalError::trace(
+                    source!(),
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    &format!(
+                        "Error deserializing federated keys config {}",
+                        path.join("federated_keys.json").display()
                     ),
                     err,
                 )
@@ -65,25 +87,25 @@ impl LocalKeysConfig {
 
         Ok(Self {
             contributors_keys,
-            machines_keys,
+            access_keys,
+            federated_keys,
         })
     }
 
     pub fn write(&self, path: &str) -> InternalResult<()> {
         let path = Path::new(path).join(".spass");
 
-        let machines_content =
-            serde_json::to_string_pretty(&self.machines_keys).map_err(|err| {
-                InternalError::trace(
-                    source!(),
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    &format!(
-                        "Error serializing access keys config {}",
-                        path.join("machines.json").display()
-                    ),
-                    err,
-                )
-            })?;
+        let machines_content = serde_json::to_string_pretty(&self.access_keys).map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!(
+                    "Error serializing access keys config {}",
+                    path.join("machines.json").display()
+                ),
+                err,
+            )
+        })?;
         let contributors_content =
             serde_json::to_string_pretty(&self.contributors_keys).map_err(|err| {
                 InternalError::trace(
@@ -136,7 +158,7 @@ impl LocalKeysConfig {
         &self,
         env_name: &str,
         contributors: &[Contributor],
-    ) -> (Vec<ContributorPublicKey>, Vec<MachinePublicKey>) {
+    ) -> (Vec<ContributorPublicKey>, Vec<AccessKey>) {
         let contributor_ids: Vec<Uuid> = contributors
             .iter()
             .filter_map(|contributor| {
@@ -157,7 +179,7 @@ impl LocalKeysConfig {
             .collect();
 
         let machine_keys = self
-            .machines_keys
+            .access_keys
             .iter()
             .filter(|key| key.get_access(env_name).is_some())
             .cloned()

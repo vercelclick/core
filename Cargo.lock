@@ -2742,6 +2742,7 @@ dependencies = [
 name = "secretpass-wasm"
 version = "0.2.3"
 dependencies = [
+ "chrono",
  "secretpass-core",
  "serde",
  "ts-rs",

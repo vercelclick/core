@@ -5,8 +5,8 @@ use secretpass_api::environments::{
 };
 use secretpass_api::projects::CreateEnvironmentRequest;
 use secretpass_core::{
-    ContributorPublicKey, ContributorSecretValue, Environment, InternalError, InternalResult,
-    MachinePublicKey, Project, SecretDefinition, User, source,
+    ContributorPublicKey, Environment, InternalError, InternalResult, Project, SecretDefinition,
+    SecretValue, User, source,
 };
 use sqlx::{PgPool, Postgres, QueryBuilder};
 use uuid::Uuid;
@@ -90,10 +90,10 @@ pub async fn get_environment_handler(
         )
     })?;
 
-    let contributor_secret_values: Vec<ContributorSecretValue> = sqlx::query_as(
-        r#"SELECT psv.* FROM "ContributorSecretValues" psv
-                     INNER JOIN "ContributorPublicKeys" cpk ON cpk.id = psv.target
-                     WHERE cpk.contributor_id = $1 AND psv.env_name = $2"#,
+    let secret_values: Vec<SecretValue> = sqlx::query_as(
+        r#"SELECT sv.* FROM "SecretValues" sv
+                     INNER JOIN "ContributorPublicKeys" cpk ON cpk.id = sv.target
+                     WHERE cpk.contributor_id = $1 AND sv.env_name = $2"#,
     )
     .bind(contributor.id)
     .bind(&request.env_name)
@@ -108,15 +108,14 @@ pub async fn get_environment_handler(
         )
     })?;
 
-    let contributors_keys: Vec<ContributorPublicKey> = sqlx::query_as(
-        r#"SELECT cpk.* FROM "ContributorPublicKeys" cpk
-                    INNER JOIN "Contributors" contributor ON contributor.id = cpk.contributor_id
-                    WHERE contributor.project_id = $1 AND (contributor.role = 'Admin' OR $2 = ANY(contributor.environments))"#,
+    let contributor_keys: Vec<ContributorPublicKey> = sqlx::query_as(
+        r#"SELECT * FROM "ContributorPublicKeys"
+                    WHERE contributor_id = $1"#,
     )
-    .bind(contributor.project_id)
-    .bind(&request.env_name)
+    .bind(contributor.id)
     .fetch_all(pool)
-    .await.map_err(|err| {
+    .await
+    .map_err(|err| {
         InternalError::trace(
             source!(),
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -125,44 +124,16 @@ pub async fn get_environment_handler(
         )
     })?;
 
-    let machines_keys: Vec<MachinePublicKey> = sqlx::query_as(
-        r#"SELECT * FROM "MachinePublicKeys" WHERE project_id = $1 AND $2 = ANY(environments)"#,
-    )
-    .bind(contributor.project_id)
-    .bind(&request.env_name)
-    .fetch_all(pool)
-    .await
-    .map_err(|err| {
-        InternalError::trace(
-            source!(),
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Internal error access key public keys",
-            err,
-        )
-    })?;
-
-    let current_contributor_keys: Vec<ContributorPublicKey> = contributors_keys
-        .iter()
-        .filter(|c| c.contributor_id == contributor.id)
-        .cloned()
-        .collect();
-
     let secrets: Vec<SecretWithEncryptedValues> = secret_definitions
         .iter()
         .filter(|definition| access.can_read_secret(&definition.name))
         .map(|definition| {
-            SecretWithEncryptedValues::extract(
-                definition,
-                &current_contributor_keys,
-                &contributor_secret_values,
-            )
+            SecretWithEncryptedValues::extract(definition, &contributor_keys, &secret_values)
         })
         .collect();
 
     Ok(Some(GetEnvironmentResult {
         environment,
         secrets,
-        contributors_keys,
-        machines_keys,
     }))
 }

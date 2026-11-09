@@ -9,6 +9,7 @@ homepage = { workspace = true }
 
 
 [dependencies]
+chrono = { version = "0.4.45", default-features = false, features = ["serde", "wasm-bindgen"] }
 serde = { version = "1.0.229", features = ["derive"] }
 secretpass-core = { path = "..", default-features = false }
 tsify = "0.5.8"

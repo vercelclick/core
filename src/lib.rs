@@ -12,8 +12,8 @@ mod workspace;
 
 pub use keys::{KeyPair, Passkey, PrivateKeySeed, PublicKey, TargetedPublicKey};
 pub use projects::{
-    Contributor, ContributorPublicKey, ContributorSecretValue, Environment, EnvironmentAccess,
-    MachinePublicKey, MachineSecretValue, Project, SecretDefinition, SecretValue,
+    AccessKey, Contributor, ContributorPublicKey, Environment, EnvironmentAccess,
+    FederatedAccessKey, Project, SecretDefinition, SecretValue,
 };
 pub use types::EncryptedPackage;
 pub use user::{Session, User};

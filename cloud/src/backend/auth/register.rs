@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 // language=sql
 const CREATE_USER_QUERY: &str = r#"
-    INSERT INTO "Users" (id, name, email) VALUES ($1, $2, $3) RETURNING *
+    INSERT INTO "Users" (id, name, email, key_salt) VALUES ($1, $2, $3, $4) RETURNING *
 "#;
 
 pub async fn create_user(
@@ -27,6 +27,7 @@ pub async fn create_user(
         .bind(request.user_id)
         .bind(&request.user_name)
         .bind(&request.user_email)
+        .bind(&request.user_salt)
         .fetch_one(&mut *tx)
         .await
         .map_err(|err| {
@@ -42,6 +43,7 @@ pub async fn create_user(
         .bind(user.id)
         .bind(&request.passkey_name)
         .bind(&request.passkey_cred_id)
+        .bind(&request.passkey_salt)
         .bind(&request.passkey_public_key)
         .bind(&request.passkey_web_public_key)
         .fetch_one(&mut *tx)

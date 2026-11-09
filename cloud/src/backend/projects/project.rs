@@ -5,8 +5,8 @@ use secretpass_api::projects::{
 };
 use secretpass_core::enums::{ContributorRole, ContributorStatus};
 use secretpass_core::{
-    Contributor, Environment, InternalError, InternalResult, MachinePublicKey, Passkey, Project,
-    StatusCode, User, source,
+    AccessKey, Contributor, Environment, EnvironmentAccess, FederatedAccessKey, InternalError,
+    InternalResult, Passkey, Project, StatusCode, User, source,
 };
 use sqlx::{FromRow, PgPool, Row};
 use uuid::Uuid;
@@ -19,8 +19,8 @@ const CREATE_PROJECT_QUERY: &str = r#"
 "#;
 
 // language=sql
-const CREATE_PROJECT_USER_QUERY: &str = r#"
-    INSERT INTO "Contributors" (user_id, status, project_id, role, environments)
+const CREATE_CONTRIBUTOR_QUERY: &str = r#"
+    INSERT INTO "Contributors" (user_id, status, project_id, role, access)
     VALUES ($1, $2, $3, $4, $5)
     RETURNING *
 "#;
@@ -67,12 +67,12 @@ pub async fn create_project(
             )
         })?;
 
-    let contributor: Contributor = sqlx::query_as(CREATE_PROJECT_USER_QUERY)
+    let contributor: Contributor = sqlx::query_as(CREATE_CONTRIBUTOR_QUERY)
         .bind(user.id)
         .bind(ContributorStatus::Active)
         .bind(project.id)
         .bind(ContributorRole::Admin)
-        .bind(Vec::<String>::new())
+        .bind(Vec::<EnvironmentAccess>::new())
         .fetch_one(&mut *tx)
         .await
         .map_err(|err| {
@@ -169,7 +169,8 @@ const GET_ENVIRONMENTS_BY_PROJECT_ID: &str = r#"
 const GET_CONTRIBUTORS_QUERY: &str = r#"
     SELECT
         contributors.*,
-        users.name as user_name, users.email as user_email, users.updated_at as user_updated_at
+        users.name as user_name, users.email as user_email, users.updated_at as user_updated_at,
+        users.key_salt as user_key_salt
     FROM "Contributors" contributors
         INNER JOIN "Users" users ON contributors.user_id = users.id
     WHERE
@@ -177,8 +178,13 @@ const GET_CONTRIBUTORS_QUERY: &str = r#"
 "#;
 
 // language=sql
-const GET_MACHINES_QUERY: &str = r#"
-    SELECT * FROM "MachinePublicKeys" WHERE project_id = $1
+const GET_ACCESS_KEYS_QUERY: &str = r#"
+    SELECT * FROM "AccessKeys" WHERE project_id = $1
+"#;
+
+// language=sql
+const GET_FEDERATED_ACCESS_KEYS_QUERY: &str = r#"
+    SELECT * FROM "FederatedAccessKeys" WHERE project_id = $1
 "#;
 
 pub async fn get_project_by_id(
@@ -247,6 +253,7 @@ pub async fn get_project_by_id(
                 id: row.get("user_id"),
                 email: row.get("user_email"),
                 name: row.get("user_name"),
+                key_salt: row.get("user_key_salt"),
                 updated_at: row.get("user_updated_at"),
             };
             let contributor = Contributor::from_row(row).unwrap();
@@ -254,7 +261,7 @@ pub async fn get_project_by_id(
         })
         .collect();
 
-    let machines: Vec<MachinePublicKey> = sqlx::query_as(GET_MACHINES_QUERY)
+    let access_keys: Vec<AccessKey> = sqlx::query_as(GET_ACCESS_KEYS_QUERY)
         .bind(project_id)
         .fetch_all(pool)
         .await
@@ -267,13 +274,27 @@ pub async fn get_project_by_id(
             )
         })?;
 
+    let federated_keys: Vec<FederatedAccessKey> = sqlx::query_as(GET_FEDERATED_ACCESS_KEYS_QUERY)
+        .bind(project_id)
+        .fetch_all(pool)
+        .await
+        .map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Error getting project federated keys",
+                err,
+            )
+        })?;
+
     Ok(Some(GetProjectResult {
         path: None,
         project,
         contributor,
         environments,
         contributors,
-        machines,
+        access_keys,
+        federated_keys,
     }))
 }
 

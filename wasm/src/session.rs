@@ -1,8 +1,8 @@
 use crate::passkeys::prf::PrfResults;
+use chrono::Utc;
 use secretpass_core::enums::SecretDataType;
 use secretpass_core::{
-    ContributorSecretValue, InternalResult, KeyPair, PrivateKeySeed, PublicKey, SecretValue,
-    TargetedPublicKey,
+    InternalResult, KeyPair, PrivateKeySeed, PublicKey, SecretValue, TargetedPublicKey,
 };
 
 #[derive(Clone)]
@@ -32,7 +32,7 @@ impl SecureSession {
 
     pub fn reencrypt_value(
         &self,
-        value: &ContributorSecretValue,
+        value: &SecretValue,
         keys: &[TargetedPublicKey],
     ) -> InternalResult<Vec<SecretValue>> {
         let plain_value = self.decrypt(&value.encrypted_value)?;
@@ -44,10 +44,12 @@ impl SecureSession {
             encrypted_values.push(SecretValue {
                 tag: value.tag.clone(),
                 name: value.name.clone(),
-                environment: value.env_name.clone(),
+                env_name: value.env_name.clone(),
                 encrypted_value,
                 data_type: SecretDataType::Text,
                 target: key.target,
+                project_id: value.project_id,
+                created_at: Utc::now(),
             })
         }
 

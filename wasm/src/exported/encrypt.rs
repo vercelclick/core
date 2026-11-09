@@ -1,12 +1,12 @@
 use crate::auth::{AuthorizationRequest, DecryptionAuthorizationRequest};
+use chrono::Utc;
 use secretpass_core::enums::SecretDataType;
 use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
-use secretpass_core::{
-    ContributorPublicKey, ContributorSecretValue, SecretValue, TargetedPublicKey,
-};
+use secretpass_core::{ContributorPublicKey, SecretValue, TargetedPublicKey};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use tsify::{Ts, Tsify};
+use uuid::Uuid;
 use wasm_bindgen::JsError;
 use wasm_bindgen::prelude::wasm_bindgen;
 
@@ -18,6 +18,7 @@ pub struct EncryptSecretRequest {
     pub env_name: String,
     pub tag_name: String,
     pub secret_value: String,
+    pub project_id: Uuid,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Tsify, TS)]
@@ -50,8 +51,10 @@ pub async fn encrypt_secret(
             encrypted_value,
             data_type: SecretDataType::Text,
             name: request.name.clone(),
-            environment: request.env_name.clone(),
+            env_name: request.env_name.clone(),
             tag: request.tag_name.clone(),
+            project_id: request.project_id,
+            created_at: Utc::now(),
         });
     }
 
@@ -67,7 +70,7 @@ pub async fn encrypt_secret(
 #[derive(Deserialize, Tsify)]
 pub struct DecryptSecretRequest {
     auth_request: DecryptionAuthorizationRequest,
-    encrypted_secrets: Vec<(ContributorPublicKey, ContributorSecretValue)>,
+    encrypted_secrets: Vec<(ContributorPublicKey, SecretValue)>,
 }
 
 #[derive(Deserialize, Serialize, Tsify)]
@@ -124,7 +127,7 @@ pub async fn decrypt_secrets(
 pub struct ReEncryptPackageRequest {
     auth_request: DecryptionAuthorizationRequest,
     keys: Vec<TargetedPublicKey>,
-    encrypted_secrets: Vec<(ContributorPublicKey, ContributorSecretValue)>,
+    encrypted_secrets: Vec<(ContributorPublicKey, SecretValue)>,
 }
 
 #[derive(Serialize, Tsify)]

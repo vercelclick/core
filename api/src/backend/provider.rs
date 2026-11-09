@@ -4,13 +4,14 @@ use crate::backend::challenge::PendingChallenge;
 use crate::environments::{GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues};
 use crate::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
 use crate::secrets::{
-    CreateMachinePublicKeyRequest, CreateSecretRequest, GetMachineSecretParams,
-    ProjectEnvPathParams, ProjectPathParams, ProjectSecretPathParams, UpdateSecretRequest,
-    UpdateSecretValueRequest,
+    CreateAccessKeyRequest, CreateSecretRequest, ProjectAccessKeyParams, ProjectEnvPathParams,
+    ProjectPathParams, ProjectSecretPathParams, UpdateSecretRequest, UpdateSecretValueRequest,
 };
 use secretpass_core::enums::ChallengeKind;
 use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
-use secretpass_core::{InternalResult, MachinePublicKey, Passkey, Project, Session, User};
+use secretpass_core::{
+    AccessKey, InternalResult, Passkey, Project, Session, TargetedPublicKey, User,
+};
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -96,17 +97,17 @@ pub trait BackendProvider: Send + Sync + 'static {
         request: CreateSecretRequest,
     ) -> InternalResult<SecretWithEncryptedValues>;
 
-    async fn get_machine_secrets(
+    async fn get_access_key_secrets(
         &self,
-        params: GetMachineSecretParams,
+        params: ProjectAccessKeyParams,
     ) -> InternalResult<HashMap<String, String>>;
 
-    async fn create_machine_public_key(
+    async fn create_access_key(
         &self,
         user: &User,
         params: ProjectPathParams,
-        request: CreateMachinePublicKeyRequest,
-    ) -> InternalResult<MachinePublicKey>;
+        request: CreateAccessKeyRequest,
+    ) -> InternalResult<AccessKey>;
 
     async fn update_secret(
         &self,
@@ -121,4 +122,10 @@ pub trait BackendProvider: Send + Sync + 'static {
         params: ProjectSecretPathParams,
         request: UpdateSecretValueRequest,
     ) -> InternalResult<SecretWithEncryptedValues>;
+
+    async fn get_secret_targets(
+        &self,
+        user: &User,
+        params: &ProjectSecretPathParams,
+    ) -> InternalResult<Vec<TargetedPublicKey>>;
 }

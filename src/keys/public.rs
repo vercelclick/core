@@ -113,16 +113,6 @@ pub struct TargetedPublicKey {
 }
 
 impl TargetedPublicKey {
-    pub fn is_contributor(&self) -> bool {
-        self.target.get_version_num() == 7
-    }
-
-    pub fn is_machine(&self) -> bool {
-        self.target.get_version_num() == 5
-    }
-}
-
-impl TargetedPublicKey {
     pub fn public_key(&self) -> InternalResult<PublicKey> {
         PublicKey::from_encoded(&self.value)
     }

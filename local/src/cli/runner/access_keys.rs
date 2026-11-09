@@ -8,8 +8,8 @@ use std::fs;
 use std::path::Path;
 use uuid::Uuid;
 
-fn parse_machine_key(private_key: String) -> (Uuid, KeyPair) {
-    let (project_id, seed) = PrivateKeySeed::from_access_key(private_key).expect(
+fn parse_access_key(access_key: String) -> (Uuid, KeyPair) {
+    let (project_id, seed) = PrivateKeySeed::from_access_key(access_key).expect(
         "Error parsing private, ensure that this is a valid Secretpass Machine Private Key",
     );
 
@@ -19,11 +19,11 @@ fn parse_machine_key(private_key: String) -> (Uuid, KeyPair) {
 
 pub fn get_values_from_local_project(
     project_dir: Option<String>,
-    private_key: String,
+    access_key: String,
     env: String,
     tag: String,
 ) -> (KeyPair, HashMap<String, String>) {
-    let (project_id, private_key) = parse_machine_key(private_key);
+    let (project_id, private_key) = parse_access_key(access_key);
 
     let project_dir = if let Some(relative) = project_dir {
         fs::canonicalize(Path::new(&relative))
@@ -64,13 +64,13 @@ pub fn get_values_from_local_project(
     let key_id = public_key.access_key_id();
 
     let keys_conf = LocalKeysConfig::load(path).unwrap();
-    let machine_key = keys_conf
-        .machines_keys
+    let access_key = keys_conf
+        .access_keys
         .iter()
         .find(|key| key.id == key_id)
         .expect("Private key not found in this project");
 
-    if machine_key.get_access(&environment.name).is_none() {
+    if access_key.get_access(&environment.name).is_none() {
         panic!("Key does not have access to {}", env)
     }
 
@@ -79,7 +79,7 @@ pub fn get_values_from_local_project(
     let mut encrypted_values: HashMap<String, String> = HashMap::new();
     for secret_conf in secrets_configs {
         let value = secret_conf
-            .machine_values
+            .values
             .iter()
             .find(|value| value.target == key_id && value.tag == tag)
             .ok_or_else(|| {
@@ -103,15 +103,14 @@ pub fn get_values_from_local_project(
 pub fn get_values_from_cloud_project(
     endpoint: String,
     private_key: String,
-    env: String,
-    tag: String,
+    env_name: String,
+    tag_name: String,
 ) -> (KeyPair, HashMap<String, String>) {
-    let (project_id, private_key) = parse_machine_key(private_key);
-    let id = private_key.public_key().access_key_id();
+    let (project_id, private_key) = parse_access_key(private_key);
+    let key_id = private_key.public_key().access_key_id();
 
     let url = format!(
-        "{endpoint}/api/projects/{}/env/{env}/tag/{tag}/secrets/machine/{id}",
-        project_id
+        "{endpoint}/api/projects/{project_id}/keys/access/{key_id}/env/{env_name}/tag/{tag_name}"
     );
 
     let response = reqwest::blocking::get(url)

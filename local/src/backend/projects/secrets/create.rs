@@ -1,4 +1,3 @@
-use crate::backend::projects::secrets::utils::build_latest_attributed_values;
 use crate::config::LocalServiceConfig;
 use crate::service::keys::LocalKeysConfig;
 use crate::service::secrets::LocalSecretConfig;
@@ -57,9 +56,6 @@ pub async fn create_secret(
             )
         })?;
 
-    let (contributor_values, machine_values) =
-        build_latest_attributed_values(params.project_id, &request.encrypted_values);
-
     let definition = SecretDefinition {
         name: request.name.clone(),
         env_name: environment.name.clone(),
@@ -67,12 +63,12 @@ pub async fn create_secret(
         comments: request.comments,
         created_at: Utc::now(),
         updated_at: Utc::now(),
+        tags: vec![],
     };
 
     let secret_config = LocalSecretConfig {
         definition,
-        machine_values,
-        contributor_values,
+        values: request.encrypted_values,
     };
 
     let keys_config = LocalKeysConfig::load(&path)?;

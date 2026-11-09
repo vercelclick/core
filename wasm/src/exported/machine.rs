@@ -1,8 +1,7 @@
 use crate::auth::DecryptionAuthorizationRequest;
 use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
 use secretpass_core::{
-    ContributorPublicKey, ContributorSecretValue, KeyPair, PrivateKeySeed, SecretValue,
-    TargetedPublicKey,
+    ContributorPublicKey, KeyPair, PrivateKeySeed, SecretValue, TargetedPublicKey,
 };
 use serde::{Deserialize, Serialize};
 use tsify::{Ts, Tsify};
@@ -14,7 +13,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 pub struct GenerateMachineKeyRequest {
     project_id: Uuid,
     auth_request: DecryptionAuthorizationRequest,
-    encrypted_secrets: Vec<(ContributorPublicKey, ContributorSecretValue)>,
+    encrypted_secrets: Vec<(ContributorPublicKey, SecretValue)>,
 }
 
 #[derive(Serialize, Tsify)]
@@ -26,7 +25,7 @@ pub struct GenerateMachineKeyResult {
 }
 
 #[wasm_bindgen]
-pub async fn generate_machine_key(
+pub async fn generate_access_key(
     ts_request: Ts<GenerateMachineKeyRequest>,
 ) -> Result<Ts<GenerateMachineKeyResult>, JsError> {
     let request: GenerateMachineKeyRequest = ts_request.to_rust()?;

@@ -16,8 +16,10 @@ pub struct CreateUserRequest {
     pub id: Uuid,
     pub name: String,
     pub email: String,
+    pub user_salt: String,
     pub confirmation_code: String,
     pub passkey_name: String,
+    pub passkey_salt: String,
     pub passkey_result: PasskeyCreationResult,
     pub public_key_result: PublicKeyGenerateResult,
 }
@@ -26,9 +28,11 @@ pub struct CreateUserRequest {
 pub struct BackendCreateUserRequest {
     pub user_id: Uuid,
     pub user_name: String,
+    pub user_salt: String,
     pub user_email: String,
     pub passkey_cred_id: String,
     pub passkey_name: String,
+    pub passkey_salt: String,
     pub passkey_public_key: String,
     pub passkey_web_public_key: String,
 }

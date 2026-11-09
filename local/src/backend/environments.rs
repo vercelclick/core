@@ -40,13 +40,8 @@ pub async fn get_environment_by_name(
         .map(|config| config.build_values_for_contributors(&contributor_keys))
         .collect();
 
-    let (contributors, machines) = keys_config
-        .get_environment_public_keys(&request.env_name, &project_config.get_contributors());
-
     Ok(Some(GetEnvironmentResult {
         environment,
         secrets,
-        machines_keys: machines,
-        contributors_keys: contributors,
     }))
 }

@@ -2,17 +2,15 @@ use crate::config::LocalServiceConfig;
 use crate::service::keys::LocalKeysConfig;
 use crate::service::secrets::LocalSecretConfig;
 use chrono::Utc;
-use secretpass_api::secrets::CreateMachinePublicKeyRequest;
-use secretpass_core::{
-    InternalError, InternalResult, MachinePublicKey, MachineSecretValue, StatusCode, User, source,
-};
+use secretpass_api::secrets::CreateAccessKeyRequest;
+use secretpass_core::{AccessKey, InternalError, InternalResult, StatusCode, User, source};
 use uuid::Uuid;
 
-pub async fn create_machine_public_key(
+pub async fn create_access_key(
     user: &User,
     project_id: Uuid,
-    request: CreateMachinePublicKeyRequest,
-) -> InternalResult<MachinePublicKey> {
+    request: CreateAccessKeyRequest,
+) -> InternalResult<AccessKey> {
     let local_config = LocalServiceConfig::load()?;
 
     let (path, project_conf) = local_config.get_project_by_id(project_id)?.ok_or_else(|| {
@@ -35,7 +33,7 @@ pub async fn create_machine_public_key(
 
     let mut keys_config = LocalKeysConfig::load(&path)?;
 
-    let machine_key = MachinePublicKey {
+    let access_key = AccessKey {
         id: request.id,
         name: request.name.clone(),
         description: request.description.clone(),
@@ -46,31 +44,22 @@ pub async fn create_machine_public_key(
         generated_on: Utc::now(),
     };
 
-    keys_config.machines_keys.push(machine_key.clone());
+    keys_config.access_keys.push(access_key.clone());
     keys_config.write(&path)?;
 
     for value in request.encrypted_values.iter() {
-        let mut secret_config = LocalSecretConfig::load(&path, &value.environment, &value.name)?
+        let mut secret_config = LocalSecretConfig::load(&path, &value.env_name, &value.name)?
             .ok_or_else(|| {
                 InternalError::new(
                     source!(),
                     StatusCode::NOT_FOUND,
-                    &format!("Secret {}/{} not found", value.environment, value.name),
+                    &format!("Secret {}/{} not found", value.env_name, value.name),
                 )
             })?;
-        secret_config.machine_values.push(MachineSecretValue {
-            name: value.name.clone(),
-            tag: value.tag.clone(),
-            target: value.target.clone(),
-            project_id,
-            env_name: value.environment.clone(),
-            data_type: value.data_type,
-            created_at: Utc::now(),
-            encrypted_value: value.encrypted_value.clone(),
-        });
+        secret_config.values.push(value.clone());
 
         secret_config.write(&path)?;
     }
 
-    Ok(machine_key)
+    Ok(access_key)
 }

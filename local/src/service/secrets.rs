@@ -1,7 +1,7 @@
 use secretpass_api::environments::SecretWithEncryptedValues;
 use secretpass_core::{
-    ContributorPublicKey, ContributorSecretValue, InternalError, InternalResult,
-    MachineSecretValue, SecretDefinition, StatusCode, source,
+    ContributorPublicKey, InternalError, InternalResult, SecretDefinition, SecretValue, StatusCode,
+    source,
 };
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -10,8 +10,7 @@ use std::path::Path;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LocalSecretConfig {
     pub definition: SecretDefinition,
-    pub contributor_values: Vec<ContributorSecretValue>,
-    pub machine_values: Vec<MachineSecretValue>,
+    pub values: Vec<SecretValue>,
 }
 
 impl LocalSecretConfig {
@@ -146,6 +145,6 @@ impl LocalSecretConfig {
         &self,
         public_keys: &[ContributorPublicKey],
     ) -> SecretWithEncryptedValues {
-        SecretWithEncryptedValues::extract(&self.definition, public_keys, &self.contributor_values)
+        SecretWithEncryptedValues::extract(&self.definition, public_keys, &self.values)
     }
 }

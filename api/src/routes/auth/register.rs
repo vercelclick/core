@@ -47,8 +47,10 @@ pub async fn create_user(
                 user_id: request.id,
                 user_email: request.email,
                 user_name: request.name,
+                user_salt: request.user_salt,
                 passkey_cred_id: cred_id,
                 passkey_name: request.passkey_name,
+                passkey_salt: request.passkey_salt,
                 passkey_public_key: request.public_key_result.public_key,
                 passkey_web_public_key: web_public_key,
             })

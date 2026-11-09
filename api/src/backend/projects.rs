@@ -1,5 +1,7 @@
 use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
-use secretpass_core::{Contributor, Environment, MachinePublicKey, Project, User, Workspace};
+use secretpass_core::{
+    AccessKey, Contributor, Environment, FederatedAccessKey, Project, User, Workspace,
+};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -57,6 +59,7 @@ pub struct GetProjectResult {
     pub project: Project,
     pub contributor: Contributor,
     pub environments: Vec<Environment>,
-    pub machines: Vec<MachinePublicKey>,
+    pub access_keys: Vec<AccessKey>,
+    pub federated_keys: Vec<FederatedAccessKey>,
     pub contributors: Vec<(User, Contributor)>,
 }

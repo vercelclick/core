@@ -1,3 +1,4 @@
+use crate::constants::ENVIRONMENT_ALL_ACCESS;
 use crate::enums::{AccessGrant, ContributorRole, ContributorStatus, EnvironmentAccessLevel};
 use crate::projects::EnvironmentAccess;
 use chrono::{DateTime, Utc};
@@ -27,7 +28,7 @@ impl Contributor {
         if self.is_admin() {
             return Some(EnvironmentAccess {
                 name: env_name.to_string(),
-                secrets: vec![],
+                secrets: vec![ENVIRONMENT_ALL_ACCESS.to_string()],
                 level: EnvironmentAccessLevel::ReadWrite,
             });
         };
@@ -46,6 +47,8 @@ pub struct ContributorPublicKey {
     pub user_id: Uuid,
     pub cred_id: String,
     pub access: AccessGrant,
+    pub user_salt: String,
+    pub passkey_salt: String,
     pub public_key: String,
     pub contributor_id: Uuid,
     pub granted_by: Option<String>,

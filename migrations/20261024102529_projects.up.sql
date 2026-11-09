@@ -53,6 +53,8 @@ CREATE TABLE "ContributorPublicKeys"
     cred_id        TEXT          NOT NULL,
     contributor_id UUID          NOT NULL,
     access         "AccessGrant" NOT NULL,
+    user_salt      TEXT,
+    passkey_salt   TEXT,
     public_key     TEXT,
     granted_by     TEXT,
     granted_on     TIMESTAMPTZ,
@@ -89,11 +91,11 @@ CREATE TABLE "Environments"
 
 CREATE TABLE "SecretDefinitions"
 (
-    name       TEXT   NOT NULL,
-    env_name   TEXT   NOT NULL,
-    project_id UUID   NOT NULL,
-    comments   TEXT   NOT NULL,
-    tags       TEXT[] NOT NULL,
+    name       TEXT NOT NULL,
+    env_name   TEXT NOT NULL,
+    project_id UUID NOT NULL,
+    comments   TEXT NOT NULL,
+    tags       TEXT[]      DEFAULT '{}',
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now(),
 
@@ -107,29 +109,26 @@ CREATE TABLE "SecretDefinitions"
 
 CREATE TYPE "SecretDataType" as ENUM ('Text', 'Json', 'Url');
 
-CREATE TABLE "ContributorSecretValues"
+CREATE TABLE "SecretValues"
 (
+    target          UUID NOT NULL,
     name            TEXT NOT NULL,
     env_name        TEXT NOT NULL,
-    target          UUID NOT NULL,
     project_id      UUID NOT NULL,
     tag             TEXT,
     data_type       "SecretDataType",
     encrypted_value TEXT,
     created_at      TIMESTAMPTZ DEFAULT now(),
-    CONSTRAINT contributor_values_primary_key
+
+    CONSTRAINT secret_values_primary_key
         PRIMARY KEY (target, project_id, env_name, name, tag),
-    CONSTRAINT fk_contributor_values_definition
+    CONSTRAINT fk_secret_values_definition
         FOREIGN KEY (project_id, env_name, name)
             REFERENCES "SecretDefinitions" (project_id, env_name, name)
-            ON DELETE CASCADE,
-    CONSTRAINT fk_contributor_value_to_public_key
-        FOREIGN KEY (target)
-            REFERENCES "ContributorPublicKeys" (id)
             ON DELETE CASCADE
 );
 
-CREATE TABLE "MachinePublicKeys"
+CREATE TABLE "AccessKeys"
 (
     id           UUID PRIMARY KEY,
     name         TEXT                  NOT NULL,
@@ -140,32 +139,26 @@ CREATE TABLE "MachinePublicKeys"
     generated_by TEXT                  NOT NULL,
     generated_on TIMESTAMPTZ DEFAULT now(),
 
-    CONSTRAINT fk_machine_public_key_project
+    CONSTRAINT fk_access_key_project
         FOREIGN KEY (project_id)
             REFERENCES "Projects" (id)
             ON DELETE CASCADE
 );
 
 
-CREATE TABLE "MachineSecretValues"
+CREATE TABLE "FederatedAccessKeys"
 (
-    name            TEXT NOT NULL,
-    env_name        TEXT NOT NULL,
-    target          TEXT NOT NULL,
-    project_id      UUID NOT NULL,
-    tag             TEXT,
-    data_type       "SecretDataType",
-    encrypted_value TEXT,
-    created_at      TIMESTAMPTZ DEFAULT now(),
-    CONSTRAINT machine_values_primary_key
-        PRIMARY KEY (target, project_id, env_name, name, tag),
-    CONSTRAINT fk_machine_values_definition
-        FOREIGN KEY (project_id, env_name, name)
-            REFERENCES "SecretDefinitions" (project_id, env_name, name)
-            ON DELETE CASCADE,
-    CONSTRAINT fk_machine_values_to_public_key
-        FOREIGN KEY (target)
-            REFERENCES "MachinePublicKeys" (id)
+    id           UUID PRIMARY KEY,
+    name         TEXT                  NOT NULL,
+    description  TEXT                  NOT NULL,
+    project_id   UUID                  NOT NULL,
+    access       "EnvironmentAccess"[] NOT NULL,
+    users        UUID[]                NOT NULL,
+    generated_by TEXT                  NOT NULL,
+    generated_on TIMESTAMPTZ DEFAULT now(),
+
+    CONSTRAINT fk_federated_key_project
+        FOREIGN KEY (project_id)
+            REFERENCES "Projects" (id)
             ON DELETE CASCADE
 );
-

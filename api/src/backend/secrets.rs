@@ -49,18 +49,16 @@ pub struct UpdateSecretRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
-pub struct GetMachineSecretParams {
-    pub env_name: String,
+pub struct ProjectAccessKeyParams {
     pub project_id: Uuid,
+    pub env_name: String,
     pub tag_name: String,
-    pub key_a: String,
-    pub key_b: String,
-    pub key_c: String,
+    pub key_id: Uuid,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
-pub struct CreateMachinePublicKeyRequest {
+pub struct CreateAccessKeyRequest {
     pub id: Uuid,
     pub name: String,
     pub description: String,

@@ -1,6 +1,4 @@
-use secretpass_core::{
-    ContributorPublicKey, ContributorSecretValue, Environment, MachinePublicKey, SecretDefinition,
-};
+use secretpass_core::{ContributorPublicKey, Environment, SecretDefinition, SecretValue};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
@@ -15,17 +13,16 @@ pub struct GetEnvironmentRequest {
 #[ts(export)]
 pub struct SecretWithEncryptedValues {
     pub definition: SecretDefinition,
-    pub contributor_values: Vec<(ContributorPublicKey, ContributorSecretValue)>,
+    pub contributor_values: Vec<(ContributorPublicKey, SecretValue)>,
 }
 
 impl SecretWithEncryptedValues {
     pub fn extract(
         definition: &SecretDefinition,
         public_keys: &[ContributorPublicKey],
-        mixed_passkey_values: &[ContributorSecretValue],
+        mixed_passkey_values: &[SecretValue],
     ) -> Self {
-        let mut contributor_values: Vec<(ContributorPublicKey, ContributorSecretValue)> =
-            Default::default();
+        let mut contributor_values: Vec<(ContributorPublicKey, SecretValue)> = Default::default();
 
         for value in mixed_passkey_values {
             if value.name != definition.name {
@@ -53,6 +50,4 @@ impl SecretWithEncryptedValues {
 pub struct GetEnvironmentResult {
     pub environment: Environment,
     pub secrets: Vec<SecretWithEncryptedValues>,
-    pub contributors_keys: Vec<ContributorPublicKey>,
-    pub machines_keys: Vec<MachinePublicKey>,
 }

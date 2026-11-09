@@ -11,8 +11,8 @@ macro_rules! source {
             std::any::type_name::<T>()
         }
         let name = type_name_of(f);
-        // Trim the trailing "::f" from the type name
-        &name[..name.len() - 3]
+        // Trim the trailing "::{{closure}}::{{closure}}::f" from the type name
+        &name[..name.len() - 29]
     }};
 }
 

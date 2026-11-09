@@ -1,25 +1,24 @@
 use crate::backend::projects::project::get_contributor_by_id;
-use crate::backend::projects::secrets::create::machine_values_insert_query_builder;
+use crate::backend::projects::secrets::create::secret_values_insert_query_builder;
 use axum::http::StatusCode;
-use secretpass_api::secrets::CreateMachinePublicKeyRequest;
-use secretpass_core::{InternalError, InternalResult, MachinePublicKey, User, source};
+use secretpass_api::secrets::CreateAccessKeyRequest;
+use secretpass_core::{AccessKey, InternalError, InternalResult, User, source};
 use sqlx::PgPool;
 use uuid::Uuid;
 
 // language=sql
-const INSERT_MACHINE_PUBLIC_QUERY: &str = r#"
-    INSERT INTO "MachinePublicKeys"
-        (id, name, description, project_id, environments, ecc, kem, generated_by)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+const INSERT_ACCESS_KEY_QUERY: &str = r#"
+    INSERT INTO "AccessKeys" (id, name, description, project_id, access, public_key, generated_by)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
     RETURNING *
 "#;
 
-pub async fn create_machine_public_key(
+pub async fn create_access_key(
     pool: &PgPool,
     user: &User,
     project_id: Uuid,
-    request: CreateMachinePublicKeyRequest,
-) -> InternalResult<MachinePublicKey> {
+    request: CreateAccessKeyRequest,
+) -> InternalResult<AccessKey> {
     let mut tx = pool.begin().await.map_err(|err| {
         InternalError::trace(
             source!(),
@@ -47,7 +46,7 @@ pub async fn create_machine_public_key(
         )
     })?;
 
-    let machine_key = sqlx::query_as(INSERT_MACHINE_PUBLIC_QUERY)
+    let access_key = sqlx::query_as(INSERT_ACCESS_KEY_QUERY)
         .bind(request.id)
         .bind(&request.name)
         .bind(&request.description)
@@ -68,7 +67,7 @@ pub async fn create_machine_public_key(
 
     // TODO: Verify that the targets are matching
     if !request.encrypted_values.is_empty() {
-        machine_values_insert_query_builder(project_id, &request.encrypted_values)
+        secret_values_insert_query_builder(project_id, &request.encrypted_values)
             .build()
             .execute(&mut *tx)
             .await
@@ -91,5 +90,5 @@ pub async fn create_machine_public_key(
         )
     })?;
 
-    Ok(machine_key)
+    Ok(access_key)
 }

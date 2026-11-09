@@ -1,3 +1,4 @@
+use crate::constants::ENVIRONMENT_ALL_ACCESS;
 use crate::enums::EnvironmentAccessLevel;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -15,8 +16,6 @@ pub struct Environment {
     pub updated_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>, // Fixed - invalidates keys if changed
 }
-
-const ENVIRONMENT_ALL_ACCESS: &str = "$ALL$";
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, sqlx::Type)]
 #[sqlx(type_name = r#""EnvironmentAccess""#)]
