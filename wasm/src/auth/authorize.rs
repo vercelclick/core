@@ -3,9 +3,9 @@ use crate::auth::mapping::{
     build_credential_request_extensions, build_credentials_array, build_prf_eval_values,
     map_browser_passkey_authentication,
 };
-use crate::passkeys::RP_ENTITY_ID;
 use crate::passkeys::prf::{PrfDeriveConfig, PrfResults};
 use crate::session::SecureSession;
+use secretpass_core::constants::RP_ID;
 use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
 use secretpass_core::utils::bin_decode;
 use secretpass_core::{InternalError, InternalResult, StatusCode, source};
@@ -72,7 +72,7 @@ async fn browser_user_authorize(
     let mut challenge = bin_decode(challenge)?;
 
     let pk_options = PublicKeyCredentialRequestOptions::new_with_u8_slice(&mut challenge);
-    pk_options.set_rp_id(RP_ENTITY_ID);
+    pk_options.set_rp_id(RP_ID);
     pk_options.set_allow_credentials(&build_credentials_array(allowed_credentials)?);
     pk_options.set_user_verification(UserVerificationRequirement::Required);
 

@@ -6,7 +6,7 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use axum::{Extension, Json};
 use secretpass_core::enums::ChallengeKind;
-use secretpass_core::{InternalError, InternalResult, Passkey, source};
+use secretpass_core::{InternalError, InternalResult, source};
 use tower_cookies::Cookies;
 
 pub async fn login_user_with_email(
@@ -88,14 +88,10 @@ pub async fn login_user_with_passkey(
                 )
             })?;
 
-        let rp_config = state.get_rp_config(proxy.is_proxied());
-
         request.auth_response.validate(
             passkey.user_id,
             &passkey.web_public_key,
             &pending_challenge.value_hash,
-            rp_config.id,
-            rp_config.origin,
         )?;
 
         state
@@ -120,8 +116,6 @@ pub async fn start_login(
         return Ok(Json(result));
     }
 
-    let rp_config = state.get_rp_config(proxy.is_proxied());
-
     let (user, passkeys) = state
         .backend
         .retrieve_user_and_known_passkeys(request.email_address)
@@ -134,12 +128,6 @@ pub async fn start_login(
             )
         })?;
 
-    let passkeys: Vec<Passkey> = passkeys
-        .iter()
-        .filter(|passkey| passkey.type_ == rp_config.passkey_type)
-        .cloned()
-        .collect();
-
     let (challenge, pending_challenge) = if request.email_only || passkeys.is_empty() {
         PendingChallenge::send_email_code(
             ChallengeKind::EmailSignIn,
@@ -150,7 +138,7 @@ pub async fn start_login(
         )
         .await?
     } else {
-        PendingChallenge::generate_webauthn(ChallengeKind::PasskeySignIn, user.email).await
+        PendingChallenge::generate_webauthn(ChallengeKind::PasskeySignIn, user.email)
     };
 
     pending_challenge.record(&state).await?;

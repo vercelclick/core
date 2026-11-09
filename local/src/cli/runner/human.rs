@@ -5,8 +5,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use axum_server::tls_rustls::RustlsConfig;
-use secretpass_api::constants::{CLOUD_RP_CONFIG, LOCAL_RP_CONFIG};
-use secretpass_core::enums::OperationMode;
+use secretpass_core::constants::RP_ORIGIN;
 use secretpass_core::{KeyPair, PrivateKeySeed, TargetedPublicKey};
 use serde::Serialize;
 use std::collections::HashMap;
@@ -28,22 +27,14 @@ struct EncryptionDetails {
     command: Option<String>,
 }
 
-async fn get_values_from_web_async(
-    mode: OperationMode,
-    command: Option<String>,
-) -> (KeyPair, HashMap<String, String>) {
+async fn get_values_from_web_async(command: Option<String>) -> (KeyPair, HashMap<String, String>) {
     rustls::crypto::aws_lc_rs::default_provider()
         .install_default()
         .expect("Failed to install default crypto provider");
 
-    let endpoint = match mode {
-        OperationMode::Local => LOCAL_RP_CONFIG.origin,
-        OperationMode::Cloud => CLOUD_RP_CONFIG.origin,
-    };
-
     let (tx, mut rx) = mpsc::channel::<HashMap<String, String>>(1);
 
-    let (_, seed) = PrivateKeySeed::generate_access_key(Uuid::now_v7()).await;
+    let (_, seed) = PrivateKeySeed::generate_access_key(Uuid::now_v7());
 
     let private_key = KeyPair::from_seed(seed).expect("Error deriving temporary private key from seed, please raise a support ticket through support@secretpass.cloud");
     let public_key = private_key.public_key();
@@ -55,7 +46,7 @@ async fn get_values_from_web_async(
     let cors_layer = CorsLayer::new()
         .allow_headers(AllowHeaders::any())
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
-        .allow_origin(endpoint.parse::<HeaderValue>().unwrap())
+        .allow_origin(RP_ORIGIN.parse::<HeaderValue>().unwrap())
         .allow_private_network(true);
 
     let app = Router::new()
@@ -102,7 +93,7 @@ async fn get_values_from_web_async(
             .into_future(),
     );
 
-    let url = format!("{endpoint}/?target={port}");
+    let url = format!("{RP_ORIGIN}/?target={port}");
     eprintln!("Open {url} to decrypt secrets. Use --private-key to run directly");
     let _ = webbrowser::open(&url);
 
@@ -115,11 +106,8 @@ async fn get_values_from_web_async(
     (private_key, secrets)
 }
 
-pub fn get_values_from_web(
-    mode: OperationMode,
-    command: Option<String>,
-) -> (KeyPair, HashMap<String, String>) {
+pub fn get_values_from_web(command: Option<String>) -> (KeyPair, HashMap<String, String>) {
     let rt = tokio::runtime::Runtime::new().expect("Error creating IO runtime, , please raise a support ticket through support@secretpass.cloud");
 
-    rt.block_on(get_values_from_web_async(mode, command))
+    rt.block_on(get_values_from_web_async(command))
 }

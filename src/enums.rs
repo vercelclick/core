@@ -151,26 +151,6 @@ pub enum OperationMode {
     sqlx::Type,
 )]
 #[tsify(namespace)]
-#[sqlx(type_name = r#""PasskeyType""#)]
-pub enum PasskeyType {
-    Local,
-    Cloud,
-}
-
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Serialize,
-    Deserialize,
-    EnumString,
-    Display,
-    Tsify,
-    TS,
-    sqlx::Type,
-)]
-#[tsify(namespace)]
 #[sqlx(type_name = r#""ContributorStatus""#)]
 pub enum ContributorStatus {
     Active,

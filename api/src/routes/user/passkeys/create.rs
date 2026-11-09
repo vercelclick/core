@@ -51,12 +51,9 @@ pub async fn create_passkey_handler(
         return Ok(Json(result));
     }
 
-    let rp_config = state.get_rp_config(proxy.is_proxied());
-
     let (cred_id, web_public_key) = validate_passkey_creation_details(
         false,
         &state,
-        rp_config,
         PasskeyCreateValidationRequest {
             create_result: request.create_response,
             email_address: package.user.email.clone(),
@@ -71,7 +68,6 @@ pub async fn create_passkey_handler(
         .backend
         .save_passkey(
             &package.user,
-            rp_config.passkey_type,
             request.name,
             cred_id,
             web_public_key,

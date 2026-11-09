@@ -50,10 +50,8 @@ wasm-add-target:
 	rustup target add wasm32-unknown-unknown
 
 
-wasm-build-dev-local:
+wasm-build-dev:
 	@echo "==> Building WASM for dev server usage"
-	WEBAUTH_RP_ID="secretpass-local.localhost" \
-	WEBAUTH_RP_ENTITY="Secretpass Dev Local" \
 	RUSTFLAGS='--cfg=web_sys_unstable_apis' \
 	cargo rustc -p secretpass-wasm --crate-type cdylib --target wasm32-unknown-unknown
 	wasm-bindgen \
@@ -63,23 +61,9 @@ wasm-build-dev-local:
       --out-dir ../web-app/src/core
 
 
-wasm-build-dev-cloud:
-	@echo "==> Building WASM for dev server usage"
-	WEBAUTH_RP_ID="secretpass-cloud.localhost" \
-	WEBAUTH_RP_ENTITY="Secretpass Dev Cloud" \
-	RUSTFLAGS='--cfg=web_sys_unstable_apis' \
-	cargo rustc -p secretpass-wasm --crate-type cdylib --target wasm32-unknown-unknown
-	wasm-bindgen \
-      target/wasm32-unknown-unknown/debug/secretpass_wasm.wasm \
-      --target bundler \
-      --out-name index \
-      --out-dir ../web-app/src/core
-
-
-wasm-build-prod-cloud:
+wasm-build-prod:
 	@echo "==> Building WASM for cloud usage"
-	WEBAUTH_RP_ID="cloud.secretpass.cloud" \
-	WEBAUTH_RP_ENTITY="Secretpass Cloud" \
+	RP_ID="app.secretpass.cloud" \
 	RUSTFLAGS='--cfg=web_sys_unstable_apis' \
 	cargo rustc -p secretpass-wasm --release --crate-type cdylib --target wasm32-unknown-unknown
 	wasm-bindgen \
@@ -88,18 +72,6 @@ wasm-build-prod-cloud:
       --out-name index \
 	  --out-dir ../web-app/src/core
 
-
-wasm-build-prod-local:
-	@echo "==> Building WASM for local usage"
-	WEBAUTH_RP_ID="local.secretpass.cloud" \
-	WEBAUTH_RP_ENTITY="Secretpass Local" \
-	RUSTFLAGS='--cfg=web_sys_unstable_apis' \
-	cargo rustc -p secretpass-wasm --release --crate-type cdylib --target wasm32-unknown-unknown
-	wasm-bindgen \
-	  target/wasm32-unknown-unknown/release/secretpass_wasm.wasm \
-	  --target bundler \
-      --out-name index \
-	  --out-dir ../web-app/src/core
 
 # ------------------------------------------------------------------------------
 # Clean

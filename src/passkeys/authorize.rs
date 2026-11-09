@@ -33,20 +33,14 @@ pub struct PasskeyAuthorizationResult {
 }
 
 impl PasskeyAuthorizationResult {
-    fn verify_challenge_and_config(
-        &self,
-        challenge_hash: &str,
-        rp_id: &str,
-        rp_origin: &str,
-    ) -> InternalResult<String> {
+    fn verify_challenge_and_config(&self, challenge_hash: &str) -> InternalResult<String> {
         verify_client_data(
             &self.response.client_data_json,
             challenge_hash,
             "webauthn.get",
-            &rp_origin,
         )?;
 
-        let (flags, credential_data) = parse_auth_data(&self.response.authenticator_data, rp_id)?;
+        let (flags, credential_data) = parse_auth_data(&self.response.authenticator_data)?;
         if credential_data.is_some() {
             return Err(InternalError::new(
                 source!(),
@@ -82,10 +76,8 @@ impl PasskeyAuthorizationResult {
         user_id: Uuid,
         public_key: &str,
         challenge_hash: &str,
-        rp_id: &str,
-        rp_origin: &str,
     ) -> InternalResult<()> {
-        let passkey_user_id = self.verify_challenge_and_config(challenge_hash, rp_id, rp_origin)?;
+        let passkey_user_id = self.verify_challenge_and_config(challenge_hash)?;
         if user_id.to_string() != passkey_user_id {
             return Err(InternalError::new(
                 source!(),

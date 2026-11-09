@@ -27,17 +27,11 @@ pub struct PasskeyCreationResult {
 impl PasskeyCreationResult {
     /// Validates the client response against the stored challenge and RP configuration.
     /// On success, returns the credential ID and the public key
-    pub fn validate(
-        &self,
-        challenge_hash: &str,
-        rp_id: &str,
-        rp_origin: &str,
-    ) -> InternalResult<(String, String)> {
+    pub fn validate(&self, challenge_hash: &str) -> InternalResult<(String, String)> {
         verify_client_data(
             &self.response.client_data_json,
             challenge_hash,
             "webauthn.create",
-            &rp_origin,
         )?;
 
         // Parse attestation object (CBOR)
@@ -78,7 +72,7 @@ impl PasskeyCreationResult {
             )
         })?;
 
-        let (flags, credential_data) = parse_auth_data(auth_data_bytes, rp_id)?;
+        let (flags, credential_data) = parse_auth_data(auth_data_bytes)?;
         flags.enforce_verification()?;
 
         let cred_bytes = credential_data.ok_or_else(|| {

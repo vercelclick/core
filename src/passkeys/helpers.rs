@@ -1,3 +1,4 @@
+use crate::constants::{RP_ID, RP_ORIGIN};
 use crate::passkeys::flags::PasskeyFlags;
 use crate::result::{InternalError, InternalResult};
 use crate::source;
@@ -34,7 +35,6 @@ pub fn verify_client_data(
     bytes: &[u8],
     expected_challenge_hash: &str,
     expected_type: &str,
-    expected_origin: &str,
 ) -> InternalResult<()> {
     let data: ClientData = serde_json::from_slice(bytes).map_err(|err| {
         InternalError::trace(
@@ -56,13 +56,13 @@ pub fn verify_client_data(
     }
 
     // Due to dynamic port configuration
-    if data.origin != expected_origin {
+    if data.origin != RP_ORIGIN {
         return Err(InternalError::new(
             source!(),
             StatusCode::CONFLICT,
             &format!(
                 "Origin mismatch, expected: {}, got: {}",
-                expected_origin, data.origin
+                RP_ORIGIN, data.origin
             ),
         ));
     }
@@ -77,10 +77,7 @@ pub fn verify_client_data(
     Ok(())
 }
 
-pub fn parse_auth_data(
-    raw: &[u8],
-    expected_rp_id: &str,
-) -> InternalResult<(PasskeyFlags, Option<Vec<u8>>)> {
+pub fn parse_auth_data(raw: &[u8]) -> InternalResult<(PasskeyFlags, Option<Vec<u8>>)> {
     if raw.len() < 37 {
         return Err(InternalError::new(
             source!(),
@@ -90,7 +87,7 @@ pub fn parse_auth_data(
     }
     let rp_id_hash = raw[0..32].to_vec();
 
-    verify_rp_id_hash(&rp_id_hash, expected_rp_id)?;
+    verify_rp_id_hash(&rp_id_hash)?;
 
     let flags = PasskeyFlags::parse(raw[32]);
 
@@ -103,8 +100,8 @@ pub fn parse_auth_data(
     Ok((flags, credential_data))
 }
 
-fn verify_rp_id_hash(hash: &[u8], expected_rp_id: &str) -> InternalResult<()> {
-    let expected = Sha256::digest(expected_rp_id.as_bytes());
+fn verify_rp_id_hash(hash: &[u8]) -> InternalResult<()> {
+    let expected = Sha256::digest(RP_ID.as_bytes());
     if hash != expected.as_ref() as &[u8] {
         return Err(InternalError::new(
             source!(),

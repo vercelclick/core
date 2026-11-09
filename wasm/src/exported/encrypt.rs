@@ -44,7 +44,6 @@ pub async fn encrypt_secret(
             .public_key()
             .map_err(JsError::from)?
             .encrypt(request.secret_value.clone())
-            .await
             .map_err(JsError::from)?;
         encrypted_values.push(SecretValue {
             target: pk.target,
@@ -157,7 +156,6 @@ pub async fn reencrypt_package(
         encrypted_values.extend_from_slice(
             &session
                 .reencrypt_value(value, &request.keys)
-                .await
                 .map_err(JsError::from)?,
         );
     }

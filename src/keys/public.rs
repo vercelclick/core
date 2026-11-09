@@ -46,18 +46,18 @@ impl PublicKey {
     }
 }
 
-async fn generate_nonce_bytes() -> [u8; 12] {
+fn generate_nonce_bytes() -> [u8; 12] {
     let mut nonce_bytes = [0u8; 12];
-    fill_random_bytes(&mut nonce_bytes).await;
+    fill_random_bytes(&mut nonce_bytes);
 
     nonce_bytes
 }
 
 impl PublicKey {
-    pub async fn encrypt(&self, payload: String) -> InternalResult<String> {
-        let nonce_bytes = generate_nonce_bytes().await;
+    pub fn encrypt(&self, payload: String) -> InternalResult<String> {
+        let nonce_bytes = generate_nonce_bytes();
 
-        let mut rng = get_global_rng().lock().await;
+        let mut rng = get_global_rng().lock().unwrap();
         let encryptor_secret = StaticSecret::random_from_rng(&mut rng);
 
         let public_key = DerivedPublicKey::from(&encryptor_secret);
@@ -93,13 +93,13 @@ impl PublicKey {
         Ok(encrypted_package.encode())
     }
 
-    pub async fn encrypt_package(
+    pub fn encrypt_package(
         &self,
         decrypted_package: HashMap<String, String>,
     ) -> InternalResult<HashMap<String, String>> {
         let mut encrypted_package = HashMap::new();
         for (name, value) in decrypted_package {
-            let encrypted_value = self.encrypt(value).await?;
+            let encrypted_value = self.encrypt(value)?;
             encrypted_package.insert(name, encrypted_value);
         }
         Ok(encrypted_package)

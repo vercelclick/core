@@ -1,5 +1,4 @@
 use crate::auth::BackendCreateUserRequest;
-use crate::constants::RpConfig;
 use crate::routes::auth::shared::{record_session, set_session_cookie};
 use crate::utils::CloudProxy;
 use crate::{ApiState, CreateUserRequest, SessionPackage};
@@ -29,11 +28,9 @@ pub async fn create_user(
 
         result
     } else {
-        let rp_config = state.get_rp_config(proxy.is_proxied());
         let (cred_id, web_public_key) = validate_passkey_creation_details(
             true,
             &state,
-            rp_config,
             PasskeyCreateValidationRequest {
                 create_result: request.passkey_result,
                 email_address: request.email.clone(),
@@ -50,7 +47,6 @@ pub async fn create_user(
                 user_id: request.id,
                 user_email: request.email,
                 user_name: request.name,
-                passkey_type: rp_config.passkey_type,
                 passkey_cred_id: cred_id,
                 passkey_name: request.passkey_name,
                 passkey_public_key: request.public_key_result.public_key,
@@ -75,7 +71,6 @@ pub struct PasskeyCreateValidationRequest {
 pub async fn validate_passkey_creation_details(
     is_signup: bool,
     state: &ApiState,
-    rp_config: &RpConfig,
     request: PasskeyCreateValidationRequest,
 ) -> InternalResult<(String, String)> {
     let email_challenge = state
@@ -124,18 +119,14 @@ pub async fn validate_passkey_creation_details(
             )
         })?;
 
-    let (passkey_cred_id, passkey_public_key) = request.create_result.validate(
-        &passkey_challenge.value_hash,
-        rp_config.id,
-        rp_config.origin,
-    )?;
+    let (passkey_cred_id, passkey_public_key) = request
+        .create_result
+        .validate(&passkey_challenge.value_hash)?;
 
     request.auth_result.validate(
         request.user_id,
         &passkey_public_key,
         &passkey_challenge.value_hash,
-        rp_config.id,
-        rp_config.origin,
     )?;
 
     Ok((passkey_cred_id, passkey_public_key))

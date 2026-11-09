@@ -2,8 +2,8 @@ use rand::Rng;
 use secretpass_core::utils::get_global_rng;
 use secretpass_core::{InternalResult, KeyPair, PrivateKeySeed};
 
-async fn create_seed_keys() -> ([u8; 32], [u8; 32]) {
-    let mut rng = get_global_rng().lock().await;
+fn create_seed_keys() -> ([u8; 32], [u8; 32]) {
+    let mut rng = get_global_rng().lock().unwrap();
     let mut seed_a = [0u8; 32];
     let mut seed_b = [0u8; 32];
 
@@ -13,28 +13,28 @@ async fn create_seed_keys() -> ([u8; 32], [u8; 32]) {
     (seed_a, seed_b)
 }
 
-async fn create_same_seed_key() -> InternalResult<KeyPair> {
-    let seed_keys = create_seed_keys().await;
+fn create_same_seed_key() -> InternalResult<KeyPair> {
+    let seed_keys = create_seed_keys();
     KeyPair::from_seed(PrivateKeySeed {
         first: seed_keys.0,
         second: seed_keys.1,
     })
 }
 
-#[tokio::test]
-async fn test_encryption_decryption() {
-    let private_key = create_same_seed_key().await.unwrap();
+#[test]
+fn test_encryption_decryption() {
+    let private_key = create_same_seed_key().unwrap();
     let public_key = private_key.public_key();
 
     let original_payload = "Basic Elliptic-curve cryptography test".to_string();
 
-    let encrypted_payload = public_key.encrypt(original_payload.clone()).await.unwrap();
+    let encrypted_payload = public_key.encrypt(original_payload.clone()).unwrap();
     assert_ne!(
         original_payload, encrypted_payload,
         "encrypted payload cannot be equal to the clear payload"
     );
 
-    let encrypted_payload_2 = public_key.encrypt(original_payload.clone()).await.unwrap();
+    let encrypted_payload_2 = public_key.encrypt(original_payload.clone()).unwrap();
     assert_ne!(
         encrypted_payload, encrypted_payload_2,
         "encrypted payload should change with every encryption run"

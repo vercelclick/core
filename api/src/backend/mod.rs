@@ -5,7 +5,6 @@ pub mod projects;
 mod provider;
 pub mod secrets;
 
-use crate::constants::{CLOUD_RP_CONFIG, LOCAL_RP_CONFIG, RpConfig};
 pub use auth::{CreateUserRequest, SessionPackage};
 
 pub use challenge::{CheckChallengeResult, PendingChallenge};
@@ -17,16 +16,6 @@ use std::sync::Arc;
 pub struct ApiStateInner {
     pub mode: OperationMode,
     pub backend: Arc<dyn BackendProvider>,
-}
-
-impl ApiStateInner {
-    pub(crate) fn get_rp_config(&self, is_proxied: bool) -> &'static RpConfig {
-        if self.mode == OperationMode::Local || is_proxied {
-            &LOCAL_RP_CONFIG
-        } else {
-            &CLOUD_RP_CONFIG
-        }
-    }
 }
 
 pub type ApiState = Arc<ApiStateInner>;

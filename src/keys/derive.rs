@@ -93,12 +93,12 @@ impl PrivateKeySeed {
         Ok((public_key, private_key))
     }
 
-    pub async fn generate_access_key(project_id: Uuid) -> (String, Self) {
+    pub fn generate_access_key(project_id: Uuid) -> (String, Self) {
         let mut first = [0u8; 32];
-        fill_random_bytes(&mut first).await;
+        fill_random_bytes(&mut first);
 
         let mut second = [0u8; 32];
-        fill_random_bytes(&mut second).await;
+        fill_random_bytes(&mut second);
 
         let access_key = DirectAccessKey {
             project_id,

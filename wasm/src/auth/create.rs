@@ -6,7 +6,7 @@ use crate::auth::mapping::{
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 
-use crate::passkeys::{RP_ENTITY_ID, RP_ENTITY_NAME};
+use secretpass_core::constants::RP_ID;
 use secretpass_core::passkeys::create::PasskeyCreationResult;
 use secretpass_core::utils::bin_decode;
 use secretpass_core::{InternalError, InternalResult, StatusCode, source};
@@ -34,8 +34,8 @@ impl PasskeyCreationRequest {
 }
 
 async fn register_user(params: &PasskeyCreationRequest) -> InternalResult<PasskeyCreationResult> {
-    let rp = PublicKeyCredentialRpEntity::new(RP_ENTITY_NAME);
-    rp.set_id(RP_ENTITY_ID);
+    let rp = PublicKeyCredentialRpEntity::new("Secretpass Cybertech Ltd.");
+    rp.set_id(RP_ID);
 
     let user_id = params.user_id.clone();
     let mut user_id_bytes: Vec<u8> = user_id.into_bytes();

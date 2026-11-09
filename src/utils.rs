@@ -9,8 +9,8 @@ use serde::de::DeserializeOwned;
 use sha2::{Digest, Sha256};
 
 use std::io::Cursor;
-use std::sync::OnceLock;
-use tokio::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
+
 static RNG: OnceLock<Mutex<ChaCha20Rng>> = OnceLock::new();
 
 pub fn get_global_rng() -> &'static Mutex<ChaCha20Rng> {
@@ -21,8 +21,8 @@ pub fn get_global_rng() -> &'static Mutex<ChaCha20Rng> {
     })
 }
 
-pub async fn fill_random_bytes(bytes: &mut [u8]) {
-    let mut rng = get_global_rng().lock().await;
+pub fn fill_random_bytes(bytes: &mut [u8]) {
+    let mut rng = get_global_rng().lock().unwrap();
     rng.fill(bytes);
 }
 

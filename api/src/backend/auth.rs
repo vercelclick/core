@@ -1,6 +1,6 @@
 use crate::ApiState;
 use axum::http::StatusCode;
-use secretpass_core::enums::{ChallengeKind, PasskeyType};
+use secretpass_core::enums::ChallengeKind;
 use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
 use secretpass_core::passkeys::create::PasskeyCreationResult;
 use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
@@ -29,7 +29,6 @@ pub struct BackendCreateUserRequest {
     pub user_email: String,
     pub passkey_cred_id: String,
     pub passkey_name: String,
-    pub passkey_type: PasskeyType,
     pub passkey_public_key: String,
     pub passkey_web_public_key: String,
 }
@@ -76,7 +75,6 @@ impl SessionPackage {
         state: &ApiState,
         result: &PasskeyAuthorizationResult,
     ) -> InternalResult<()> {
-        let rp_config = state.get_rp_config(false);
         let challenge = state
             .backend
             .get_pending_challenge(ChallengeKind::PasskeyAuthorize, self.user.email.clone())
@@ -99,12 +97,6 @@ impl SessionPackage {
                 "Passkey not found, logout and login, then try again. If this issue persists, please raise a support request"
             ))?;
 
-        result.validate(
-            self.user.id,
-            &passkey.web_public_key,
-            &challenge.value_hash,
-            rp_config.id,
-            rp_config.origin,
-        )
+        result.validate(self.user.id, &passkey.web_public_key, &challenge.value_hash)
     }
 }

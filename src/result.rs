@@ -32,10 +32,10 @@ pub struct InternalError {
 }
 
 impl InternalError {
-    pub fn trace(source: &str, status_code: StatusCode, message: &str, error: impl Debug) -> Self {
+    pub fn trace(source: &str, status_code: StatusCode, message: &str, _error: impl Debug) -> Self {
         #[cfg(feature = "trace")]
         {
-            tracing::error!("[{source} -> {status_code}] {message}: {:?}", error);
+            tracing::error!("[{source} -> {status_code}] {message}: {:?}", _error);
         }
         Self::build(source, status_code, message, vec![])
     }

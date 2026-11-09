@@ -30,7 +30,7 @@ impl SecureSession {
         self.private_key.public_key()
     }
 
-    pub async fn reencrypt_value(
+    pub fn reencrypt_value(
         &self,
         value: &ContributorSecretValue,
         keys: &[TargetedPublicKey],
@@ -39,7 +39,7 @@ impl SecureSession {
 
         let mut encrypted_values = Vec::<SecretValue>::with_capacity(keys.len());
         for key in keys {
-            let encrypted_value = key.public_key()?.encrypt(plain_value.clone()).await?;
+            let encrypted_value = key.public_key()?.encrypt(plain_value.clone())?;
 
             encrypted_values.push(SecretValue {
                 tag: value.tag.clone(),

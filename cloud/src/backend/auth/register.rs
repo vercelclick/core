@@ -42,7 +42,6 @@ pub async fn create_user(
         .bind(user.id)
         .bind(&request.passkey_name)
         .bind(&request.passkey_cred_id)
-        .bind(request.passkey_type)
         .bind(&request.passkey_public_key)
         .bind(&request.passkey_web_public_key)
         .fetch_one(&mut *tx)

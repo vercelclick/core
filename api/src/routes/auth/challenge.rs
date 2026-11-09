@@ -98,7 +98,10 @@ pub async fn generate_challenge_handler(
             )
             .await
         }
-        _ => Ok(PendingChallenge::generate_webauthn(request.kind, request.owner).await),
+        _ => Ok(PendingChallenge::generate_webauthn(
+            request.kind,
+            request.owner,
+        )),
     }?;
 
     pending_challenge.record(&state).await?;

@@ -1,5 +1,4 @@
 use crate::db::queries::auth::CREATE_PASSKEY_QUERY;
-use secretpass_core::enums::PasskeyType;
 use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
 use secretpass_core::{InternalError, InternalResult, Passkey, StatusCode, User, source};
 use sqlx::PgPool;
@@ -37,7 +36,6 @@ pub async fn retrieve_passkey_by_cred_id(
 pub async fn create_passkey(
     pool: &PgPool,
     user: &User,
-    passkey_type: PasskeyType,
     passkey_name: String,
     cred_id: String,
     web_public_key: String,
@@ -47,7 +45,6 @@ pub async fn create_passkey(
         .bind(user.id)
         .bind(passkey_name)
         .bind(cred_id)
-        .bind(passkey_type)
         .bind(public_key_result.public_key)
         .bind(web_public_key)
         .fetch_one(pool)

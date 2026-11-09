@@ -8,7 +8,7 @@ use crate::secrets::{
     ProjectEnvPathParams, ProjectPathParams, ProjectSecretPathParams, UpdateSecretRequest,
     UpdateSecretValueRequest,
 };
-use secretpass_core::enums::{ChallengeKind, PasskeyType};
+use secretpass_core::enums::ChallengeKind;
 use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
 use secretpass_core::{InternalResult, MachinePublicKey, Passkey, Project, Session, User};
 use std::collections::HashMap;
@@ -64,7 +64,6 @@ pub trait BackendProvider: Send + Sync + 'static {
     async fn save_passkey(
         &self,
         user: &User,
-        passkey_type: PasskeyType,
         passkey_name: String,
         cred_id: String,
         public_key: String,

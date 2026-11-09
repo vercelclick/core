@@ -16,7 +16,7 @@ use secretpass_api::secrets::{
     UpdateSecretValueRequest,
 };
 use secretpass_api::{BackendProvider, PendingChallenge, SessionPackage};
-use secretpass_core::enums::{ChallengeKind, PasskeyType};
+use secretpass_core::enums::ChallengeKind;
 use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
 use secretpass_core::{
     InternalError, InternalResult, MachinePublicKey, Passkey, Project, Session, StatusCode, User,
@@ -131,7 +131,6 @@ impl BackendProvider for LocalBackendProvider {
     async fn save_passkey(
         &self,
         _user: &User,
-        _passkey_type: PasskeyType,
         _passkey_name: String,
         _cred_id: String,
         _public_key: String,

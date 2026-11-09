@@ -37,7 +37,7 @@ pub async fn generate_machine_key(
         .await
         .map_err(JsError::from)?;
 
-    let (private_key, seed) = PrivateKeySeed::generate_access_key(request.project_id).await;
+    let (private_key, seed) = PrivateKeySeed::generate_access_key(request.project_id);
 
     let public_key = KeyPair::from_seed(seed)
         .map_err(JsError::from)?
@@ -58,7 +58,6 @@ pub async fn generate_machine_key(
         encrypted_values.extend_from_slice(
             &session
                 .reencrypt_value(value, std::slice::from_ref(&targeted_key))
-                .await
                 .map_err(JsError::from)?,
         );
     }

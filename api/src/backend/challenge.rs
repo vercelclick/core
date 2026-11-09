@@ -27,9 +27,9 @@ pub struct PendingChallenge {
 }
 
 impl PendingChallenge {
-    pub(crate) async fn generate_webauthn(kind: ChallengeKind, owner: String) -> (String, Self) {
+    pub(crate) fn generate_webauthn(kind: ChallengeKind, owner: String) -> (String, Self) {
         let mut challenge = [0u8; 32];
-        fill_random_bytes(&mut challenge).await;
+        fill_random_bytes(&mut challenge);
         let value = bin_encode(&challenge);
         let digest_value = value.clone();
         let value_hash = sha256_digest(&[digest_value]);
@@ -54,7 +54,7 @@ impl PendingChallenge {
         is_proxied: bool,
     ) -> InternalResult<(String, Self)> {
         let code = {
-            let mut rng = get_global_rng().lock().await;
+            let mut rng = get_global_rng().lock().unwrap();
             let code: String = (0..6)
                 .map(|_| {
                     let idx = rng.random_range(0..CODE_POOL.len());
@@ -67,14 +67,7 @@ impl PendingChallenge {
         #[cfg(feature = "email")]
         {
             use crate::emails;
-            use secretpass_core::enums::OperationMode;
             use secretpass_core::{InternalError, StatusCode, source};
-
-            let operation_mode = if is_proxied {
-                OperationMode::Local
-            } else {
-                OperationMode::Cloud
-            };
 
             let name = name.trim().split(" ").next().unwrap().to_string();
             let template = match kind {
@@ -82,14 +75,12 @@ impl PendingChallenge {
                     subject: "Verify your email".to_string(),
                     name,
                     code: code.clone(),
-                    operation_mode,
                 },
                 ChallengeKind::EmailSignIn => emails::EmailTemplate::Confirm {
                     subject: "Confirm sign in".to_string(),
                     name,
                     code: code.clone(),
                     operation: "attempted to sign in with email".to_string(),
-                    operation_mode,
                 },
                 ChallengeKind::EmailAuthorize => {
                     let operation = operation.ok_or_else(|| {
@@ -104,7 +95,6 @@ impl PendingChallenge {
                         name,
                         code: code.clone(),
                         operation,
-                        operation_mode,
                     }
                 }
                 _ => {
