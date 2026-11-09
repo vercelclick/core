@@ -7,10 +7,13 @@ use secretpass_api::projects::{
     CreateProjectRequest, GetProjectResult, ListProjectsResult, ProjectListItem, ProjectPath,
 };
 use secretpass_core::enums::{AccessGrant, ContributorRole, ContributorStatus};
-use secretpass_core::{Contributor, ContributorPublicKey, Environment, Passkey, Project, User};
+use secretpass_core::{
+    Contributor, ContributorPublicKey, Environment, InternalError, InternalResult, Passkey,
+    Project, StatusCode, User, source,
+};
 use uuid::Uuid;
 
-pub async fn list_projects(user: &User) -> anyhow::Result<ListProjectsResult> {
+pub async fn list_projects(user: &User) -> InternalResult<ListProjectsResult> {
     let mut config = LocalServiceConfig::load()?;
 
     let mut should_update = false;
@@ -57,28 +60,35 @@ pub async fn create_project(
     user: &User,
     passkeys: &[Passkey],
     request: CreateProjectRequest,
-) -> anyhow::Result<Project> {
+) -> InternalResult<Project> {
     let mut config = LocalServiceConfig::load()?;
 
-    let path = request
-        .path
-        .ok_or_else(|| anyhow::anyhow!("A path is required when creating a secretpass project"))?;
+    let path = request.path.ok_or_else(|| {
+        InternalError::new(
+            source!(),
+            StatusCode::BAD_REQUEST,
+            "path is required when creating a local secretpass project",
+        )
+    })?;
 
     if let Some(project_config) = LocalProjectConfig::load(&path)? {
         if config.attach(&path, project_config.project.id) {
             config.write()?;
         }
 
-        return Err(anyhow::format_err!(
-            "A project({}) already exists under {}. Please delete .spass directory if you intend to replace the project.",
-            project_config.project.name,
-            short_path(&path)
+        return Err(InternalError::new(
+            source!(),
+            StatusCode::CONFLICT,
+            &format!(
+                "Project({}) already exists under {}. Please delete .spass directory if you intend to replace the project.",
+                project_config.project.name,
+                short_path(&path)
+            ),
         ));
     }
 
     let project = Project {
         id: Uuid::now_v7(),
-        algorithm: request.algorithm,
         name: request.name.clone(),
         description: request.description.clone(),
         updated_at: Utc::now(),
@@ -103,7 +113,7 @@ pub async fn create_project(
         user_id: user.id,
         status: ContributorStatus::Active,
         role: ContributorRole::Admin,
-        environments: vec![],
+        access: vec![],
         updated_at: Utc::now(),
     };
 
@@ -114,8 +124,7 @@ pub async fn create_project(
             name: format!("{} - {}", user.email, passkey.name),
             user_id: passkey.user_id,
             cred_id: passkey.cred_id.clone(),
-            ecc: request.algorithm.is_ecc().then_some(passkey.ecc.clone()),
-            kem: request.algorithm.is_kem().then_some(passkey.kem.clone()),
+            public_key: passkey.public_key.clone(),
             contributor_id: contributor.id,
             access: AccessGrant::Granted,
             granted_by: Some(user.email.clone()),
@@ -147,7 +156,7 @@ pub async fn create_project(
 pub async fn get_project_by_id(
     user: &User,
     project_id: Uuid,
-) -> anyhow::Result<Option<GetProjectResult>> {
+) -> InternalResult<Option<GetProjectResult>> {
     let config = LocalServiceConfig::load()?;
 
     let (path, project_config) = match config.get_project_by_id(project_id)? {
@@ -160,9 +169,10 @@ pub async fn get_project_by_id(
     let contributor = project_config
         .get_contributor_by_user_id(user.id)
         .ok_or_else(|| {
-            anyhow::format_err!(
-                "FORBIDDEN: you do not have access to this project under {}",
-                user.email
+            InternalError::new(
+                source!(),
+                StatusCode::FORBIDDEN,
+                "You do not have access to this project under the current user",
             )
         })?;
 

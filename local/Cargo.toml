@@ -8,20 +8,10 @@ description.workspace = true
 homepage.workspace = true
 
 
-[package.metadata.dist]
-dist = true
-
-[package.metadata.wix]
-upgrade-guid = "B1BF63D8-5598-4B6A-B5EF-55CCCBBEAC79"
-path-guid = "53E1D4CC-047F-4AE9-BB70-9413537C74E8"
-license = false
-eula = false
-
 [dependencies]
-anyhow = "1.0.104"
 async-trait = "0.1.92"
 axum = { version = "0.8.9", features = ["tokio", "macros", "json", "query", "ws"] }
-axum-server = { version = "0.8.0", features = ["tls-rustls", "rustls", "tokio-rustls"] }
+axum-server = { version = "0.9.0", features = ["tls-rustls", "rustls", "tokio-rustls"] }
 chrono = { version = "0.4.45", features = ["serde", "now"] }
 clap = { version = "4.6.6", features = ["derive"] }
 daemon-kit = "0.1.4"
@@ -30,7 +20,7 @@ rcgen = "0.14.10"
 reqwest = { version = "0.13.5", features = ["json", "blocking"] }
 rustls = { version = "0.23.46", default-features = false, features = ["aws-lc-rs"] }
 secretpass-api = { path = "../api" }
-secretpass-core = { path = ".." }
+secretpass-core = { path = "..", features = ["axum", "trace"] }
 serde = { version = "1.0.229" }
 serde_json = "1.0.151"
 time = "0.3.55"

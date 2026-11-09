@@ -8,6 +8,7 @@ use crate::passkeys::prf::{PrfDeriveConfig, PrfResults};
 use crate::session::SecureSession;
 use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
 use secretpass_core::utils::bin_decode;
+use secretpass_core::{InternalError, InternalResult, StatusCode, source};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use web_sys::{
@@ -21,7 +22,7 @@ pub struct AuthorizationRequest {
 }
 
 impl AuthorizationRequest {
-    pub(crate) async fn authorize(&self) -> anyhow::Result<PasskeyAuthorizationResult> {
+    pub(crate) async fn authorize(&self) -> InternalResult<PasskeyAuthorizationResult> {
         let (response, _) =
             browser_user_authorize(&self.challenge, &self.allowed_credentials, &None).await?;
         Ok(response)
@@ -37,7 +38,7 @@ pub struct DecryptionAuthorizationRequest {
 impl DecryptionAuthorizationRequest {
     pub(crate) async fn authorize(
         &self,
-    ) -> anyhow::Result<(PasskeyAuthorizationResult, SecureSession)> {
+    ) -> InternalResult<(PasskeyAuthorizationResult, SecureSession)> {
         let allowed_credentials: Vec<String> = self
             .prf_configs
             .iter()
@@ -51,9 +52,13 @@ impl DecryptionAuthorizationRequest {
         )
         .await?;
 
-        let session = prf_results
-            .map(SecureSession::new)
-            .ok_or_else(|| anyhow::anyhow!("Missing Pseudo Random Function results!"))??;
+        let session = prf_results.map(SecureSession::new).ok_or_else(|| {
+            InternalError::new(
+                source!(),
+                StatusCode::BAD_GATEWAY,
+                "Missing Pseudo Random Function results!",
+            )
+        })??;
 
         Ok((login_response, session))
     }
@@ -63,7 +68,7 @@ async fn browser_user_authorize(
     challenge: &str,
     allowed_credentials: &[String],
     prf_configs: &Option<Vec<PrfDeriveConfig>>,
-) -> anyhow::Result<(PasskeyAuthorizationResult, Option<PrfResults>)> {
+) -> InternalResult<(PasskeyAuthorizationResult, Option<PrfResults>)> {
     let mut challenge = bin_decode(challenge)?;
 
     let pk_options = PublicKeyCredentialRequestOptions::new_with_u8_slice(&mut challenge);
@@ -85,7 +90,14 @@ async fn browser_user_authorize(
 
     let promise = match get_credentials_container()?.get_with_options(&options) {
         Ok(promise) => promise,
-        Err(err) => return Err(anyhow::format_err!("Error getting passkey: {:?}", err)),
+        Err(err) => {
+            return Err(InternalError::trace(
+                source!(),
+                StatusCode::CONFLICT,
+                "Error getting passkey",
+                err,
+            ));
+        }
     };
 
     let credential = parse_promise(promise).await?;

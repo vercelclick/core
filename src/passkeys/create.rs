@@ -1,8 +1,10 @@
+use crate::passkeys::helpers::{parse_auth_data, verify_client_data};
+use crate::result::{InternalError, InternalResult};
+use crate::source;
+use crate::utils::bin_encode;
 use ciborium::Value;
 use coset::{CborSerializable, CoseKey};
-
-use crate::passkeys::helpers::{parse_auth_data, verify_client_data};
-use crate::utils::bin_encode;
+use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use tsify::Tsify;
@@ -30,7 +32,7 @@ impl PasskeyCreationResult {
         challenge_hash: &str,
         rp_id: &str,
         rp_origin: &str,
-    ) -> anyhow::Result<(String, String)> {
+    ) -> InternalResult<(String, String)> {
         verify_client_data(
             &self.response.client_data_json,
             challenge_hash,
@@ -40,31 +42,62 @@ impl PasskeyCreationResult {
 
         // Parse attestation object (CBOR)
         let att_obj: Value = ciborium::from_reader(self.response.attestation_object.as_slice())
-            .map_err(|e| anyhow::format_err!(format!("Invalid attestationObject CBOR: {e}")))?;
+            .map_err(|e| {
+                InternalError::trace(
+                    source!(),
+                    StatusCode::CONFLICT,
+                    "Error parsing attestation object",
+                    e,
+                )
+            })?;
 
         let Value::Map(m) = &att_obj else {
-            return Err(anyhow::anyhow!("Invalid attestation object structure"));
+            return Err(InternalError::new(
+                source!(),
+                StatusCode::BAD_REQUEST,
+                "Invalid attestation object structure",
+            ));
         };
 
         let (_, auth_data_value) = m
             .iter()
             .find(|(k, _)| k.as_text().is_some_and(|s| s == "authData"))
-            .ok_or_else(|| anyhow::anyhow!("authData missing"))?;
+            .ok_or_else(|| {
+                InternalError::new(
+                    source!(),
+                    StatusCode::BAD_REQUEST,
+                    "Missing authentication data",
+                )
+            })?;
 
-        let auth_data_bytes = auth_data_value
-            .as_bytes()
-            .ok_or_else(|| anyhow::anyhow!("authData not bytes"))?;
+        let auth_data_bytes = auth_data_value.as_bytes().ok_or_else(|| {
+            InternalError::new(
+                source!(),
+                StatusCode::CONFLICT,
+                "Invalid authentication data",
+            )
+        })?;
 
         let (flags, credential_data) = parse_auth_data(auth_data_bytes, rp_id)?;
         flags.enforce_verification()?;
 
         let cred_bytes = credential_data.ok_or_else(|| {
-            anyhow::anyhow!("Attestation data is missing from the credential returned")
+            InternalError::new(
+                source!(),
+                StatusCode::CONFLICT,
+                "Attestation data is missing from the credential returned",
+            )
         })?;
         let (cred_id, pub_key_cbor) = extract_credential(&cred_bytes)?;
         // Validate the public key parses
-        CoseKey::from_slice(pub_key_cbor)
-            .map_err(|e| anyhow::format_err!("Invalid Public Key CBOR: {e}"))?;
+        CoseKey::from_slice(pub_key_cbor).map_err(|e| {
+            InternalError::trace(
+                source!(),
+                StatusCode::CONFLICT,
+                "Invalid Public Key CBOR",
+                e,
+            )
+        })?;
 
         // Encode for storage
         let cred_id_b64 = bin_encode(cred_id);
@@ -74,13 +107,28 @@ impl PasskeyCreationResult {
     }
 }
 
-fn extract_credential(data: &[u8]) -> anyhow::Result<(&[u8], &[u8])> {
+fn extract_credential(data: &[u8]) -> InternalResult<(&[u8], &[u8])> {
     if data.len() < 18 {
-        return Err(anyhow::anyhow!("Credential Data too short"));
+        return Err(InternalError::new(
+            source!(),
+            StatusCode::CONFLICT,
+            "Invalid credential data",
+        ));
     }
-    let cred_id_len = u16::from_be_bytes(data[16..18].try_into()?) as usize;
+    let cred_id_len = u16::from_be_bytes(data[16..18].try_into().map_err(|err| {
+        InternalError::trace(
+            source!(),
+            StatusCode::CONFLICT,
+            "Invalid credential ID",
+            err,
+        )
+    })?) as usize;
     if data.len() < 18 + cred_id_len {
-        return Err(anyhow::anyhow!("Credential ID incomplete"));
+        return Err(InternalError::new(
+            source!(),
+            StatusCode::CONFLICT,
+            "Credential ID incomplete",
+        ));
     }
     let cred_id = &data[18..18 + cred_id_len];
     let pub_key_cbor = &data[18 + cred_id_len..];

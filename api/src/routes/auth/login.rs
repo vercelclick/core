@@ -1,13 +1,12 @@
-use crate::api_types::HttpResponse;
 use crate::auth::{EmailLoginRequest, PasskeyLoginRequest, StartLoginRequest, StartLoginResponse};
 use crate::routes::auth::shared::{record_session, set_session_cookie};
-use crate::utils::{CloudProxy, error_mapper};
+use crate::utils::CloudProxy;
 use crate::{ApiState, PendingChallenge, SessionPackage};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::{Extension, Json};
-use secretpass_core::Passkey;
 use secretpass_core::enums::ChallengeKind;
+use secretpass_core::{InternalError, InternalResult, Passkey, source};
 use tower_cookies::Cookies;
 
 pub async fn login_user_with_email(
@@ -15,7 +14,7 @@ pub async fn login_user_with_email(
     cookies: Cookies,
     Extension(proxy): Extension<CloudProxy>,
     Json(request): Json<EmailLoginRequest>,
-) -> HttpResponse<Json<SessionPackage>> {
+) -> InternalResult<Json<SessionPackage>> {
     let result = if proxy.is_local() {
         let result: SessionPackage = proxy.send_json(&request).await?;
         record_session(&state, &result).await?;
@@ -24,34 +23,28 @@ pub async fn login_user_with_email(
     } else {
         let pending_challenge = state
             .backend
-            .pop_pending_challenge(ChallengeKind::EmailSignIn, request.email_address.clone())
-            .await
-            .map_err(error_mapper(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Error retrieving challenge",
-            ))?
+            .get_pending_challenge(ChallengeKind::EmailSignIn, request.email_address.clone())
+            .await?
             .ok_or_else(|| {
-                (
-                    StatusCode::NOT_FOUND,
-                    "Email challenge not found".to_string(),
+                InternalError::new(
+                    source!(),
+                    StatusCode::BAD_REQUEST,
+                    "Email challenge not found",
                 )
             })?;
 
         if !pending_challenge.verify_challenge(request.confirmation_code) {
-            return Err((
+            return Err(InternalError::new(
+                source!(),
                 StatusCode::FORBIDDEN,
-                "Invalid confirmation code".to_string(),
+                "Invalid confirmation code",
             ));
         }
 
         state
             .backend
             .create_session_by_email(request.email_address)
-            .await
-            .map_err(error_mapper(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Error login in",
-            ))?
+            .await?
     };
 
     set_session_cookie(&cookies, &result.session);
@@ -64,7 +57,7 @@ pub async fn login_user_with_passkey(
     cookies: Cookies,
     Extension(proxy): Extension<CloudProxy>,
     Json(request): Json<PasskeyLoginRequest>,
-) -> HttpResponse<Json<SessionPackage>> {
+) -> InternalResult<Json<SessionPackage>> {
     let result = if proxy.is_local() {
         let result: SessionPackage = proxy.send_json(&request).await?;
 
@@ -73,58 +66,42 @@ pub async fn login_user_with_passkey(
     } else {
         let pending_challenge = state
             .backend
-            .pop_pending_challenge(ChallengeKind::PasskeySignIn, request.owner.clone())
-            .await
-            .map_err(error_mapper(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Error retrieving challenge",
-            ))?
+            .get_pending_challenge(ChallengeKind::PasskeySignIn, request.owner.clone())
+            .await?
             .ok_or_else(|| {
-                (
-                    StatusCode::NOT_FOUND,
-                    "Passkey challenge not found".to_string(),
+                InternalError::new(
+                    source!(),
+                    StatusCode::BAD_REQUEST,
+                    "Passkey challenge not found",
                 )
             })?;
 
         let passkey = state
             .backend
             .retrieve_passkey_by_cred_id(request.auth_response.id.clone(), request.owner.clone())
-            .await
-            .map_err(error_mapper(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Error retrieving public key",
-            ))?
+            .await?
             .ok_or_else(|| {
-                (
+                InternalError::new(
+                    source!(),
                     StatusCode::NOT_FOUND,
-                    "Passkey not found on your account".to_string(),
+                    "Passkey not found on your account",
                 )
             })?;
 
         let rp_config = state.get_rp_config(proxy.is_proxied());
 
-        request
-            .auth_response
-            .validate(
-                passkey.user_id,
-                &passkey.public_key,
-                &pending_challenge.value_hash,
-                rp_config.id,
-                rp_config.origin,
-            )
-            .map_err(error_mapper(
-                StatusCode::CONFLICT,
-                "Passkey authenticity could not be ascertained",
-            ))?;
+        request.auth_response.validate(
+            passkey.user_id,
+            &passkey.web_public_key,
+            &pending_challenge.value_hash,
+            rp_config.id,
+            rp_config.origin,
+        )?;
 
         state
             .backend
             .create_session_by_user_id(passkey.user_id)
-            .await
-            .map_err(error_mapper(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Error creating user",
-            ))?
+            .await?
     };
 
     set_session_cookie(&cookies, &result.session);
@@ -137,7 +114,7 @@ pub async fn start_login(
     State(state): State<ApiState>,
     Extension(proxy): Extension<CloudProxy>,
     Json(request): Json<StartLoginRequest>,
-) -> HttpResponse<Json<StartLoginResponse>> {
+) -> InternalResult<Json<StartLoginResponse>> {
     if proxy.is_local() {
         let result: StartLoginResponse = proxy.send_json(&request).await?;
         return Ok(Json(result));
@@ -148,15 +125,12 @@ pub async fn start_login(
     let (user, passkeys) = state
         .backend
         .retrieve_user_and_known_passkeys(request.email_address)
-        .await
-        .map_err(error_mapper(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Error retrieving user",
-        ))?
+        .await?
         .ok_or_else(|| {
-            (
+            InternalError::new(
+                source!(),
                 StatusCode::NOT_FOUND,
-                "User not found, try a different email or create a new account".to_string(),
+                "User not found, try a different email or create a new account",
             )
         })?;
 
@@ -174,18 +148,9 @@ pub async fn start_login(
             None,
             proxy.is_proxied(),
         )
-        .await
-        .map_err(error_mapper(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Error generating confirmation code",
-        ))?
+        .await?
     } else {
-        PendingChallenge::generate_webauthn(ChallengeKind::PasskeySignIn, user.email)
-            .await
-            .map_err(error_mapper(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Error generating passkey challenge",
-            ))?
+        PendingChallenge::generate_webauthn(ChallengeKind::PasskeySignIn, user.email).await
     };
 
     pending_challenge.record(&state).await?;

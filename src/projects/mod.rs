@@ -5,11 +5,8 @@ pub mod project;
 pub mod secret;
 
 pub use contributor::Contributor;
-pub use contributor::{ContributorPublicKey, SimpleContributorPublicKey};
-pub use environment::Environment;
-pub use machine::{MachinePublicKey, SimpleMachinePublicKey};
+pub use contributor::ContributorPublicKey;
+pub use environment::{Environment, EnvironmentAccess};
+pub use machine::MachinePublicKey;
 pub use project::Project;
-pub use secret::{
-    ContributorSecretValue, ContributorUpdateValue, MachineSecretValue, MachineUpdateValue,
-    SecretDefinition, SimplifiedEncryptedValue,
-};
+pub use secret::{ContributorSecretValue, MachineSecretValue, SecretDefinition, SecretValue};

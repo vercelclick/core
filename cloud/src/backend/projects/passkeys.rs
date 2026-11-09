@@ -1,5 +1,5 @@
 use secretpass_core::enums::AccessGrant;
-use secretpass_core::{Contributor, Passkey, Project, User};
+use secretpass_core::{Contributor, Passkey, User};
 use sqlx::types::chrono::Utc;
 use sqlx::{Postgres, QueryBuilder};
 
@@ -11,7 +11,6 @@ INSERT INTO "ContributorPublicKeys" (name, user_id, cred_id, contributor_id, acc
 pub fn contributor_public_key_insert_query_builder(
     user: &User,
     contributor: &Contributor,
-    project: &Project,
     passkeys: &[Passkey],
 ) -> QueryBuilder<Postgres> {
     let mut query_builder: QueryBuilder<Postgres> =
@@ -23,8 +22,7 @@ pub fn contributor_public_key_insert_query_builder(
             .push_bind(passkey.cred_id.clone())
             .push_bind(contributor.id)
             .push_bind(AccessGrant::Granted)
-            .push_bind(project.algorithm.is_ecc().then_some(passkey.ecc.clone()))
-            .push_bind(project.algorithm.is_kem().then_some(passkey.kem.clone()))
+            .push_bind(passkey.public_key.clone())
             .push_bind(user.email.clone())
             .push_bind(Utc::now());
     });

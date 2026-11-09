@@ -1,8 +1,10 @@
 use crate::passkeys::flags::PasskeyFlags;
+use crate::result::{InternalError, InternalResult};
+use crate::source;
 use crate::utils::{bin_decode, bin_encode, sha256_digest};
+use http::StatusCode;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
-use wasm_bindgen::throw_str;
 
 const CHALLENGE_LEN: usize = 32;
 
@@ -15,10 +17,14 @@ struct ClientData {
 }
 
 impl ClientData {
-    fn challenge(&self) -> anyhow::Result<Vec<u8>> {
+    fn challenge(&self) -> InternalResult<Vec<u8>> {
         let challenge_bytes = bin_decode(&self.challenge)?;
         if challenge_bytes.len() != CHALLENGE_LEN {
-            throw_str("Invalid challenge length")
+            return Err(InternalError::new(
+                source!(),
+                StatusCode::CONFLICT,
+                "Invalid challenge value",
+            ));
         }
         Ok(challenge_bytes)
     }
@@ -29,28 +35,43 @@ pub fn verify_client_data(
     expected_challenge_hash: &str,
     expected_type: &str,
     expected_origin: &str,
-) -> anyhow::Result<()> {
-    let data: ClientData = serde_json::from_slice(bytes)?;
+) -> InternalResult<()> {
+    let data: ClientData = serde_json::from_slice(bytes).map_err(|err| {
+        InternalError::trace(
+            source!(),
+            StatusCode::CONFLICT,
+            "Invalid client data content",
+            err,
+        )
+    })?;
     let challenge = data.challenge()?;
     let challenge_hash = sha256_digest(&[bin_encode(&challenge)]);
 
     if challenge_hash != expected_challenge_hash {
-        return Err(anyhow::anyhow!("Invalid challenge"));
+        return Err(InternalError::new(
+            source!(),
+            StatusCode::CONFLICT,
+            "Challenge value mismatch",
+        ));
     }
 
     // Due to dynamic port configuration
     if data.origin != expected_origin {
-        return Err(anyhow::format_err!(
-            "Origin mismatch, expected: {}, got: {}",
-            expected_origin,
-            data.origin
+        return Err(InternalError::new(
+            source!(),
+            StatusCode::CONFLICT,
+            &format!(
+                "Origin mismatch, expected: {}, got: {}",
+                expected_origin, data.origin
+            ),
         ));
     }
 
     if data.type_ != expected_type {
-        return Err(anyhow::format_err!(
-            "Invalid operation type: {}",
-            data.type_
+        return Err(InternalError::new(
+            source!(),
+            StatusCode::CONFLICT,
+            &format!("Invalid operation type: {}", data.type_),
         ));
     }
     Ok(())
@@ -59,9 +80,13 @@ pub fn verify_client_data(
 pub fn parse_auth_data(
     raw: &[u8],
     expected_rp_id: &str,
-) -> anyhow::Result<(PasskeyFlags, Option<Vec<u8>>)> {
+) -> InternalResult<(PasskeyFlags, Option<Vec<u8>>)> {
     if raw.len() < 37 {
-        return Err(anyhow::anyhow!("authData too short"));
+        return Err(InternalError::new(
+            source!(),
+            StatusCode::CONFLICT,
+            "Invalid auth data",
+        ));
     }
     let rp_id_hash = raw[0..32].to_vec();
 
@@ -78,10 +103,14 @@ pub fn parse_auth_data(
     Ok((flags, credential_data))
 }
 
-fn verify_rp_id_hash(hash: &[u8], expected_rp_id: &str) -> anyhow::Result<()> {
+fn verify_rp_id_hash(hash: &[u8], expected_rp_id: &str) -> InternalResult<()> {
     let expected = Sha256::digest(expected_rp_id.as_bytes());
     if hash != expected.as_ref() as &[u8] {
-        return Err(anyhow::anyhow!("RP ID hash mismatch"));
+        return Err(InternalError::new(
+            source!(),
+            StatusCode::CONFLICT,
+            "RP ID mismatch",
+        ));
     }
     Ok(())
 }

@@ -1,15 +1,13 @@
-use crate::api_types::HttpResponse;
 use crate::routes::auth::register::{
     PasskeyCreateValidationRequest, validate_passkey_creation_details,
 };
-use crate::utils::{CloudProxy, error_mapper};
+use crate::utils::CloudProxy;
 use crate::{ApiState, SessionPackage};
 use axum::extract::State;
-use axum::http::StatusCode;
 use axum::{Extension, Json};
-use secretpass_core::Passkey;
 use secretpass_core::passkeys::create::PasskeyCreationResult;
 use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
+use secretpass_core::{InternalResult, Passkey};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use ts_rs::TS;
@@ -34,28 +32,28 @@ pub async fn create_passkey_handler(
     Extension(proxy): Extension<CloudProxy>,
     Extension(package): Extension<Arc<SessionPackage>>,
     Json(request): Json<CreatePasskeyRequest>,
-) -> HttpResponse<Json<CreatePasskeyResponse>> {
+) -> InternalResult<Json<CreatePasskeyResponse>> {
     if proxy.is_local() {
         let result: CreatePasskeyResponse = proxy.send_json(&request).await?;
 
         let mut passkeys = (*package.passkeys).clone();
 
         passkeys.push(result.passkey.clone());
-        state.backend.record_session(SessionPackage{
-            user: package.user.clone(),
-            passkeys: Arc::new(passkeys),
-            session: package.session.clone()
-        }).await.map_err(error_mapper(
-            StatusCode::UNAUTHORIZED, // Intentionally send unauthorized to trigger an auth flow
-            "Passkey was successfully created but current session could not be updated, try logging in and out"
-        ))?;
+        state
+            .backend
+            .record_session(SessionPackage {
+                user: package.user.clone(),
+                passkeys: Arc::new(passkeys),
+                session: package.session.clone(),
+            })
+            .await?;
 
         return Ok(Json(result));
     }
 
     let rp_config = state.get_rp_config(proxy.is_proxied());
 
-    let (cred_id, public_key) = validate_passkey_creation_details(
+    let (cred_id, web_public_key) = validate_passkey_creation_details(
         false,
         &state,
         rp_config,
@@ -76,14 +74,10 @@ pub async fn create_passkey_handler(
             rp_config.passkey_type,
             request.name,
             cred_id,
-            public_key,
+            web_public_key,
             request.public_key_result,
         )
-        .await
-        .map_err(error_mapper(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Error saving passkey",
-        ))?;
+        .await?;
 
     Ok(Json(CreatePasskeyResponse { passkey }))
 }

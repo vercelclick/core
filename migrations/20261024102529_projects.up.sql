@@ -1,13 +1,20 @@
-CREATE TYPE "EncryptionAlgorithm" as enum ('ECC', 'KEM', 'Hybrid');
-
-
 CREATE TABLE "Projects"
 (
     id          UUID PRIMARY KEY DEFAULT uuidv7(),
     name        TEXT,
     description TEXT,
-    algorithm   "EncryptionAlgorithm",
     updated_at  TIMESTAMPTZ      DEFAULT now()
+);
+
+
+CREATE TYPE "EnvironmentAccessLevel" as enum ('ReadOnly', 'ReadWrite');
+
+
+CREATE TYPE "EnvironmentAccess" AS
+(
+    "name"    TEXT,
+    "level"   "EnvironmentAccessLevel",
+    "secrets" TEXT[]
 );
 
 
@@ -17,13 +24,13 @@ CREATE TYPE "ContributorStatus" as enum ('Active', 'Archived');
 
 CREATE TABLE "Contributors"
 (
-    id           UUID PRIMARY KEY DEFAULT uuidv7(),
-    user_id      UUID                NOT NULL,
-    status       "ContributorStatus" NOT NULL,
-    project_id   UUID                NOT NULL,
-    role         "ContributorRole"   NOT NULL,
-    environments TEXT[]              NOT NULL,
-    updated_at   TIMESTAMPTZ      DEFAULT now(),
+    id         UUID PRIMARY KEY DEFAULT uuidv7(),
+    user_id    UUID                  NOT NULL,
+    status     "ContributorStatus"   NOT NULL,
+    project_id UUID                  NOT NULL,
+    role       "ContributorRole"     NOT NULL,
+    access     "EnvironmentAccess"[] NOT NULL,
+    updated_at TIMESTAMPTZ      DEFAULT now(),
 
     CONSTRAINT fk_contributor_to_user
         FOREIGN KEY (user_id)
@@ -46,8 +53,7 @@ CREATE TABLE "ContributorPublicKeys"
     cred_id        TEXT          NOT NULL,
     contributor_id UUID          NOT NULL,
     access         "AccessGrant" NOT NULL,
-    ecc            TEXT,
-    kem            TEXT,
+    public_key     TEXT,
     granted_by     TEXT,
     granted_on     TIMESTAMPTZ,
 
@@ -99,7 +105,6 @@ CREATE TABLE "SecretDefinitions"
             ON DELETE CASCADE
 );
 
-
 CREATE TYPE "SecretDataType" as ENUM ('Text', 'Json', 'Url');
 
 CREATE TABLE "ContributorSecretValues"
@@ -113,7 +118,7 @@ CREATE TABLE "ContributorSecretValues"
     encrypted_value TEXT,
     created_at      TIMESTAMPTZ DEFAULT now(),
     CONSTRAINT contributor_values_primary_key
-        PRIMARY KEY (target, project_id, env_name, name),
+        PRIMARY KEY (target, project_id, env_name, name, tag),
     CONSTRAINT fk_contributor_values_definition
         FOREIGN KEY (project_id, env_name, name)
             REFERENCES "SecretDefinitions" (project_id, env_name, name)
@@ -126,14 +131,13 @@ CREATE TABLE "ContributorSecretValues"
 
 CREATE TABLE "MachinePublicKeys"
 (
-    id           TEXT PRIMARY KEY,
-    name         TEXT   NOT NULL,
-    description  TEXT   NOT NULL,
-    project_id   UUID   NOT NULL,
-    environments TEXT[] NOT NULL,
-    ecc          TEXT,
-    kem          TEXT,
-    generated_by TEXT   NOT NULL,
+    id           UUID PRIMARY KEY,
+    name         TEXT                  NOT NULL,
+    description  TEXT                  NOT NULL,
+    project_id   UUID                  NOT NULL,
+    access       "EnvironmentAccess"[] NOT NULL,
+    public_key   TEXT,
+    generated_by TEXT                  NOT NULL,
     generated_on TIMESTAMPTZ DEFAULT now(),
 
     CONSTRAINT fk_machine_public_key_project
@@ -154,7 +158,7 @@ CREATE TABLE "MachineSecretValues"
     encrypted_value TEXT,
     created_at      TIMESTAMPTZ DEFAULT now(),
     CONSTRAINT machine_values_primary_key
-        PRIMARY KEY (target, project_id, env_name, name),
+        PRIMARY KEY (target, project_id, env_name, name, tag),
     CONSTRAINT fk_machine_values_definition
         FOREIGN KEY (project_id, env_name, name)
             REFERENCES "SecretDefinitions" (project_id, env_name, name)

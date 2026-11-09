@@ -1,5 +1,4 @@
 use crate::auth::DecryptionAuthorizationRequest;
-use secretpass_core::enums::EncryptionAlgorithm;
 use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
 use tsify::{Ts, Tsify};
 use wasm_bindgen::JsError;
@@ -11,16 +10,12 @@ pub async fn generate_public_keys(
 ) -> Result<Ts<PublicKeyGenerateResult>, JsError> {
     let request = ts_request.to_rust()?;
 
-    let (auth_response, session) = request
-        .authorize()
-        .await
-        .map_err(|err| JsError::new(&format!("Error authorizing user: {}", err)))?;
+    let (auth_response, session) = request.authorize().await.map_err(JsError::from)?;
 
-    let public_key = session.public_key(EncryptionAlgorithm::Hybrid);
+    let public_key = session.public_key();
 
     let response = PublicKeyGenerateResult {
-        ecc: public_key.ecc().unwrap(),
-        kem: public_key.kem().unwrap(),
+        public_key: public_key.encode(),
         auth_response,
     }
     .into_ts()?;

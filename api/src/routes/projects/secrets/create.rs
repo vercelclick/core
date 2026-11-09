@@ -1,16 +1,13 @@
-use crate::api_types::HttpResponse;
 use crate::environments::SecretWithEncryptedValues;
 use crate::secrets::{
     CreateSecretRequest, ProjectEnvPathParams, ProjectSecretPathParams, UpdateSecretRequest,
     UpdateSecretValueRequest,
 };
-use crate::utils::error_mapper;
 use crate::{ApiState, SessionPackage};
 use axum::extract::{Path, State};
-use axum::http::StatusCode;
 use axum::{Extension, Json};
+use secretpass_core::{InternalResult, User};
 use std::sync::Arc;
-use secretpass_core::User;
 
 #[axum::debug_handler]
 pub async fn create_secret(
@@ -18,7 +15,7 @@ pub async fn create_secret(
     Extension(session): Extension<Arc<SessionPackage>>,
     Path(params): Path<ProjectEnvPathParams>,
     Json(request): Json<CreateSecretRequest>,
-) -> HttpResponse<Json<SecretWithEncryptedValues>> {
+) -> InternalResult<Json<SecretWithEncryptedValues>> {
     session
         .validate_passkey_auth(&state, &request.auth_result)
         .await?;
@@ -26,11 +23,7 @@ pub async fn create_secret(
     let result = state
         .backend
         .create_secret(&session.user, params, request)
-        .await
-        .map_err(error_mapper(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Error creating secret",
-        ))?;
+        .await?;
 
     Ok(Json(result))
 }
@@ -41,15 +34,8 @@ pub async fn update_secret(
     Extension(user): Extension<Arc<User>>,
     Path(params): Path<ProjectSecretPathParams>,
     Json(request): Json<UpdateSecretRequest>,
-) -> HttpResponse<Json<SecretWithEncryptedValues>> {
-    let response = state
-        .backend
-        .update_secret(&user, params, request)
-        .await
-        .map_err(error_mapper(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Error updating secret",
-        ))?;
+) -> InternalResult<Json<SecretWithEncryptedValues>> {
+    let response = state.backend.update_secret(&user, params, request).await?;
 
     Ok(Json(response))
 }
@@ -60,7 +46,7 @@ pub async fn update_secret_value(
     Extension(session): Extension<Arc<SessionPackage>>,
     Path(params): Path<ProjectSecretPathParams>,
     Json(request): Json<UpdateSecretValueRequest>,
-) -> HttpResponse<Json<SecretWithEncryptedValues>> {
+) -> InternalResult<Json<SecretWithEncryptedValues>> {
     session
         .validate_passkey_auth(&state, &request.auth_result)
         .await?;
@@ -68,11 +54,7 @@ pub async fn update_secret_value(
     let response = state
         .backend
         .update_secret_value(&session.user, params, request)
-        .await
-        .map_err(error_mapper(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Error updating secret value",
-        ))?;
+        .await?;
 
     Ok(Json(response))
 }

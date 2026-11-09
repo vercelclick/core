@@ -1,65 +1,64 @@
+use crate::backend::projects::secrets::utils::build_latest_attributed_values;
 use crate::config::LocalServiceConfig;
 use crate::service::keys::LocalKeysConfig;
 use crate::service::secrets::LocalSecretConfig;
 use chrono::Utc;
-use secretpass_api::constants::LATEST_SECRET_TAG;
 use secretpass_api::environments::SecretWithEncryptedValues;
 use secretpass_api::secrets::{CreateSecretRequest, ProjectEnvPathParams};
-use secretpass_core::enums::SecretDataType;
-use secretpass_core::{ContributorSecretValue, MachineSecretValue, SecretDefinition, User};
+use secretpass_core::{InternalError, InternalResult, SecretDefinition, StatusCode, User, source};
 
 pub async fn create_secret(
     user: &User,
     params: ProjectEnvPathParams,
     request: CreateSecretRequest,
-) -> anyhow::Result<SecretWithEncryptedValues> {
+) -> InternalResult<SecretWithEncryptedValues> {
     let local_config = LocalServiceConfig::load()?;
 
     let (path, project_conf, contributor) =
         local_config.get_project_and_contributor(params.project_id, user.id)?;
 
-    contributor
-        .can_access(&params.env_name)
-        .ok_or_else(|| anyhow::anyhow!("You don't have access to this environment"))?;
+    let access = contributor.get_access(&params.env_name).ok_or_else(|| {
+        InternalError::new(
+            source!(),
+            StatusCode::FORBIDDEN,
+            "You don't have access to this environment",
+        )
+    })?;
+
+    access.is_env_admin().ok_or_else(|| {
+        InternalError::new(
+            source!(),
+            StatusCode::FORBIDDEN,
+            "You do not have permission to add secrets to this environment",
+        )
+    })?;
+
+    let environment = project_conf
+        .get_environment(&params.env_name)
+        .ok_or_else(|| {
+            InternalError::new(
+                source!(),
+                StatusCode::NOT_FOUND,
+                &format!("Environment '{}' not found", params.env_name),
+            )
+        })?;
 
     // Avoid overwriting existing secrets
     LocalSecretConfig::load(&path, &params.env_name, &request.name)?
         .is_none()
-        .ok_or_else(|| anyhow::format_err!("{} already exists", request.name))?;
+        .ok_or_else(|| {
+            InternalError::new(
+                source!(),
+                StatusCode::CONFLICT,
+                &format!(
+                    "Secret {}/{} already exists",
+                    &params.env_name, &request.name
+                ),
+            )
+        })?;
 
-    let environment = project_conf
-        .get_environment(&params.env_name)
-        .ok_or_else(|| anyhow::format_err!("Environment '{}' not found", params.env_name))?;
-
-    let contributor_values = request
-        .contributors_values
-        .iter()
-        .map(|value| ContributorSecretValue {
-            name: request.name.clone(),
-            env_name: environment.name.clone(),
-            tag: LATEST_SECRET_TAG.to_string(),
-            target: value.target,
-            encrypted_value: value.encrypted_value.clone(),
-            project_id: params.project_id,
-            data_type: SecretDataType::Text,
-            created_at: Utc::now(),
-        })
-        .collect();
-
-    let machine_values = request
-        .machines_values
-        .iter()
-        .map(|value| MachineSecretValue {
-            name: request.name.clone(),
-            env_name: environment.name.clone(),
-            tag: LATEST_SECRET_TAG.to_string(),
-            target: value.target.clone(),
-            encrypted_value: value.encrypted_value.clone(),
-            project_id: params.project_id,
-            data_type: SecretDataType::Text,
-            created_at: Utc::now(),
-        })
-        .collect();
+    let (contributor_values, machine_values) =
+        build_latest_attributed_values(params.project_id, &request.encrypted_values);
 
     let definition = SecretDefinition {
         name: request.name.clone(),
@@ -78,7 +77,7 @@ pub async fn create_secret(
 
     let keys_config = LocalKeysConfig::load(&path)?;
 
-    secret_config.write(&path, &environment.name)?;
+    secret_config.write(&path)?;
 
     Ok(secret_config
         .build_values_for_contributors(&keys_config.get_contributor_keys(contributor.id)))

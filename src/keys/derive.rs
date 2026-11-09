@@ -1,16 +1,70 @@
-use crate::utils::{bin_deserialize, bin_serialize, fill_random_bytes};
+use crate::result::{InternalError, InternalResult};
+use crate::source;
+use crate::utils::{bin_decode, bin_encode, fill_random_bytes};
 use argon2::Argon2;
-pub(crate) use ml_kem::ml_kem_768::{
-    DecapsulationKey as KemPrivateKey, EncapsulationKey as KemPublicKey,
-};
-use ml_kem::{FromSeed, MlKem768, Seed};
-
-use serde::{Deserialize, Serialize};
+use http::StatusCode;
+use serde::Deserialize;
 use uuid::Uuid;
-pub(crate) use x25519_dalek::{PublicKey as EccPublicKey, StaticSecret as EccPrivateKey};
+pub(crate) use x25519_dalek::{PublicKey as DerivedPublicKey, StaticSecret as DerivedPrivateKey};
 
-#[derive(Clone, Serialize, Deserialize)]
-struct MachineKey(Uuid, [u8; 32], [u8; 32]);
+struct DirectAccessKey {
+    project_id: Uuid,
+    first: [u8; 32],
+    second: [u8; 32],
+}
+
+impl DirectAccessKey {
+    fn encode(&self) -> String {
+        let project_id: [u8; 16] = self.project_id.into_bytes();
+
+        let key = [&project_id[..], &self.first[..], &self.second[..]];
+        let key: Vec<u8> = key.concat();
+        bin_encode(&key)
+    }
+
+    fn decode(key: &str) -> InternalResult<Self> {
+        let key = bin_decode(key)?;
+
+        if key.len() != 80 {
+            return Err(InternalError::new(
+                source!(),
+                StatusCode::BAD_REQUEST,
+                "Invalid direct access key format",
+            ));
+        }
+
+        let project_id = &key[..16];
+        let first = &key[16..48];
+        let second = &key[48..];
+
+        Ok(Self {
+            project_id: Uuid::from_bytes(project_id.try_into().map_err(|err| {
+                InternalError::trace(
+                    source!(),
+                    StatusCode::BAD_REQUEST,
+                    "Invalid project ID",
+                    err,
+                )
+            })?),
+            first: first.try_into().map_err(|err| {
+                InternalError::trace(
+                    source!(),
+                    StatusCode::BAD_REQUEST,
+                    "Invalid private seed value",
+                    err,
+                )
+            })?,
+            second: second.try_into().map_err(|err| {
+                InternalError::trace(
+                    source!(),
+                    StatusCode::BAD_REQUEST,
+                    "Invalid private seed value",
+                    err,
+                )
+            })?,
+        })
+    }
+}
 
 #[derive(Clone, Deserialize)]
 pub struct PrivateKeySeed {
@@ -19,49 +73,50 @@ pub struct PrivateKeySeed {
 }
 
 impl PrivateKeySeed {
-    pub fn derive_ecc_keys(&self) -> anyhow::Result<(EccPublicKey, EccPrivateKey)> {
+    pub fn derive_key_pair(&self) -> InternalResult<(DerivedPublicKey, DerivedPrivateKey)> {
         let mut seed = [0u8; 32];
 
-        Argon2::default().hash_password_into(&self.first, &self.second, &mut seed)?;
+        Argon2::default()
+            .hash_password_into(&self.first, &self.second, &mut seed)
+            .map_err(|err| {
+                InternalError::trace(
+                    source!(),
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal error hashing private key",
+                    err,
+                )
+            })?;
 
-        let private_key = EccPrivateKey::from(seed);
-        let public_key = EccPublicKey::from(&private_key);
-
-        Ok((public_key, private_key))
-    }
-
-    pub fn derive_kem_keys(&self) -> anyhow::Result<(KemPublicKey, KemPrivateKey)> {
-        let mut seed_bytes = [0u8; 64];
-        seed_bytes[..32].copy_from_slice(&self.first);
-        seed_bytes[32..].copy_from_slice(&self.second);
-
-        let seed = Seed::try_from(seed_bytes)
-            .map_err(|_| anyhow::anyhow!("Error parsing KEM key seed"))?;
-        let (private_key, public_key) = MlKem768::from_seed(&seed);
+        let private_key = DerivedPrivateKey::from(seed);
+        let public_key = DerivedPublicKey::from(&private_key);
 
         Ok((public_key, private_key))
     }
 
-    pub fn generate_machine_key(project_id: Uuid) -> anyhow::Result<(String, Self)> {
+    pub async fn generate_access_key(project_id: Uuid) -> (String, Self) {
         let mut first = [0u8; 32];
-        fill_random_bytes(&mut first);
+        fill_random_bytes(&mut first).await;
 
         let mut second = [0u8; 32];
-        fill_random_bytes(&mut second);
+        fill_random_bytes(&mut second).await;
 
-        let machine_key = MachineKey(project_id, first, second);
-        let encoded = bin_serialize(&machine_key)?;
-        let seed = Self { first, second };
-        Ok((encoded, seed))
-    }
-
-    pub fn from_machine_key(encoded: String) -> anyhow::Result<(Uuid, Self)> {
-        let machine_key: MachineKey = bin_deserialize(&encoded)?;
-        let seed = Self {
-            first: machine_key.1,
-            second: machine_key.2,
+        let access_key = DirectAccessKey {
+            project_id,
+            first,
+            second,
         };
 
-        Ok((machine_key.0, seed))
+        let seed = Self { first, second };
+        (access_key.encode(), seed)
+    }
+
+    pub fn from_access_key(encoded: String) -> InternalResult<(Uuid, Self)> {
+        let access_key: DirectAccessKey = DirectAccessKey::decode(&encoded)?;
+        let seed = Self {
+            first: access_key.first,
+            second: access_key.second,
+        };
+
+        Ok((access_key.project_id, seed))
     }
 }

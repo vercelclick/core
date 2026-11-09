@@ -1,14 +1,16 @@
-use crate::passkeys::RP_ENTITY_ID;
+use secretpass_core::{InternalError, InternalResult, StatusCode, source};
 use wasm_bindgen::JsCast;
 use web_sys::js_sys::Promise;
 use web_sys::{CredentialsContainer, PublicKeyCredential};
 
-pub fn get_credentials_container() -> anyhow::Result<CredentialsContainer> {
+pub fn get_credentials_container() -> InternalResult<CredentialsContainer> {
     let window = match web_sys::window() {
         Some(window) => window,
         None => {
-            return Err(anyhow::anyhow!(
-                "Please run Secretpass in a supported browser"
+            return Err(InternalError::new(
+                source!(),
+                StatusCode::BAD_GATEWAY,
+                "Please run Secretpass in a supported browser",
             ));
         }
     };
@@ -17,17 +19,23 @@ pub fn get_credentials_container() -> anyhow::Result<CredentialsContainer> {
     Ok(navigator.credentials())
 }
 
-pub async fn parse_promise(promise: Promise) -> anyhow::Result<PublicKeyCredential> {
+pub async fn parse_promise(promise: Promise) -> InternalResult<PublicKeyCredential> {
     let result = promise.await.map_err(|err| {
-        anyhow::anyhow!(
-            "Error processing passkey authentication result({}): {:?}",
-            RP_ENTITY_ID,
-            err
+        InternalError::trace(
+            source!(),
+            StatusCode::UNAUTHORIZED,
+            "Error processing passkey authentication result",
+            err,
         )
     })?;
-    let credential = result
-        .dyn_into::<PublicKeyCredential>()
-        .map_err(|err| anyhow::anyhow!("Error parsing passkey authentication result: {:?}", err))?;
+    let credential = result.dyn_into::<PublicKeyCredential>().map_err(|err| {
+        InternalError::trace(
+            source!(),
+            StatusCode::UNAUTHORIZED,
+            "Error parsing passkey authentication result",
+            err,
+        )
+    })?;
 
     Ok(credential)
 }

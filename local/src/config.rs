@@ -1,6 +1,6 @@
 use crate::service::project::LocalProjectConfig;
 use secretpass_api::SessionPackage;
-use secretpass_core::Contributor;
+use secretpass_core::{Contributor, InternalError, InternalResult, StatusCode, source};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -31,9 +31,19 @@ pub struct LocalServiceConfig {
 }
 
 impl LocalServiceConfig {
-    pub fn load() -> anyhow::Result<Self> {
+    pub fn load() -> InternalResult<Self> {
         if !CONFIG_DIR.exists() {
-            fs::create_dir_all(CONFIG_DIR.clone())?;
+            fs::create_dir_all(CONFIG_DIR.clone()).map_err(|err| {
+                InternalError::trace(
+                    source!(),
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    &format!(
+                        "Error creating local service config directory {}",
+                        CONFIG_DIR.display()
+                    ),
+                    err,
+                )
+            })?;
             return Ok(Default::default());
         }
 
@@ -42,18 +52,48 @@ impl LocalServiceConfig {
             return Ok(Default::default());
         }
 
-        let content = fs::read_to_string(config_file)?;
+        let content = fs::read_to_string(config_file.clone()).map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!(
+                    "Error reading local service config {}",
+                    config_file.display()
+                ),
+                err,
+            )
+        })?;
         // Overwrite the config if there's an issue with the current config
         let config: Self = serde_json::from_str(&content).unwrap_or(Default::default());
         Ok(config)
     }
 
-    pub fn write(&self) -> anyhow::Result<()> {
+    pub fn write(&self) -> InternalResult<()> {
         let config_file = CONFIG_DIR.join("config.json");
 
-        let content = serde_json::to_string(self)?;
+        let content = serde_json::to_string(self).map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!(
+                    "Error serializing local service config {}",
+                    config_file.display()
+                ),
+                err,
+            )
+        })?;
 
-        fs::write(config_file, content)?;
+        fs::write(config_file.clone(), content).map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!(
+                    "Error writing local service config {}",
+                    config_file.display()
+                ),
+                err,
+            )
+        })?;
 
         Ok(())
     }
@@ -78,7 +118,7 @@ impl LocalServiceConfig {
     pub fn get_project_by_id(
         &self,
         project_id: Uuid,
-    ) -> anyhow::Result<Option<(String, LocalProjectConfig)>> {
+    ) -> InternalResult<Option<(String, LocalProjectConfig)>> {
         for (path, id) in self.attached_projects.iter() {
             if project_id == *id {
                 let project_config =
@@ -94,15 +134,23 @@ impl LocalServiceConfig {
         &self,
         project_id: Uuid,
         user_id: Uuid,
-    ) -> anyhow::Result<(String, LocalProjectConfig, Contributor)> {
+    ) -> InternalResult<(String, LocalProjectConfig, Contributor)> {
         let (path, project_conf) = self.get_project_by_id(project_id)?.ok_or_else(|| {
-            anyhow::anyhow!("Project not found, confirm if the project is attached")
+            InternalError::new(
+                source!(),
+                StatusCode::NOT_FOUND,
+                "Project not found, confirm if the project is attached",
+            )
         })?;
 
         let contributor = project_conf
             .get_contributor_by_user_id(user_id)
             .ok_or_else(|| {
-                anyhow::anyhow!("You don't have access to this project under the current user")
+                InternalError::new(
+                    source!(),
+                    StatusCode::FORBIDDEN,
+                    "You don't have access to this project under the current user",
+                )
             })?;
         Ok((path, project_conf, contributor))
     }

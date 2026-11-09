@@ -1,10 +1,10 @@
 pub mod auth;
 pub mod projects;
-pub mod types;
 pub mod user;
 pub mod utils;
 
 use crate::ApiStateInner;
+use crate::constants::{CLOUD_RP_CONFIG, LOCAL_RP_CONFIG};
 use crate::routes::auth::auth_router;
 use crate::routes::auth::middleware::AuthLayer;
 use crate::routes::projects::{project_routes, public_project_routes};
@@ -17,20 +17,24 @@ use axum::routing::{get, post};
 use axum::{Router, http};
 use std::sync::Arc;
 use tower_cookies::CookieManagerLayer;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, fmt};
 
-const HOST_ORIGIN: &str = env!("UI_ORIGIN");
-
 pub fn create_backend_app(state: ApiStateInner) -> Router {
     subscribe_tracing();
 
-    let allowed_origin = HOST_ORIGIN.parse::<HeaderValue>().unwrap();
+    let allowed_origins: Arc<Vec<HeaderValue>> = Arc::new(vec![
+        CLOUD_RP_CONFIG.origin.parse().unwrap(),
+        LOCAL_RP_CONFIG.origin.parse().unwrap(),
+    ]);
+
     let cors = CorsLayer::new()
-        .allow_origin(allowed_origin)
+        .allow_origin(AllowOrigin::predicate(move |origin, _| {
+            allowed_origins.contains(origin)
+        }))
         .allow_credentials(true)
         .allow_methods([
             Method::GET,

@@ -2,12 +2,12 @@ use crate::config::LocalServiceConfig;
 use crate::service::keys::LocalKeysConfig;
 use crate::service::secrets::LocalSecretConfig;
 use secretpass_api::environments::{GetEnvironmentRequest, GetEnvironmentResult};
-use secretpass_core::User;
+use secretpass_core::{InternalResult, User};
 
 pub async fn get_environment_by_name(
     user: &User,
     request: &GetEnvironmentRequest,
-) -> anyhow::Result<Option<GetEnvironmentResult>> {
+) -> InternalResult<Option<GetEnvironmentResult>> {
     let local_config = LocalServiceConfig::load()?;
 
     let (path, project_config) = match local_config.get_project_by_id(request.project_id)? {
@@ -20,7 +20,7 @@ pub async fn get_environment_by_name(
         None => return Ok(None),
     };
 
-    if !contributor.can_access(&request.env_name) {
+    if contributor.get_access(&request.env_name).is_none() {
         return Ok(None);
     }
 

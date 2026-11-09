@@ -3,17 +3,19 @@ mod keys;
 
 pub mod passkeys;
 mod projects;
+pub mod result;
 pub mod types;
 mod user;
 pub mod utils;
 mod workspace;
 
-pub use keys::{Passkey, PrivateKey, PrivateKeySeed, PublicKey, PublicKeyEncrypt};
+pub use keys::{KeyPair, Passkey, PrivateKeySeed, PublicKey, TargetedPublicKey};
 pub use projects::{
-    Contributor, ContributorPublicKey, ContributorSecretValue, ContributorUpdateValue, Environment,
-    MachinePublicKey, MachineSecretValue, MachineUpdateValue, Project, SecretDefinition,
-    SimpleContributorPublicKey, SimpleMachinePublicKey, SimplifiedEncryptedValue,
+    Contributor, ContributorPublicKey, ContributorSecretValue, Environment, EnvironmentAccess,
+    MachinePublicKey, MachineSecretValue, Project, SecretDefinition, SecretValue,
 };
 pub use types::EncryptedPackage;
 pub use user::{Session, User};
 pub use workspace::Workspace;
+
+pub use result::{InternalError, InternalResult, StatusCode};

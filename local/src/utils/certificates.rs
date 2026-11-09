@@ -3,6 +3,7 @@ use rcgen::{
     CertificateParams, DistinguishedName, DnType, ExtendedKeyUsagePurpose, KeyPair,
     KeyUsagePurpose, SanType,
 };
+use secretpass_core::{InternalError, StatusCode, source};
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
@@ -36,10 +37,14 @@ fn generate_certificates(cert_path: &PathBuf, key_path: &PathBuf) {
 
     let mut cert_file = File::create(cert_path)
         .map_err(|err| {
-            anyhow::format_err!(
-                "Error creating certificate pem file {}: {:?}",
-                cert_path.display(),
-                err
+            InternalError::trace(
+                source!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!(
+                    "Error creating certificate pem file {}",
+                    cert_path.display()
+                ),
+                err,
             )
         })
         .unwrap();
@@ -47,10 +52,11 @@ fn generate_certificates(cert_path: &PathBuf, key_path: &PathBuf) {
 
     let mut key_file = File::create(key_path)
         .map_err(|err| {
-            anyhow::format_err!(
-                "Error creating certificate key file {}: {:?}",
-                key_path.display(),
-                err
+            InternalError::trace(
+                source!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!("Error creating certificate key file {}", key_path.display()),
+                err,
             )
         })
         .unwrap();

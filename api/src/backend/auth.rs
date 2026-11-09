@@ -1,12 +1,10 @@
 use crate::ApiState;
-use crate::api_types::HttpError;
-use crate::utils::error_mapper;
 use axum::http::StatusCode;
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
 use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
 use secretpass_core::passkeys::create::PasskeyCreationResult;
 use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
-use secretpass_core::{Passkey, Session, User};
+use secretpass_core::{InternalError, InternalResult, Passkey, Session, User, source};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use ts_rs::TS;
@@ -32,9 +30,8 @@ pub struct BackendCreateUserRequest {
     pub passkey_cred_id: String,
     pub passkey_name: String,
     pub passkey_type: PasskeyType,
-    pub passkey_ecc: String,
-    pub passkey_kem: String,
     pub passkey_public_key: String,
+    pub passkey_web_public_key: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -78,20 +75,17 @@ impl SessionPackage {
         &self,
         state: &ApiState,
         result: &PasskeyAuthorizationResult,
-    ) -> Result<(), HttpError> {
+    ) -> InternalResult<()> {
         let rp_config = state.get_rp_config(false);
         let challenge = state
             .backend
-            .pop_pending_challenge(ChallengeKind::PasskeyAuthorize, self.user.email.clone())
-            .await
-            .map_err(error_mapper(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Error getting authorization challenge",
-            ))?
+            .get_pending_challenge(ChallengeKind::PasskeyAuthorize, self.user.email.clone())
+            .await?
             .ok_or_else(|| {
-                (
+                InternalError::new(
+                    source!(),
                     StatusCode::BAD_REQUEST,
-                    "Passkey challenge not found".to_string(),
+                    "Passkey challenge not found",
                 )
             })?;
 
@@ -99,19 +93,18 @@ impl SessionPackage {
             .passkeys
             .iter()
             .find(|key| key.cred_id.clone() == result.id)
-            .ok_or_else(|| (StatusCode::BAD_REQUEST, "Passkey not found, logout and login, then try again. If this issue persists, please raise a support request".to_string()))?;
+            .ok_or_else(|| InternalError::new(
+                source!(),
+                StatusCode::BAD_REQUEST,
+                "Passkey not found, logout and login, then try again. If this issue persists, please raise a support request"
+            ))?;
 
-        result
-            .validate(
-                self.user.id,
-                &passkey.public_key,
-                &challenge.value_hash,
-                rp_config.id,
-                rp_config.origin,
-            )
-            .map_err(error_mapper(
-                StatusCode::UNAUTHORIZED,
-                "Error validating passkey authorization",
-            ))
+        result.validate(
+            self.user.id,
+            &passkey.web_public_key,
+            &challenge.value_hash,
+            rp_config.id,
+            rp_config.origin,
+        )
     }
 }

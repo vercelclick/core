@@ -11,12 +11,11 @@ homepage.workspace = true
 email = []
 
 [dependencies]
-anyhow = "1.0.104"
 async-trait = "0.1.92"
 axum = { version = "0.8.9", features = ["tokio", "macros", "json", "query"] }
 chrono = { version = "0.4.45", features = ["serde", "wasm-bindgen"] }
 futures-util = "0.3.34"
-secretpass-core = { path = ".." }
+secretpass-core = { path = "..", features = ["trace", "axum"] }
 serde = { version = "1.0.229", features = ["derive"] }
 rand = { version = "0.10.3" }
 reqwest = { version = "0.13.5", features = ["json", "cookies"] }
@@ -30,4 +29,5 @@ ts-rs = { version = "12.0.1", features = ["chrono-impl"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
 uuid = { version = "1.29.0", features = ["serde", "v4", "v7"] }
+strum = "0.28.0"
 

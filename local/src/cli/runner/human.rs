@@ -6,8 +6,8 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use axum_server::tls_rustls::RustlsConfig;
 use secretpass_api::constants::{CLOUD_RP_CONFIG, LOCAL_RP_CONFIG};
-use secretpass_core::enums::{EncryptionAlgorithm, OperationMode};
-use secretpass_core::{PrivateKey, PrivateKeySeed, SimpleMachinePublicKey};
+use secretpass_core::enums::OperationMode;
+use secretpass_core::{KeyPair, PrivateKeySeed, TargetedPublicKey};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -24,14 +24,14 @@ struct AppState {
 
 #[derive(Serialize)]
 struct EncryptionDetails {
-    public_key: SimpleMachinePublicKey,
+    public_key: TargetedPublicKey,
     command: Option<String>,
 }
 
 async fn get_values_from_web_async(
     mode: OperationMode,
     command: Option<String>,
-) -> (PrivateKey, HashMap<String, String>) {
+) -> (KeyPair, HashMap<String, String>) {
     rustls::crypto::aws_lc_rs::default_provider()
         .install_default()
         .expect("Failed to install default crypto provider");
@@ -43,14 +43,13 @@ async fn get_values_from_web_async(
 
     let (tx, mut rx) = mpsc::channel::<HashMap<String, String>>(1);
 
-    let (_, seed) = PrivateKeySeed::generate_machine_key(Uuid::now_v7()).expect("Error generating temporary private key, please raise a support ticket through support@secretpass.cloud");
+    let (_, seed) = PrivateKeySeed::generate_access_key(Uuid::now_v7()).await;
 
-    let private_key = PrivateKey::from_seed(seed).expect("Error deriving temporary private key from seed, please raise a support ticket through support@secretpass.cloud");
-    let public_key = private_key.public_key(EncryptionAlgorithm::ECC);
-    let simple_key = SimpleMachinePublicKey {
-        id: public_key.machine_key_id(),
-        ecc: public_key.ecc(),
-        kem: public_key.kem(),
+    let private_key = KeyPair::from_seed(seed).expect("Error deriving temporary private key from seed, please raise a support ticket through support@secretpass.cloud");
+    let public_key = private_key.public_key();
+    let simple_key = TargetedPublicKey {
+        target: public_key.access_key_id(),
+        value: public_key.encode(),
     };
 
     let cors_layer = CorsLayer::new()
@@ -119,7 +118,7 @@ async fn get_values_from_web_async(
 pub fn get_values_from_web(
     mode: OperationMode,
     command: Option<String>,
-) -> (PrivateKey, HashMap<String, String>) {
+) -> (KeyPair, HashMap<String, String>) {
     let rt = tokio::runtime::Runtime::new().expect("Error creating IO runtime, , please raise a support ticket through support@secretpass.cloud");
 
     rt.block_on(get_values_from_web_async(mode, command))

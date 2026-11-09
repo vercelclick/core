@@ -1,4 +1,3 @@
-use crate::api_types::HttpResponse;
 use crate::constants::{CLOUD_PROXY_BASE_URL, PROXY_REQUEST_HEADER, SESSION_COOKIE_NAME};
 use axum::body::Body;
 use axum::extract::Request;
@@ -8,8 +7,10 @@ use futures_util::future::BoxFuture;
 use reqwest::header::COOKIE;
 use reqwest::{Client, RequestBuilder};
 use secretpass_core::enums::OperationMode;
+use secretpass_core::{InternalError, InternalResult, source};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use std::str::FromStr;
 use std::sync::LazyLock;
 use std::task::{Context, Poll};
 use tower_cookies::Cookies;
@@ -21,7 +22,7 @@ static REQWEST_CLIENT: LazyLock<Client> = LazyLock::new(Client::new);
 #[derive(Debug, Clone)]
 pub(crate) struct CloudProxy {
     proxied: bool,
-    url: String,
+    uri: Uri,
     mode: OperationMode,
     method: Method,
     session_cookie: Option<String>,
@@ -35,10 +36,10 @@ impl CloudProxy {
         session_cookie: Option<String>,
         proxied: bool,
     ) -> Self {
-        let url = format!("{}{}", CLOUD_PROXY_BASE_URL, uri.path());
+        let uri = Uri::from_str(&format!("{}{}", CLOUD_PROXY_BASE_URL, uri.path())).unwrap();
 
         CloudProxy {
-            url,
+            uri,
             mode,
             method,
             proxied,
@@ -56,7 +57,7 @@ impl CloudProxy {
 
     fn builder(&self) -> RequestBuilder {
         let builder = REQWEST_CLIENT
-            .request(self.method.clone(), &self.url)
+            .request(self.method.clone(), &self.uri.to_string())
             .header(PROXY_REQUEST_HEADER, "true");
 
         if let Some(cookies) = self.session_cookie.clone() {
@@ -66,39 +67,47 @@ impl CloudProxy {
         }
     }
 
-    pub async fn send_json<I: Serialize, O>(self, json: &I) -> HttpResponse<O>
+    pub async fn send_json<I: Serialize, O>(self, json: &I) -> InternalResult<O>
     where
         O: DeserializeOwned,
     {
-        Self::proxy_inner::<O>(self.builder().json(json)).await
+        self.proxy_inner::<O>(self.builder().json(json)).await
     }
 
-    async fn proxy_inner<T>(builder: RequestBuilder) -> HttpResponse<T>
+    async fn proxy_inner<T>(&self, builder: RequestBuilder) -> InternalResult<T>
     where
         T: DeserializeOwned,
     {
         let response = builder.send().await.map_err(|err| {
-            (
+            InternalError::trace(
+                source!(),
                 StatusCode::BAD_GATEWAY,
-                format!("Error proxying request to cloud backend: {}", err),
+                "Error proxying request to cloud backend",
+                err,
             )
         })?;
 
+        let path = self.uri.path();
+
         let status = response.status();
         if !status.is_success() {
-            let text = response.text().await.map_err(|err| {
-                (
+            let error: InternalError = response.json().await.map_err(|err| {
+                InternalError::trace(
+                    source!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Error parsing cloud error({}): {}", status, err),
+                    &format!("Error<{status}> parsing proxied<{path}> request error"),
+                    err,
                 )
             })?;
-            return Err((status, text));
+            return Err(error);
         }
 
         let payload: T = response.json().await.map_err(|err| {
-            (
+            InternalError::trace(
+                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Error parsing cloud response: {}", err),
+                &format!("Error parsing proxied<{path}> cloud response"),
+                err,
             )
         })?;
 

@@ -18,22 +18,29 @@ use secretpass_api::secrets::{
 use secretpass_api::{BackendProvider, PendingChallenge, SessionPackage};
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
 use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
-use secretpass_core::{MachinePublicKey, Passkey, Project, Session, User};
+use secretpass_core::{
+    InternalError, InternalResult, MachinePublicKey, Passkey, Project, Session, StatusCode, User,
+    source,
+};
 use std::collections::HashMap;
 use uuid::Uuid;
 
 #[derive(Default)]
 pub struct LocalBackendProvider {}
 
-fn not_supported(title: &str) -> anyhow::Error {
-    anyhow::format_err!(
-        "{title} not supported locally; this call should have been proxied, please report an issue to support@secretpass.cloud"
+fn not_supported(title: &str) -> InternalError {
+    InternalError::new(
+        source!(),
+        StatusCode::NOT_IMPLEMENTED,
+        &format!(
+            "{title} not supported locally; this call should have been proxied, please report an issue to support@secretpass.cloud"
+        ),
     )
 }
 
 #[async_trait::async_trait]
 impl BackendProvider for LocalBackendProvider {
-    async fn record_pending_challenge(&self, challenge: &PendingChallenge) -> anyhow::Result<()> {
+    async fn record_pending_challenge(&self, challenge: &PendingChallenge) -> InternalResult<()> {
         save_pending_challenge(challenge).await;
         Ok(())
     }
@@ -42,15 +49,15 @@ impl BackendProvider for LocalBackendProvider {
         &self,
         _kind: ChallengeKind,
         _owner: String,
-    ) -> anyhow::Result<Option<PendingChallenge>> {
+    ) -> InternalResult<Option<PendingChallenge>> {
         Err(not_supported("Challenge attempts"))
     }
 
-    async fn pop_pending_challenge(
+    async fn get_pending_challenge(
         &self,
         kind: ChallengeKind,
         owner: String,
-    ) -> anyhow::Result<Option<PendingChallenge>> {
+    ) -> InternalResult<Option<PendingChallenge>> {
         let challenge = get_pending_challenge(kind, owner).await;
         Ok(challenge)
     }
@@ -58,29 +65,29 @@ impl BackendProvider for LocalBackendProvider {
     async fn create_user(
         &self,
         _request: BackendCreateUserRequest,
-    ) -> anyhow::Result<SessionPackage> {
+    ) -> InternalResult<SessionPackage> {
         Err(not_supported("Create user"))
     }
 
-    async fn record_session(&self, response: SessionPackage) -> anyhow::Result<()> {
+    async fn record_session(&self, response: SessionPackage) -> InternalResult<()> {
         let mut config = LocalServiceConfig::load()?;
         config.sessions.insert(response.session.id, response);
 
         config.write()
     }
 
-    async fn get_session(&self, id: Uuid) -> anyhow::Result<Option<SessionPackage>> {
+    async fn get_session(&self, id: Uuid) -> InternalResult<Option<SessionPackage>> {
         let config = LocalServiceConfig::load()?;
 
         let response = config.sessions.get(&id);
         Ok(response.cloned())
     }
 
-    async fn create_session_by_email(&self, _email: String) -> anyhow::Result<SessionPackage> {
+    async fn create_session_by_email(&self, _email: String) -> InternalResult<SessionPackage> {
         Err(not_supported("Create session by email"))
     }
 
-    async fn get_user_email(&self, email: String) -> anyhow::Result<Option<User>> {
+    async fn get_user_email(&self, email: String) -> InternalResult<Option<User>> {
         let local_conf = LocalServiceConfig::load()?;
         for (_, package) in local_conf.sessions {
             if package.user.email == email {
@@ -90,7 +97,7 @@ impl BackendProvider for LocalBackendProvider {
         Ok(None)
     }
 
-    async fn create_session_by_user_id(&self, _user_id: Uuid) -> anyhow::Result<SessionPackage> {
+    async fn create_session_by_user_id(&self, _user_id: Uuid) -> InternalResult<SessionPackage> {
         Err(not_supported("Create session by passkey"))
     }
 
@@ -98,22 +105,22 @@ impl BackendProvider for LocalBackendProvider {
         &self,
         _cred_id: String,
         _email: String,
-    ) -> anyhow::Result<Option<Passkey>> {
+    ) -> InternalResult<Option<Passkey>> {
         Err(not_supported("Retrieve user id and public key"))
     }
 
     async fn retrieve_user_and_known_passkeys(
         &self,
         _email: String,
-    ) -> anyhow::Result<Option<(User, Vec<Passkey>)>> {
+    ) -> InternalResult<Option<(User, Vec<Passkey>)>> {
         Err(not_supported("Retrieve user with passkeys"))
     }
 
-    async fn list_projects(&self, user: &User) -> anyhow::Result<ListProjectsResult> {
+    async fn list_projects(&self, user: &User) -> InternalResult<ListProjectsResult> {
         list_projects(user).await
     }
 
-    async fn logout_session(&self, session: &Session) -> anyhow::Result<()> {
+    async fn logout_session(&self, session: &Session) -> InternalResult<()> {
         let mut config = LocalServiceConfig::load()?;
 
         config.sessions.remove(&session.id);
@@ -129,7 +136,7 @@ impl BackendProvider for LocalBackendProvider {
         _cred_id: String,
         _public_key: String,
         _public_key_result: PublicKeyGenerateResult,
-    ) -> anyhow::Result<Passkey> {
+    ) -> InternalResult<Passkey> {
         Err(not_supported("Save passkey"))
     }
 
@@ -138,7 +145,7 @@ impl BackendProvider for LocalBackendProvider {
         user: &User,
         passkeys: &[Passkey],
         request: CreateProjectRequest,
-    ) -> anyhow::Result<Project> {
+    ) -> InternalResult<Project> {
         create_project(user, passkeys, request).await
     }
 
@@ -146,7 +153,7 @@ impl BackendProvider for LocalBackendProvider {
         &self,
         user: &User,
         project_id: Uuid,
-    ) -> anyhow::Result<Option<GetProjectResult>> {
+    ) -> InternalResult<Option<GetProjectResult>> {
         get_project_by_id(user, project_id).await
     }
 
@@ -154,7 +161,7 @@ impl BackendProvider for LocalBackendProvider {
         &self,
         user: &User,
         request: GetEnvironmentRequest,
-    ) -> anyhow::Result<Option<GetEnvironmentResult>> {
+    ) -> InternalResult<Option<GetEnvironmentResult>> {
         get_environment_by_name(user, &request).await
     }
 
@@ -163,16 +170,18 @@ impl BackendProvider for LocalBackendProvider {
         user: &User,
         params: ProjectEnvPathParams,
         request: CreateSecretRequest,
-    ) -> anyhow::Result<SecretWithEncryptedValues> {
+    ) -> InternalResult<SecretWithEncryptedValues> {
         create_secret(user, params, request).await
     }
 
     async fn get_machine_secrets(
         &self,
         _params: GetMachineSecretParams,
-    ) -> anyhow::Result<HashMap<String, String>> {
-        Err(anyhow::anyhow!(
-            "Secrets API not supported on local server. Use `spass local run/export`"
+    ) -> InternalResult<HashMap<String, String>> {
+        Err(InternalError::new(
+            source!(),
+            StatusCode::NOT_IMPLEMENTED,
+            "Secrets API not supported on local server. Use `spass local run/export`",
         ))
     }
 
@@ -181,7 +190,7 @@ impl BackendProvider for LocalBackendProvider {
         user: &User,
         params: ProjectPathParams,
         request: CreateMachinePublicKeyRequest,
-    ) -> anyhow::Result<MachinePublicKey> {
+    ) -> InternalResult<MachinePublicKey> {
         create_machine_public_key(user, params.project_id, request).await
     }
 
@@ -190,7 +199,7 @@ impl BackendProvider for LocalBackendProvider {
         user: &User,
         params: ProjectSecretPathParams,
         request: UpdateSecretRequest,
-    ) -> anyhow::Result<SecretWithEncryptedValues> {
+    ) -> InternalResult<SecretWithEncryptedValues> {
         update_secret(user, params, request).await
     }
 
@@ -199,7 +208,7 @@ impl BackendProvider for LocalBackendProvider {
         user: &User,
         params: ProjectSecretPathParams,
         request: UpdateSecretValueRequest,
-    ) -> anyhow::Result<SecretWithEncryptedValues> {
+    ) -> InternalResult<SecretWithEncryptedValues> {
         update_secret_value(user, params, request).await
     }
 }

@@ -1,7 +1,8 @@
 use crate::backend::projects::project::get_contributor_by_id;
 use crate::backend::projects::secrets::create::machine_values_insert_query_builder;
+use axum::http::StatusCode;
 use secretpass_api::secrets::CreateMachinePublicKeyRequest;
-use secretpass_core::{MachinePublicKey, User};
+use secretpass_core::{InternalError, InternalResult, MachinePublicKey, User, source};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -18,35 +19,77 @@ pub async fn create_machine_public_key(
     user: &User,
     project_id: Uuid,
     request: CreateMachinePublicKeyRequest,
-) -> anyhow::Result<MachinePublicKey> {
-    let mut tx = pool.begin().await?;
+) -> InternalResult<MachinePublicKey> {
+    let mut tx = pool.begin().await.map_err(|err| {
+        InternalError::trace(
+            source!(),
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Internal error establishing a transaction",
+            err,
+        )
+    })?;
 
-    get_contributor_by_id(pool, user, project_id)
+    let contributor = get_contributor_by_id(pool, user, project_id)
         .await?
-        .ok_or_else(|| anyhow::anyhow!("User not found in project"))?;
+        .ok_or_else(|| {
+            InternalError::new(
+                source!(),
+                StatusCode::FORBIDDEN,
+                "You do not have access to this project",
+            )
+        })?;
 
-    // TODO: Verify that this user has access to all these secrets
+    contributor.is_admin().ok_or_else(|| {
+        InternalError::new(
+            source!(),
+            StatusCode::FORBIDDEN,
+            "Only admins can create direct access keys",
+        )
+    })?;
+
     let machine_key = sqlx::query_as(INSERT_MACHINE_PUBLIC_QUERY)
-        .bind(&request.public_key.id)
+        .bind(request.id)
         .bind(&request.name)
         .bind(&request.description)
         .bind(project_id)
-        .bind(request.environments.clone())
-        .bind(request.public_key.ecc.clone())
-        .bind(request.public_key.kem.clone())
+        .bind(request.access.clone())
+        .bind(request.public_key)
         .bind(&user.email)
         .fetch_one(&mut *tx)
-        .await?;
+        .await
+        .map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal error creating direct access key",
+                err,
+            )
+        })?;
 
     // TODO: Verify that the targets are matching
-    if !request.machine_secrets.is_empty() {
-        machine_values_insert_query_builder(project_id, &request.machine_secrets)
+    if !request.encrypted_values.is_empty() {
+        machine_values_insert_query_builder(project_id, &request.encrypted_values)
             .build()
             .execute(&mut *tx)
-            .await?;
+            .await
+            .map_err(|err| {
+                InternalError::trace(
+                    source!(),
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal error adding access key values",
+                    err,
+                )
+            })?;
     }
 
-    tx.commit().await?;
+    tx.commit().await.map_err(|err| {
+        InternalError::trace(
+            source!(),
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Internal error committing access key creation",
+            err,
+        )
+    })?;
 
     Ok(machine_key)
 }

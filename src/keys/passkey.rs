@@ -14,9 +14,8 @@ pub struct Passkey {
     #[serde(rename = "type")]
     #[sqlx(rename = "type")]
     pub type_: PasskeyType,
-    pub public_key: String, // Base64url-encoded COSE key
-    pub ecc: String,
-    pub kem: String,
     pub created_at: DateTime<Utc>,
+    pub web_public_key: String, // Base64url-encoded COSE key
+    pub public_key: String,
     pub updated_at: DateTime<Utc>,
 }

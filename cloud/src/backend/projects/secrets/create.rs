@@ -5,8 +5,8 @@ use secretpass_api::environments::SecretWithEncryptedValues;
 use secretpass_api::secrets::{CreateSecretRequest, ProjectEnvPathParams};
 use secretpass_core::enums::SecretDataType;
 use secretpass_core::{
-    ContributorPublicKey, ContributorSecretValue, ContributorUpdateValue, MachineUpdateValue,
-    SecretDefinition, User,
+    ContributorPublicKey, ContributorSecretValue, InternalError, InternalResult, SecretDefinition,
+    SecretValue, StatusCode, User, source,
 };
 use sqlx::{PgPool, Postgres, QueryBuilder};
 use uuid::Uuid;
@@ -23,25 +23,58 @@ pub async fn create_secret(
     user: &User,
     params: ProjectEnvPathParams,
     request: CreateSecretRequest,
-) -> anyhow::Result<SecretWithEncryptedValues> {
-    let mut tx = pool.begin().await?;
+) -> InternalResult<SecretWithEncryptedValues> {
+    let mut tx = pool.begin().await.map_err(|err| {
+        InternalError::trace(
+            source!(),
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Internal error establishing a transaction",
+            err,
+        )
+    })?;
 
     let contributor = get_contributor_by_id(pool, user, params.project_id)
         .await?
-        .ok_or_else(|| anyhow::anyhow!("User not found in project"))?;
-
-    contributor
-        .can_access(&params.env_name)
-        .ok_or_else(|| anyhow::anyhow!("User does not have access to this environment"))?;
+        .ok_or_else(|| {
+            InternalError::new(
+                source!(),
+                StatusCode::FORBIDDEN,
+                "User not found in project",
+            )
+        })?;
 
     let environment = get_environment_by_name(pool, params.project_id, &params.env_name)
         .await?
-        .ok_or_else(|| anyhow::anyhow!("Environment not found"))?;
+        .ok_or_else(|| {
+            InternalError::new(source!(), StatusCode::NOT_FOUND, "Environment not found")
+        })?;
+
+    let access = contributor.get_access(&params.env_name).ok_or_else(|| {
+        InternalError::new(
+            source!(),
+            StatusCode::FORBIDDEN,
+            "You do not have access to this environment",
+        )
+    })?;
+
+    access.is_env_admin().ok_or_else(|| {
+        InternalError::new(
+            source!(),
+            StatusCode::FORBIDDEN,
+            "You do not have permission to create secrets in this environment",
+        )
+    })?;
 
     get_secret_by_name(pool, params.project_id, &params.env_name, &request.name)
         .await?
         .is_none()
-        .ok_or_else(|| anyhow::format_err!("{} already exists", request.name))?;
+        .ok_or_else(|| {
+            InternalError::new(
+                source!(),
+                StatusCode::FORBIDDEN,
+                &format!("{} already exists", request.name),
+            )
+        })?;
 
     let definition: SecretDefinition = sqlx::query_as(CREATE_SECRET_QUERY)
         .bind(request.name.clone())
@@ -49,28 +82,70 @@ pub async fn create_secret(
         .bind(params.project_id)
         .bind(request.comments.clone())
         .fetch_one(&mut *tx)
-        .await?;
+        .await
+        .map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal error saving secret definition",
+                err,
+            )
+        })?;
+
+    let (contributors_values, machines_values) =
+        SecretValue::separate_targets(&request.encrypted_values);
 
     let contributor_values: Vec<ContributorSecretValue> =
-        contributor_values_insert_query_builder(params.project_id, &request.contributors_values)
+        contributor_values_insert_query_builder(params.project_id, &contributors_values)
             .build_query_as()
             .fetch_all(&mut *tx)
-            .await?;
+            .await
+            .map_err(|err| {
+                InternalError::trace(
+                    source!(),
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal error saving secret values",
+                    err,
+                )
+            })?;
 
-    if !request.machines_values.is_empty() {
-        machine_values_insert_query_builder(params.project_id, &request.machines_values)
+    if !machines_values.is_empty() {
+        machine_values_insert_query_builder(params.project_id, &machines_values)
             .build()
             .execute(&mut *tx)
-            .await?;
+            .await
+            .map_err(|err| {
+                InternalError::trace(
+                    source!(),
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal error saving access key values",
+                    err,
+                )
+            })?;
     }
 
-    tx.commit().await?;
+    tx.commit().await.map_err(|err| {
+        InternalError::trace(
+            source!(),
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Internal error committing secret creation",
+            err,
+        )
+    })?;
 
     let contributor_keys: Vec<ContributorPublicKey> =
         sqlx::query_as(r#"SELECT * FROM "ContributorPublicKeys" WHERE contributor_id=$1"#)
             .bind(contributor.id)
             .fetch_all(pool)
-            .await?;
+            .await
+            .map_err(|err| {
+                InternalError::trace(
+                    source!(),
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal error getting encrypted values",
+                    err,
+                )
+            })?;
 
     Ok(SecretWithEncryptedValues::extract(
         &definition,
@@ -81,7 +156,7 @@ pub async fn create_secret(
 
 pub fn contributor_values_insert_query_builder(
     project_id: Uuid,
-    values: &[ContributorUpdateValue],
+    values: &[SecretValue],
 ) -> QueryBuilder<Postgres> {
     // language=sql
     let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
@@ -105,7 +180,7 @@ pub fn contributor_values_insert_query_builder(
 
 pub fn machine_values_insert_query_builder(
     project_id: Uuid,
-    values: &[MachineUpdateValue],
+    values: &[SecretValue],
 ) -> QueryBuilder<Postgres> {
     // language=sql
     let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(

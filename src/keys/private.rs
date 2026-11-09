@@ -1,58 +1,70 @@
-use crate::enums::EncryptionAlgorithm;
-use crate::keys::derive::{
-    EccPrivateKey, EccPublicKey, KemPrivateKey, KemPublicKey, PrivateKeySeed,
-};
+use crate::keys::derive::{DerivedPrivateKey, DerivedPublicKey, PrivateKeySeed};
 use crate::keys::public::PublicKey;
+use crate::result::{InternalError, InternalResult};
+use crate::source;
 use crate::types::EncryptedPackage;
-use crate::utils::bin_deserialize;
 use aes_gcm::aead::Aead;
 use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
-use ml_kem::Decapsulate;
+use http::StatusCode;
 use std::collections::HashMap;
 
 #[derive(Clone)]
-pub struct PrivateKey {
-    ecc: EccPrivateKey,
-    ecc_public: EccPublicKey,
-    kem: KemPrivateKey,
-    kem_public: KemPublicKey,
+pub struct KeyPair {
+    public_key: DerivedPublicKey,
+    private_key: DerivedPrivateKey,
 }
 
-impl PrivateKey {
-    pub fn from_seed(seed: PrivateKeySeed) -> anyhow::Result<Self> {
-        let (ecc_public_key, ecc_private_key) = seed.derive_ecc_keys()?;
+impl KeyPair {
+    pub fn from_seed(seed: PrivateKeySeed) -> InternalResult<Self> {
+        let (public_key, private_key) = seed.derive_key_pair()?;
 
-        let (kem_public_key, ken_private_key) = seed.derive_kem_keys()?;
-
-        let private_key = Self {
-            ecc: ecc_private_key,
-            ecc_public: ecc_public_key,
-            kem: ken_private_key,
-            kem_public: kem_public_key,
-        };
-
-        Ok(private_key)
+        Ok(Self {
+            private_key,
+            public_key,
+        })
     }
 
-    pub fn decrypt(&self, payload: &str) -> anyhow::Result<String> {
-        let encrypted_package: EncryptedPackage = bin_deserialize(payload)?;
+    pub fn decrypt(&self, payload: &str) -> InternalResult<String> {
+        let encrypted_package = EncryptedPackage::decode(payload)?;
 
-        let ecc_shared_secret = self.get_ecc_aes_shared_secret(&encrypted_package);
-        let kem_shared_secret = self.get_kem_aes_shared_secret(&encrypted_package);
-        let mut decrypted_payload = encrypted_package.3.clone();
+        let encryptor_public_key = DerivedPublicKey::from(encrypted_package.public_key);
+        let shared_secret = self.private_key.diffie_hellman(&encryptor_public_key);
 
-        for shared_secret in [kem_shared_secret, ecc_shared_secret].into_iter().flatten() {
-            decrypted_payload =
-                Self::aes_decrypt_payload(encrypted_package.2, &shared_secret, decrypted_payload)?
-        }
+        let cipher = Aes256Gcm::new_from_slice(shared_secret.as_bytes()).map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::CONFLICT,
+                "Invalid shared secret value",
+                err,
+            )
+        })?;
+        let nonce = Nonce::from(encrypted_package.nonce_bytes);
 
-        Ok(String::from_utf8(decrypted_payload)?)
+        let decrypted_payload = cipher
+            .decrypt(&nonce, encrypted_package.ciphertext.as_slice())
+            .map_err(|err| {
+                InternalError::trace(
+                    source!(),
+                    StatusCode::CONFLICT,
+                    "Error decrypting value",
+                    err,
+                )
+            })?;
+
+        String::from_utf8(decrypted_payload).map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::BAD_REQUEST,
+                "Invalid project ID",
+                err,
+            )
+        })
     }
 
     pub fn decrypt_package(
         &self,
         secrets_package: &HashMap<String, String>,
-    ) -> anyhow::Result<HashMap<String, String>> {
+    ) -> InternalResult<HashMap<String, String>> {
         let mut decrypted_secrets = HashMap::new();
 
         for (key, value) in secrets_package {
@@ -63,50 +75,9 @@ impl PrivateKey {
         Ok(decrypted_secrets)
     }
 
-    fn aes_decrypt_payload(
-        nonce: [u8; 12],
-        shared_secret: &[u8; 32],
-        payload: Vec<u8>,
-    ) -> anyhow::Result<Vec<u8>> {
-        let cipher = Aes256Gcm::new_from_slice(shared_secret)?;
-        let nonce = Nonce::from(nonce);
-
-        let decrypted_payload = cipher.decrypt(&nonce, payload.as_slice())?;
-
-        Ok(decrypted_payload)
-    }
-
-    fn get_ecc_aes_shared_secret(&self, encrypted_package: &EncryptedPackage) -> Option<[u8; 32]> {
-        encrypted_package.0.as_ref()?;
-
-        let encryptor_public_key = EccPublicKey::from(encrypted_package.ecc_public_key());
-
-        let shared_secret = self.ecc.diffie_hellman(&encryptor_public_key);
-
-        Some(shared_secret.to_bytes())
-    }
-
-    fn get_kem_aes_shared_secret(&self, encrypted_package: &EncryptedPackage) -> Option<[u8; 32]> {
-        encrypted_package.1.as_ref()?;
-
-        let ciphertext = encrypted_package.kem_ciphertext();
-
-        let shared_secret = self.kem.decapsulate(&ciphertext.into());
-
-        Some(shared_secret.into())
-    }
-
-    pub fn public_key(&self, algorithm: EncryptionAlgorithm) -> PublicKey {
-        let ecc = if algorithm.is_ecc() {
-            Some(self.ecc_public)
-        } else {
-            None
-        };
-        let kem = if algorithm.is_kem() {
-            Some(self.kem_public.clone())
-        } else {
-            None
-        };
-        PublicKey::from_keys(ecc, kem)
+    pub fn public_key(&self) -> PublicKey {
+        PublicKey {
+            key: self.public_key,
+        }
     }
 }

@@ -1,11 +1,11 @@
 use crate::backend::ApiState;
-use crate::routes::types::HttpResponse;
-use crate::utils::{CloudProxy, error_mapper};
+use crate::utils::CloudProxy;
 use crate::{CheckChallengeResult, PendingChallenge};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::{Extension, Json};
 use secretpass_core::enums::{ChallengeKind, OperationMode};
+use secretpass_core::{InternalError, InternalResult, source};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -31,28 +31,26 @@ pub async fn generate_challenge_handler(
     State(state): State<ApiState>,
     Extension(proxy): Extension<CloudProxy>,
     Json(request): Json<GenerateChallengeRequest>,
-) -> HttpResponse<Json<GenerateChallengeResponse>> {
+) -> InternalResult<Json<GenerateChallengeResponse>> {
     if proxy.is_local() && request.kind.is_cloud_only() {
         let response: GenerateChallengeResponse = proxy.send_json(&request).await?;
         return Ok(Json(response));
     }
 
-    let user = state
-        .backend
-        .get_user_email(request.owner.clone())
-        .await
-        .map_err(error_mapper(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Error checking user exists",
-        ))?;
+    let user = state.backend.get_user_email(request.owner.clone()).await?;
 
     if request.kind.is_new_user_only() && user.is_some() {
-        return Err((
+        return Err(InternalError::new(
+            source!(),
             StatusCode::FORBIDDEN,
-            "You already have an account under this email address, login in instead.".to_string(),
+            "You already have an account under this email address, try to sign in instead.",
         ));
     } else if !request.kind.is_new_user_only() && user.is_none() {
-        return Err((StatusCode::BAD_REQUEST, "User not found".to_string()));
+        return Err(InternalError::new(
+            source!(),
+            StatusCode::BAD_REQUEST,
+            "User not found",
+        ));
     }
 
     let (challenge, pending_challenge) = match request.kind {
@@ -68,9 +66,10 @@ pub async fn generate_challenge_handler(
         }
         ChallengeKind::EmailAuthorize => {
             let operation = request.operation.clone().ok_or_else(|| {
-                (
+                InternalError::new(
+                    source!(),
                     StatusCode::BAD_REQUEST,
-                    "Operation required for email authorize challenge".to_string(),
+                    "Operation required for email authorize challenge",
                 )
             })?;
             PendingChallenge::send_email_code(
@@ -84,9 +83,10 @@ pub async fn generate_challenge_handler(
         }
         ChallengeKind::EmailSignup => {
             let name = request.name.clone().ok_or_else(|| {
-                (
+                InternalError::new(
+                    source!(),
                     StatusCode::BAD_REQUEST,
-                    "Name missing for email signup challenge".to_string(),
+                    "Name missing for email signup challenge",
                 )
             })?;
             PendingChallenge::send_email_code(
@@ -98,12 +98,8 @@ pub async fn generate_challenge_handler(
             )
             .await
         }
-        _ => PendingChallenge::generate_webauthn(request.kind, request.owner).await,
-    }
-    .map_err(error_mapper(
-        StatusCode::INTERNAL_SERVER_ERROR,
-        &format!("Error generating {} challenge", request.kind),
-    ))?;
+        _ => Ok(PendingChallenge::generate_webauthn(request.kind, request.owner).await),
+    }?;
 
     pending_challenge.record(&state).await?;
 
@@ -123,11 +119,12 @@ pub async fn check_challenge_handler(
     State(state): State<ApiState>,
     Extension(proxy): Extension<CloudProxy>,
     Json(request): Json<CheckChallengeRequest>,
-) -> HttpResponse<Json<CheckChallengeResult>> {
+) -> InternalResult<Json<CheckChallengeResult>> {
     if !request.kind.is_checkable() {
-        return Err((
+        return Err(InternalError::new(
+            source!(),
             StatusCode::BAD_REQUEST,
-            "Invalid challenge check request".to_string(),
+            "Invalid challenge check request",
         ));
     }
 
@@ -139,12 +136,10 @@ pub async fn check_challenge_handler(
     let result = state
         .backend
         .retrieve_pending_challenge_for_attempt(request.kind, request.owner)
-        .await
-        .map_err(error_mapper(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Error checking challenge",
-        ))?
-        .ok_or_else(|| (StatusCode::NOT_FOUND, "Challenge not found".to_string()))?;
+        .await?
+        .ok_or_else(|| {
+            InternalError::new(source!(), StatusCode::NOT_FOUND, "Challenge not found")
+        })?;
 
     let valid = result.verify_challenge(request.value);
 

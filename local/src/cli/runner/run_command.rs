@@ -1,16 +1,13 @@
-use secretpass_core::PrivateKey;
+use secretpass_core::KeyPair;
 use std::collections::HashMap;
 use std::process::Command;
 
 pub fn run_command_with_secrets(
-    private_key: PrivateKey,
+    private_key: KeyPair,
     encrypted_secrets: HashMap<String, String>,
     user_command: String,
 ) {
-    let variables = private_key
-        .decrypt_package(&encrypted_secrets)
-        .map_err(|err| anyhow::format_err!("Error decrypting secrets: {:?}", err))
-        .unwrap();
+    let variables = private_key.decrypt_package(&encrypted_secrets).unwrap();
 
     let mut command = Command::new("sh");
 

@@ -1,24 +1,14 @@
-use crate::api_types::HttpError;
 use crate::constants::SESSION_COOKIE_NAME;
-use crate::utils::error_mapper;
 use crate::{ApiState, SessionPackage};
-use axum::http::StatusCode;
-use secretpass_core::Session;
+use secretpass_core::{InternalResult, Session};
 use tower_cookies::cookie::SameSite;
 use tower_cookies::{Cookie, Cookies};
 
 pub(crate) async fn record_session(
     state: &ApiState,
     response: &SessionPackage,
-) -> Result<(), HttpError> {
-    state
-        .backend
-        .record_session(response.clone())
-        .await
-        .map_err(error_mapper(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Error recording session",
-        ))
+) -> InternalResult<()> {
+    state.backend.record_session(response.clone()).await
 }
 
 pub(crate) fn set_session_cookie(cookies: &Cookies, session: &Session) {

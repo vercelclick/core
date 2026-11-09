@@ -10,10 +10,7 @@ pub async fn create_passkey(
 ) -> Result<Ts<PasskeyCreationResult>, JsError> {
     let request: PasskeyCreationRequest = request.to_rust()?;
 
-    let response = request
-        .attempt()
-        .await
-        .map_err(|err| JsError::new(&err.to_string()))?;
+    let response = request.attempt().await.map_err(JsError::from)?;
     let response = response.into_ts()?;
 
     Ok(response)

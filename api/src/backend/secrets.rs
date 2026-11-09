@@ -1,5 +1,5 @@
 use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
-use secretpass_core::{ContributorUpdateValue, MachineUpdateValue, SimpleMachinePublicKey};
+use secretpass_core::{EnvironmentAccess, SecretValue};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
@@ -31,16 +31,14 @@ pub struct CreateSecretRequest {
     pub name: String,
     pub comments: String,
     pub auth_result: PasskeyAuthorizationResult,
-    pub contributors_values: Vec<ContributorUpdateValue>,
-    pub machines_values: Vec<MachineUpdateValue>,
+    pub encrypted_values: Vec<SecretValue>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct UpdateSecretValueRequest {
     pub auth_result: PasskeyAuthorizationResult,
-    pub contributors_values: Vec<ContributorUpdateValue>,
-    pub machines_values: Vec<MachineUpdateValue>,
+    pub encrypted_values: Vec<SecretValue>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -63,10 +61,11 @@ pub struct GetMachineSecretParams {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct CreateMachinePublicKeyRequest {
+    pub id: Uuid,
     pub name: String,
     pub description: String,
-    pub environments: Vec<String>,
-    pub auth_response: PasskeyAuthorizationResult,
-    pub public_key: SimpleMachinePublicKey,
-    pub machine_secrets: Vec<MachineUpdateValue>,
+    pub access: Vec<EnvironmentAccess>,
+    pub auth_result: PasskeyAuthorizationResult,
+    pub public_key: String,
+    pub encrypted_values: Vec<SecretValue>,
 }

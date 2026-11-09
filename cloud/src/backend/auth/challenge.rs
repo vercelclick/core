@@ -1,6 +1,6 @@
-use anyhow::Ok;
 use secretpass_api::PendingChallenge;
 use secretpass_core::enums::ChallengeKind;
+use secretpass_core::{InternalError, InternalResult, StatusCode, source};
 use sqlx::{PgPool, Row};
 
 // language=sql
@@ -15,25 +15,33 @@ const PENDING_CHALLENGE_INSERT: &str = r#"
 pub async fn insert_or_replace_challenge(
     pool: &PgPool,
     challenge: &PendingChallenge,
-) -> anyhow::Result<()> {
+) -> InternalResult<()> {
     sqlx::query(PENDING_CHALLENGE_INSERT)
         .bind(&challenge.owner)
         .bind(challenge.kind)
         .bind(&challenge.value_hash)
         .bind(challenge.attempts_left)
         .execute(pool)
-        .await?;
+        .await
+        .map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!("Internal error creating {} challenge", challenge.kind),
+                err,
+            )
+        })?;
 
     Ok(())
 }
 
 // language=sql
-const PENDING_CHALLENGE_POP: &str = r#"
-    DELETE FROM "PendingChallenge" WHERE kind = $1 AND owner = $2 RETURNING *
+const PENDING_CHALLENGE_GET: &str = r#"
+    SELECT * FROM "PendingChallenge" WHERE kind = $1 AND owner = $2
 "#;
 
 // language=sql
-const PENDING_CHALLENGE_GET_ATTEMPT: &str = r#"
+const PENDING_CHALLENGE_ATTEMPT: &str = r#"
     UPDATE "PendingChallenge"
         SET attempts_left = (attempts_left - 1)
         WHERE attempts_left > 0 AND kind = $1 AND owner = $2 RETURNING *
@@ -44,12 +52,20 @@ async fn query_pending_challenge(
     query: &'static str,
     kind: ChallengeKind,
     owner: String,
-) -> anyhow::Result<Option<PendingChallenge>> {
+) -> InternalResult<Option<PendingChallenge>> {
     let row = sqlx::query(query)
         .bind(kind)
         .bind(&owner)
         .fetch_optional(pool)
-        .await?;
+        .await
+        .map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!("Internal error getting {kind} challenge"),
+                err,
+            )
+        })?;
 
     let row = match row {
         Some(row) => row,
@@ -67,18 +83,18 @@ async fn query_pending_challenge(
     Ok(Some(challenge))
 }
 
-pub async fn pop_pending_challenge(
+pub async fn get_pending_challenge(
     pool: &PgPool,
     kind: ChallengeKind,
     owner: String,
-) -> anyhow::Result<Option<PendingChallenge>> {
-    query_pending_challenge(pool, PENDING_CHALLENGE_POP, kind, owner).await
+) -> InternalResult<Option<PendingChallenge>> {
+    query_pending_challenge(pool, PENDING_CHALLENGE_GET, kind, owner).await
 }
 
 pub async fn retrieve_pending_challenge_for_attempt(
     pool: &PgPool,
     kind: ChallengeKind,
     owner: String,
-) -> anyhow::Result<Option<PendingChallenge>> {
-    query_pending_challenge(pool, PENDING_CHALLENGE_GET_ATTEMPT, kind, owner).await
+) -> InternalResult<Option<PendingChallenge>> {
+    query_pending_challenge(pool, PENDING_CHALLENGE_ATTEMPT, kind, owner).await
 }

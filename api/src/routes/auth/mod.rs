@@ -13,7 +13,7 @@ use crate::routes::auth::register::create_user;
 use crate::routes::auth::session::{get_session_handler, logout_handler};
 use axum::Router;
 use axum::routing::{get, post};
-pub use challenge::{GenerateChallengeRequest, generate_challenge_handler};
+pub use challenge::generate_challenge_handler;
 
 pub fn auth_router(auth_layer: AuthLayer) -> Router<ApiState> {
     Router::new()

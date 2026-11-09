@@ -1,4 +1,3 @@
-use secretpass_core::enums::EncryptionAlgorithm;
 use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
 use secretpass_core::{Contributor, Environment, MachinePublicKey, Project, User, Workspace};
 use serde::{Deserialize, Serialize};
@@ -47,9 +46,8 @@ pub struct CreateProjectRequest {
     pub path: Option<String>,
     pub name: String,
     pub description: String,
-    pub algorithm: EncryptionAlgorithm,
     pub environments: Vec<CreateEnvironmentRequest>,
-    pub auth_response: PasskeyAuthorizationResult,
+    pub auth_result: PasskeyAuthorizationResult,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -60,5 +58,5 @@ pub struct GetProjectResult {
     pub contributor: Contributor,
     pub environments: Vec<Environment>,
     pub machines: Vec<MachinePublicKey>,
-    pub contributors: Vec<(User, Contributor)>
+    pub contributors: Vec<(User, Contributor)>,
 }

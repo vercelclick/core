@@ -1,5 +1,5 @@
 use crate::backend::auth::challenge::{
-    insert_or_replace_challenge, pop_pending_challenge, retrieve_pending_challenge_for_attempt,
+    get_pending_challenge, insert_or_replace_challenge, retrieve_pending_challenge_for_attempt,
 };
 use crate::backend::auth::passkey::{create_passkey, retrieve_passkey_by_cred_id};
 use crate::backend::auth::register::create_user;
@@ -26,7 +26,10 @@ use secretpass_api::secrets::{
 use secretpass_api::{BackendProvider, PendingChallenge, SessionPackage};
 use secretpass_core::enums::{ChallengeKind, PasskeyType};
 use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
-use secretpass_core::{MachinePublicKey, Passkey, Project, Session, User};
+use secretpass_core::{
+    InternalError, InternalResult, MachinePublicKey, Passkey, Project, Session, StatusCode, User,
+    source,
+};
 use sqlx::PgPool;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -46,7 +49,7 @@ impl CloudBackendProvider {
 
 #[async_trait::async_trait]
 impl BackendProvider for CloudBackendProvider {
-    async fn record_pending_challenge(&self, challenge: &PendingChallenge) -> anyhow::Result<()> {
+    async fn record_pending_challenge(&self, challenge: &PendingChallenge) -> InternalResult<()> {
         insert_or_replace_challenge(&self.pool, challenge).await
     }
 
@@ -54,44 +57,46 @@ impl BackendProvider for CloudBackendProvider {
         &self,
         kind: ChallengeKind,
         owner: String,
-    ) -> anyhow::Result<Option<PendingChallenge>> {
+    ) -> InternalResult<Option<PendingChallenge>> {
         retrieve_pending_challenge_for_attempt(&self.pool, kind, owner).await
     }
 
-    async fn pop_pending_challenge(
+    async fn get_pending_challenge(
         &self,
         kind: ChallengeKind,
         owner: String,
-    ) -> anyhow::Result<Option<PendingChallenge>> {
-        pop_pending_challenge(&self.pool, kind, owner).await
+    ) -> InternalResult<Option<PendingChallenge>> {
+        get_pending_challenge(&self.pool, kind, owner).await
     }
 
     async fn create_user(
         &self,
         request: BackendCreateUserRequest,
-    ) -> anyhow::Result<SessionPackage> {
+    ) -> InternalResult<SessionPackage> {
         create_user(&self.pool, request).await
     }
 
-    async fn record_session(&self, _session: SessionPackage) -> anyhow::Result<()> {
-        Err(anyhow::anyhow!(
-            "Record session details not supported on cloud; please report an issue to support@secretpass.cloud"
+    async fn record_session(&self, _session: SessionPackage) -> InternalResult<()> {
+        Err(InternalError::new(
+            source!(),
+            StatusCode::NOT_IMPLEMENTED,
+            "Record session details not supported on cloud; please report an issue to support@secretpass.cloud",
         ))
     }
 
-    async fn get_session(&self, id: Uuid) -> anyhow::Result<Option<SessionPackage>> {
+    async fn get_session(&self, id: Uuid) -> InternalResult<Option<SessionPackage>> {
         get_session(&self.pool, id).await
     }
 
-    async fn create_session_by_email(&self, email: String) -> anyhow::Result<SessionPackage> {
+    async fn create_session_by_email(&self, email: String) -> InternalResult<SessionPackage> {
         create_session_by_email(&self.pool, email).await
     }
 
-    async fn get_user_email(&self, email: String) -> anyhow::Result<Option<User>> {
+    async fn get_user_email(&self, email: String) -> InternalResult<Option<User>> {
         retrieve_user_by_email(&self.pool, email).await
     }
 
-    async fn create_session_by_user_id(&self, user_id: Uuid) -> anyhow::Result<SessionPackage> {
+    async fn create_session_by_user_id(&self, user_id: Uuid) -> InternalResult<SessionPackage> {
         create_session_by_user_id(&self.pool, user_id).await
     }
 
@@ -99,22 +104,22 @@ impl BackendProvider for CloudBackendProvider {
         &self,
         cred_id: String,
         email: String,
-    ) -> anyhow::Result<Option<Passkey>> {
+    ) -> InternalResult<Option<Passkey>> {
         retrieve_passkey_by_cred_id(&self.pool, cred_id, email).await
     }
 
     async fn retrieve_user_and_known_passkeys(
         &self,
         email: String,
-    ) -> anyhow::Result<Option<(User, Vec<Passkey>)>> {
+    ) -> InternalResult<Option<(User, Vec<Passkey>)>> {
         retrieve_user_and_known_passkeys(&self.pool, email).await
     }
 
-    async fn list_projects(&self, user: &User) -> anyhow::Result<ListProjectsResult> {
+    async fn list_projects(&self, user: &User) -> InternalResult<ListProjectsResult> {
         list_projects(&self.pool, user).await
     }
 
-    async fn logout_session(&self, session: &Session) -> anyhow::Result<()> {
+    async fn logout_session(&self, session: &Session) -> InternalResult<()> {
         expire_session(&self.pool, session).await
     }
 
@@ -124,16 +129,16 @@ impl BackendProvider for CloudBackendProvider {
         passkey_type: PasskeyType,
         passkey_name: String,
         cred_id: String,
-        public_key: String,
+        web_public_key: String,
         public_key_result: PublicKeyGenerateResult,
-    ) -> anyhow::Result<Passkey> {
+    ) -> InternalResult<Passkey> {
         create_passkey(
             &self.pool,
             user,
             passkey_type,
             passkey_name,
             cred_id,
-            public_key,
+            web_public_key,
             public_key_result,
         )
         .await
@@ -144,7 +149,7 @@ impl BackendProvider for CloudBackendProvider {
         user: &User,
         passkeys: &[Passkey],
         request: CreateProjectRequest,
-    ) -> anyhow::Result<Project> {
+    ) -> InternalResult<Project> {
         create_project(&self.pool, user, passkeys, request).await
     }
 
@@ -152,7 +157,7 @@ impl BackendProvider for CloudBackendProvider {
         &self,
         user: &User,
         project_id: Uuid,
-    ) -> anyhow::Result<Option<GetProjectResult>> {
+    ) -> InternalResult<Option<GetProjectResult>> {
         get_project_by_id(&self.pool, user, project_id).await
     }
 
@@ -160,7 +165,7 @@ impl BackendProvider for CloudBackendProvider {
         &self,
         user: &User,
         request: GetEnvironmentRequest,
-    ) -> anyhow::Result<Option<GetEnvironmentResult>> {
+    ) -> InternalResult<Option<GetEnvironmentResult>> {
         get_environment_handler(&self.pool, user, &request).await
     }
 
@@ -169,14 +174,14 @@ impl BackendProvider for CloudBackendProvider {
         user: &User,
         params: ProjectEnvPathParams,
         request: CreateSecretRequest,
-    ) -> anyhow::Result<SecretWithEncryptedValues> {
+    ) -> InternalResult<SecretWithEncryptedValues> {
         create_secret(&self.pool, user, params, request).await
     }
 
     async fn get_machine_secrets(
         &self,
         params: GetMachineSecretParams,
-    ) -> anyhow::Result<HashMap<String, String>> {
+    ) -> InternalResult<HashMap<String, String>> {
         get_machine_secrets(&self.pool, params).await
     }
 
@@ -185,7 +190,7 @@ impl BackendProvider for CloudBackendProvider {
         user: &User,
         params: ProjectPathParams,
         request: CreateMachinePublicKeyRequest,
-    ) -> anyhow::Result<MachinePublicKey> {
+    ) -> InternalResult<MachinePublicKey> {
         create_machine_public_key(&self.pool, user, params.project_id, request).await
     }
 
@@ -194,7 +199,7 @@ impl BackendProvider for CloudBackendProvider {
         user: &User,
         params: ProjectSecretPathParams,
         request: UpdateSecretRequest,
-    ) -> anyhow::Result<SecretWithEncryptedValues> {
+    ) -> InternalResult<SecretWithEncryptedValues> {
         update_secret(&self.pool, user, params, request).await
     }
 
@@ -203,7 +208,7 @@ impl BackendProvider for CloudBackendProvider {
         user: &User,
         params: ProjectSecretPathParams,
         request: UpdateSecretValueRequest,
-    ) -> anyhow::Result<SecretWithEncryptedValues> {
+    ) -> InternalResult<SecretWithEncryptedValues> {
         update_secret_value(&self.pool, user, params, request).await
     }
 }

@@ -8,6 +8,7 @@ use std::sync::Arc;
 use axum::response::{IntoResponse, Response};
 use futures_util::future::BoxFuture;
 
+use secretpass_core::{InternalError, source};
 use std::task::{Context, Poll};
 use tower_cookies::Cookies;
 use tower_layer::Layer;
@@ -62,9 +63,9 @@ where
             let cookies = match req.extensions().get::<Cookies>().cloned() {
                 Some(cookies) => cookies,
                 None => {
-                    return Ok((
+                    return Ok(InternalError::new(source!(),
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        "Error loading authentication, please report this as a bug",
+                        "Error loading authentication, please raise a support ticket if the issue persists",
                     )
                         .into_response());
                 }
@@ -72,8 +73,8 @@ where
 
             let package = match get_session(&state, &cookies).await {
                 Ok(package) => package,
-                Err((status_code, body)) => {
-                    return Ok((status_code, body).into_response());
+                Err(err) => {
+                    return Ok(err.into_response());
                 }
             };
 

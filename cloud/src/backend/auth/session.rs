@@ -2,7 +2,7 @@ use crate::backend::auth::user::retrieve_user_by_email;
 use crate::db::queries::auth::{CREATE_SESSION_QUERY, LIST_USER_PASSKEYS_BY_USER_ID};
 use crate::db::queries::user::GET_USER_BY_ID_QUERY;
 use secretpass_api::SessionPackage;
-use secretpass_core::{Passkey, Session, User};
+use secretpass_core::{InternalError, InternalResult, Passkey, Session, StatusCode, User, source};
 use sqlx::PgPool;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -12,12 +12,20 @@ const GET_SESSION_QUERY: &str = r#"
     UPDATE "Sessions" SET last_seen = now() WHERE "id" = $1 AND expires_on > now() RETURNING *
 "#;
 
-pub async fn get_session(pool: &PgPool, id: Uuid) -> anyhow::Result<Option<SessionPackage>> {
+pub async fn get_session(pool: &PgPool, id: Uuid) -> InternalResult<Option<SessionPackage>> {
     // TODO: Collapse these queries to one
     let session: Option<Session> = sqlx::query_as(GET_SESSION_QUERY)
         .bind(id)
         .fetch_optional(pool)
-        .await?;
+        .await
+        .map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal error getting session",
+                err,
+            )
+        })?;
 
     let session = match session {
         Some(session) => session,
@@ -27,7 +35,15 @@ pub async fn get_session(pool: &PgPool, id: Uuid) -> anyhow::Result<Option<Sessi
     let user: User = sqlx::query_as(GET_USER_BY_ID_QUERY)
         .bind(session.user_id)
         .fetch_one(pool)
-        .await?;
+        .await
+        .map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal error getting user",
+                err,
+            )
+        })?;
 
     let passkeys = get_passkeys_by_user_id(pool, user.id).await?;
 
@@ -41,15 +57,23 @@ pub async fn get_session(pool: &PgPool, id: Uuid) -> anyhow::Result<Option<Sessi
 pub async fn create_session_by_email(
     pool: &PgPool,
     email: String,
-) -> anyhow::Result<SessionPackage> {
+) -> InternalResult<SessionPackage> {
     let user = retrieve_user_by_email(pool, email)
         .await?
-        .ok_or_else(|| anyhow::anyhow!("User not found"))?;
+        .ok_or_else(|| InternalError::new(source!(), StatusCode::NOT_FOUND, "User not found"))?;
 
     let session: Session = sqlx::query_as(CREATE_SESSION_QUERY)
         .bind(user.id)
         .fetch_one(pool)
-        .await?;
+        .await
+        .map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal error creating session",
+                err,
+            )
+        })?;
 
     let passkeys = get_passkeys_by_user_id(pool, user.id).await?;
     Ok(SessionPackage {
@@ -62,16 +86,32 @@ pub async fn create_session_by_email(
 pub async fn create_session_by_user_id(
     pool: &PgPool,
     user_id: Uuid,
-) -> anyhow::Result<SessionPackage> {
+) -> InternalResult<SessionPackage> {
     let user: User = sqlx::query_as(GET_USER_BY_ID_QUERY)
         .bind(user_id)
         .fetch_one(pool)
-        .await?;
+        .await
+        .map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal error getting user details",
+                err,
+            )
+        })?;
 
     let session: Session = sqlx::query_as(CREATE_SESSION_QUERY)
         .bind(user_id)
         .fetch_one(pool)
-        .await?;
+        .await
+        .map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal error establishing a session",
+                err,
+            )
+        })?;
 
     let passkeys = get_passkeys_by_user_id(pool, user_id).await?;
     Ok(SessionPackage {
@@ -81,11 +121,19 @@ pub async fn create_session_by_user_id(
     })
 }
 
-pub async fn get_passkeys_by_user_id(pool: &PgPool, user_id: Uuid) -> anyhow::Result<Vec<Passkey>> {
+pub async fn get_passkeys_by_user_id(pool: &PgPool, user_id: Uuid) -> InternalResult<Vec<Passkey>> {
     let passkeys: Vec<Passkey> = sqlx::query_as(LIST_USER_PASSKEYS_BY_USER_ID)
         .bind(user_id)
         .fetch_all(pool)
-        .await?;
+        .await
+        .map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal error getting user passkeys",
+                err,
+            )
+        })?;
 
     Ok(passkeys)
 }
@@ -94,10 +142,18 @@ pub async fn get_passkeys_by_user_id(pool: &PgPool, user_id: Uuid) -> anyhow::Re
 const EXPIRE_SESSION_QUERY: &str =
     r#"UPDATE "Sessions" SET last_seen=now(), expires_on=now() WHERE id=$1"#;
 
-pub async fn expire_session(pool: &PgPool, session: &Session) -> anyhow::Result<()> {
+pub async fn expire_session(pool: &PgPool, session: &Session) -> InternalResult<()> {
     sqlx::query(EXPIRE_SESSION_QUERY)
         .bind(session.id)
         .execute(pool)
-        .await?;
+        .await
+        .map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal error expiring session",
+                err,
+            )
+        })?;
     Ok(())
 }

@@ -1,3 +1,6 @@
+use crate::result::{InternalError, InternalResult};
+use crate::source;
+use http::StatusCode;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -22,10 +25,12 @@ impl PasskeyFlags {
         }
     }
 
-    pub fn enforce_verification(&self) -> anyhow::Result<()> {
+    pub fn enforce_verification(&self) -> InternalResult<()> {
         if !self.user_present || !self.user_verified {
-            return Err(anyhow::anyhow!(
-                "User presence and authorization cannot be verified"
+            return Err(InternalError::new(
+                source!(),
+                StatusCode::BAD_REQUEST,
+                "User presence and authorization cannot be verified",
             ));
         }
 

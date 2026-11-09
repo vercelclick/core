@@ -1,6 +1,7 @@
 use secretpass_api::environments::SecretWithEncryptedValues;
 use secretpass_core::{
-    ContributorPublicKey, ContributorSecretValue, MachineSecretValue, SecretDefinition,
+    ContributorPublicKey, ContributorSecretValue, InternalError, InternalResult,
+    MachineSecretValue, SecretDefinition, StatusCode, source,
 };
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -14,7 +15,7 @@ pub struct LocalSecretConfig {
 }
 
 impl LocalSecretConfig {
-    pub fn load(path: &str, env_name: &str, secret_name: &str) -> anyhow::Result<Option<Self>> {
+    pub fn load(path: &str, env_name: &str, secret_name: &str) -> InternalResult<Option<Self>> {
         let path = Path::new(path)
             .join(".spass")
             .join("secrets")
@@ -28,13 +29,31 @@ impl LocalSecretConfig {
             return Ok(None);
         }
 
-        let content = fs::read_to_string(config_file)?;
-        let config: Self = serde_json::from_str(&content)?;
+        let content = fs::read_to_string(config_file.clone()).map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!("Error reading secret config {}", config_file.display()),
+                err,
+            )
+        })?;
+
+        let config: Self = serde_json::from_str(&content).map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!(
+                    "Error deserializing secret config {}",
+                    config_file.display()
+                ),
+                err,
+            )
+        })?;
 
         Ok(Some(config))
     }
 
-    pub fn load_env(path: &str, env_name: &str) -> anyhow::Result<Vec<Self>> {
+    pub fn load_env(path: &str, env_name: &str) -> InternalResult<Vec<Self>> {
         let env_path = Path::new(path)
             .join(".spass")
             .join("secrets")
@@ -43,12 +62,27 @@ impl LocalSecretConfig {
             return Ok(vec![]);
         }
 
-        let entries = fs::read_dir(env_path)?;
+        let entries = fs::read_dir(env_path.clone()).map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!("Error reading environment directory {}", env_path.display()),
+                err,
+            )
+        })?;
 
         let mut configs: Vec<Self> = Vec::new();
 
         for entry in entries.into_iter() {
-            let entry = entry?;
+            let entry = entry.map_err(|err| {
+                InternalError::trace(
+                    source!(),
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    &format!("Error processing secret entry from {}", env_path.display()),
+                    err,
+                )
+            })?;
+
             let file_path = entry.path();
             let file_name = match file_path.file_name() {
                 Some(name) => name,
@@ -69,20 +103,41 @@ impl LocalSecretConfig {
         Ok(configs)
     }
 
-    pub fn write(&self, path: &str, env_name: &str) -> anyhow::Result<()> {
+    pub fn write(&self, path: &str) -> InternalResult<()> {
         let path = Path::new(path)
             .join(".spass")
             .join("secrets")
-            .join(env_name);
+            .join(&self.definition.env_name);
 
         if !path.exists() {
-            fs::create_dir_all(path.clone())?;
+            fs::create_dir_all(path.clone()).map_err(|err| {
+                InternalError::trace(
+                    source!(),
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal error establishing a transaction",
+                    err,
+                )
+            })?;
         }
 
         let config_file = path.join(format!("{}.json", self.definition.name));
 
-        let content = serde_json::to_string_pretty(self)?;
-        fs::write(config_file, content)?;
+        let content = serde_json::to_string_pretty(self).map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!("Error serializing secret config {}", config_file.display()),
+                err,
+            )
+        })?;
+        fs::write(config_file.clone(), content).map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &format!("Error writing secret config {}", config_file.display()),
+                err,
+            )
+        })?;
 
         Ok(())
     }

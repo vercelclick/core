@@ -1,8 +1,7 @@
-use crate::api_types::HttpResponse;
 use crate::auth::BackendCreateUserRequest;
 use crate::constants::RpConfig;
 use crate::routes::auth::shared::{record_session, set_session_cookie};
-use crate::utils::{CloudProxy, error_mapper};
+use crate::utils::CloudProxy;
 use crate::{ApiState, CreateUserRequest, SessionPackage};
 use axum::extract::State;
 use axum::http::StatusCode;
@@ -10,6 +9,7 @@ use axum::{Extension, Json};
 use secretpass_core::enums::{ChallengeKind, OperationMode};
 use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
 use secretpass_core::passkeys::create::PasskeyCreationResult;
+use secretpass_core::{InternalError, InternalResult, source};
 use tower_cookies::Cookies;
 use uuid::Uuid;
 
@@ -19,7 +19,7 @@ pub async fn create_user(
     cookies: Cookies,
     Extension(proxy): Extension<CloudProxy>,
     Json(request): Json<CreateUserRequest>,
-) -> HttpResponse<Json<SessionPackage>> {
+) -> InternalResult<Json<SessionPackage>> {
     // TODO: Add Captcha verification
 
     let response = if state.mode == OperationMode::Local {
@@ -30,7 +30,7 @@ pub async fn create_user(
         result
     } else {
         let rp_config = state.get_rp_config(proxy.is_proxied());
-        let (cred_id, public_key) = validate_passkey_creation_details(
+        let (cred_id, web_public_key) = validate_passkey_creation_details(
             true,
             &state,
             rp_config,
@@ -53,15 +53,10 @@ pub async fn create_user(
                 passkey_type: rp_config.passkey_type,
                 passkey_cred_id: cred_id,
                 passkey_name: request.passkey_name,
-                passkey_ecc: request.public_key_result.ecc,
-                passkey_kem: request.public_key_result.kem,
-                passkey_public_key: public_key,
+                passkey_public_key: request.public_key_result.public_key,
+                passkey_web_public_key: web_public_key,
             })
-            .await
-            .map_err(error_mapper(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Error creating user",
-            ))?
+            .await?
     };
 
     set_session_cookie(&cookies, &response.session);
@@ -82,10 +77,10 @@ pub async fn validate_passkey_creation_details(
     state: &ApiState,
     rp_config: &RpConfig,
     request: PasskeyCreateValidationRequest,
-) -> HttpResponse<(String, String)> {
+) -> InternalResult<(String, String)> {
     let email_challenge = state
         .backend
-        .pop_pending_challenge(
+        .get_pending_challenge(
             if is_signup {
                 ChallengeKind::EmailSignup
             } else {
@@ -93,28 +88,26 @@ pub async fn validate_passkey_creation_details(
             },
             request.email_address.clone(),
         )
-        .await
-        .map_err(error_mapper(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Error reading email challenge",
-        ))?
+        .await?
         .ok_or_else(|| {
-            (
+            InternalError::new(
+                source!(),
                 StatusCode::NOT_FOUND,
-                "Email challenge not found".to_string(),
+                "Email challenge not found",
             )
         })?;
 
     if !email_challenge.verify_challenge(request.confirmation_code) {
-        return Err((
+        return Err(InternalError::new(
+            source!(),
             StatusCode::FORBIDDEN,
-            "Invalid email confirmation code".to_string(),
+            "Invalid email confirmation code",
         ));
     }
 
     let passkey_challenge = state
         .backend
-        .pop_pending_challenge(
+        .get_pending_challenge(
             if is_signup {
                 ChallengeKind::PasskeySignup
             } else {
@@ -122,43 +115,28 @@ pub async fn validate_passkey_creation_details(
             },
             request.email_address.clone(),
         )
-        .await
-        .map_err(error_mapper(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Error reading passkey challenge",
-        ))?
+        .await?
         .ok_or_else(|| {
-            (
+            InternalError::new(
+                source!(),
                 StatusCode::NOT_FOUND,
-                "Passkey challenge not found".to_string(),
+                "Passkey challenge not found",
             )
         })?;
 
-    let (passkey_cred_id, passkey_public_key) = request
-        .create_result
-        .validate(
-            &passkey_challenge.value_hash,
-            rp_config.id,
-            rp_config.origin,
-        )
-        .map_err(error_mapper(
-            StatusCode::BAD_REQUEST,
-            "Error validating passkey challenge",
-        ))?;
+    let (passkey_cred_id, passkey_public_key) = request.create_result.validate(
+        &passkey_challenge.value_hash,
+        rp_config.id,
+        rp_config.origin,
+    )?;
 
-    request
-        .auth_result
-        .validate(
-            request.user_id,
-            &passkey_public_key,
-            &passkey_challenge.value_hash,
-            rp_config.id,
-            rp_config.origin,
-        )
-        .map_err(error_mapper(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Error  validating passkey authorization",
-        ))?;
+    request.auth_result.validate(
+        request.user_id,
+        &passkey_public_key,
+        &passkey_challenge.value_hash,
+        rp_config.id,
+        rp_config.origin,
+    )?;
 
     Ok((passkey_cred_id, passkey_public_key))
 }

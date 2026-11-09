@@ -9,9 +9,8 @@ homepage = { workspace = true }
 
 
 [dependencies]
-anyhow = { version = "1.0.104", features = ["backtrace"] }
 serde = { version = "1.0.229", features = ["derive"] }
-secretpass-core = { path = ".." }
+secretpass-core = { path = "..", default-features = false }
 tsify = "0.5.8"
 ts-rs = { version = "12.0.1" }
 uuid = { version = "1.29.0", features = ["js", "v4", "v7"] }

@@ -19,6 +19,12 @@ authors = { workspace = true }
 description = { workspace = true }
 homepage = { workspace = true }
 
+[features]
+default = ["trace"]
+trace = []
+axum = []
+
+
 [profile.release]
 opt-level = "z"
 lto = true
@@ -26,13 +32,14 @@ codegen-units = 1
 
 [dependencies]
 aes-gcm = { version = "0.11.1", features = ["rand_core"] }
-anyhow = "1.0.104"
 argon2 = { version = "0.6.0", features = ["rand_core"] }
+axum = "0.8.9"
 base64 = "0.23.1"
 ciborium = { version = "0.2.2" }
 chrono = { version = "0.4.45", features = ["serde", "wasm-bindgen"] }
 getrandom = { version = "0.4.3", features = ["wasm_js"] }
 hex = "0.4.3"
+http = { version = "1.5.0" }
 rand = { version = "0.10.2", default-features = false, features = ["chacha", "sys_rng"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1.0.154", features = ["alloc"] }
@@ -42,8 +49,9 @@ ts-rs = { version = "12.0.1", features = ["chrono-impl", "uuid-impl", "serde-jso
 tsify = { version = "0.5.8", features = ["wasm-bindgen"] }
 wasm-bindgen = { version = "0.2.130" }
 x25519-dalek = { version = "3.0.0", features = ["static_secrets"] }
-ml-kem = "0.3.3"
 sqlx = { version = "0.9.0", features = ["macros"] }
-uuid = { version = "1.29.0", features = ["serde", "v4", "v7", "js"] }
+tokio = { version = "1.54.1", features = ["sync"] }
+uuid = { version = "1.29.0", features = ["serde", "v4", "v5", "v7", "js"] }
 p256 = "0.14.0"
 coset = "0.4.2"
+tracing = { version = "0.1.44" }

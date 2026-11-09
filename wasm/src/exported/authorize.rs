@@ -10,10 +10,7 @@ pub async fn authorize_operation(
 ) -> Result<Ts<PasskeyAuthorizationResult>, JsError> {
     let params: AuthorizationRequest = params.to_rust()?;
 
-    let result = params
-        .authorize()
-        .await
-        .map_err(|err| JsError::new(&format!("Error authorizing user: {}", err)))?;
+    let result = params.authorize().await.map_err(JsError::from)?;
 
     let result = result.into_ts()?;
 

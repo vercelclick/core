@@ -5,7 +5,6 @@ use tsify::Tsify;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Tsify, TS)]
 pub struct PublicKeyGenerateResult {
-    pub ecc: String,
-    pub kem: String,
+    pub public_key: String,
     pub auth_response: PasskeyAuthorizationResult,
 }

@@ -20,21 +20,10 @@ use wasm_bindgen::prelude::wasm_bindgen;
     sqlx::Type,
 )]
 #[tsify(namespace)]
-#[sqlx(type_name = r#""EncryptionAlgorithm""#)]
-pub enum EncryptionAlgorithm {
-    ECC,    // X25519
-    KEM,    // ML-KEM-768
-    Hybrid, // Encrypts with both algorithms
-}
-
-impl EncryptionAlgorithm {
-    pub fn is_ecc(&self) -> bool {
-        *self == EncryptionAlgorithm::ECC || *self == EncryptionAlgorithm::Hybrid
-    }
-
-    pub fn is_kem(&self) -> bool {
-        *self == EncryptionAlgorithm::KEM || *self == EncryptionAlgorithm::Hybrid
-    }
+#[sqlx(type_name = r#""ContributorRole""#)]
+pub enum ContributorRole {
+    Admin,
+    Standard,
 }
 
 #[wasm_bindgen(skip_typescript)]
@@ -52,10 +41,10 @@ impl EncryptionAlgorithm {
     sqlx::Type,
 )]
 #[tsify(namespace)]
-#[sqlx(type_name = r#""ContributorRole""#)]
-pub enum ContributorRole {
-    Admin,
-    Standard,
+#[sqlx(type_name = r#""EnvironmentAccessLevel""#)]
+pub enum EnvironmentAccessLevel {
+    ReadOnly,
+    ReadWrite,
 }
 
 #[wasm_bindgen(skip_typescript)]

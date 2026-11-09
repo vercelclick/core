@@ -1,12 +1,16 @@
+use crate::result::{InternalError, InternalResult};
+use crate::source;
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
+use http::StatusCode;
 use rand::rngs::{ChaCha20Rng, SysRng};
 use rand::{RngExt, SeedableRng, TryRng};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use sha2::{Digest, Sha256};
-use std::io::Cursor;
-use std::sync::{Mutex, OnceLock};
 
+use std::io::Cursor;
+use std::sync::OnceLock;
+use tokio::sync::Mutex;
 static RNG: OnceLock<Mutex<ChaCha20Rng>> = OnceLock::new();
 
 pub fn get_global_rng() -> &'static Mutex<ChaCha20Rng> {
@@ -17,8 +21,8 @@ pub fn get_global_rng() -> &'static Mutex<ChaCha20Rng> {
     })
 }
 
-pub fn fill_random_bytes(bytes: &mut [u8]) {
-    let mut rng = get_global_rng().lock().unwrap();
+pub async fn fill_random_bytes(bytes: &mut [u8]) {
+    let mut rng = get_global_rng().lock().await;
     rng.fill(bytes);
 }
 
@@ -42,34 +46,49 @@ pub fn bin_encode(payload: &[u8]) -> String {
     URL_SAFE_NO_PAD.encode(payload)
 }
 
-pub fn bin_decode(payload: &str) -> anyhow::Result<Vec<u8>> {
-    match URL_SAFE_NO_PAD.decode(payload) {
-        Ok(decoded) => Ok(decoded),
-        Err(e) => Err(anyhow::anyhow!("Failed to decode base64: {}", e)),
-    }
+pub fn bin_decode(payload: &str) -> InternalResult<Vec<u8>> {
+    URL_SAFE_NO_PAD.decode(payload).map_err(|err| {
+        InternalError::trace(
+            source!(),
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Base64 content decode error",
+            err,
+        )
+    })
 }
 
-pub fn bin_serialize<T>(payload: &T) -> anyhow::Result<String>
+pub fn bin_serialize<T>(payload: &T) -> InternalResult<String>
 where
     T: Serialize,
 {
-    // let serialized = postcard::to_allocvec_cobs(payload)?;
     let mut serialized = Vec::new();
-    ciborium::ser::into_writer(payload, &mut serialized)?;
+    ciborium::ser::into_writer(payload, &mut serialized).map_err(|err| {
+        InternalError::trace(
+            source!(),
+            StatusCode::CONFLICT,
+            "Binary content encode error",
+            err,
+        )
+    })?;
+
     Ok(bin_encode(&serialized))
 }
 
-pub fn bin_deserialize<T>(payload: &str) -> anyhow::Result<T>
+pub fn bin_deserialize<T>(payload: &str) -> InternalResult<T>
 where
     T: DeserializeOwned,
 {
-    let decoded = bin_decode(payload)
-        .map_err(|err| anyhow::format_err!("base64 content error: {:?}", err))?;
+    let decoded = bin_decode(payload)?;
 
     let mut reader = Cursor::new(&decoded);
-    let result: T = ciborium::de::from_reader(&mut reader)
-        .map_err(|err| anyhow::format_err!("binary content error: {:?}", err))?;
-    // let result: T = postcard::from_bytes_cobs(&mut decoded)
-    //     .map_err(|err| anyhow::format_err!("binary content error: {:?}", err))?;
+    let result: T = ciborium::de::from_reader(&mut reader).map_err(|err| {
+        InternalError::trace(
+            source!(),
+            StatusCode::CONFLICT,
+            "Binary content decode error",
+            err,
+        )
+    })?;
+
     Ok(result)
 }

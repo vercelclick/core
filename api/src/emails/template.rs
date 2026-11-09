@@ -1,9 +1,11 @@
 use crate::constants::{CLOUD_RP_CONFIG, LOCAL_RP_CONFIG};
 use secretpass_core::enums::OperationMode;
+use strum::Display;
 
 const CREATE_EMAIL_TEMPLATE: &str = include_str!("templates/create_account.html");
 const CONFIRM_EMAIL_TEMPLATE: &str = include_str!("templates/confirm_email.html");
 
+#[derive(Display)]
 pub(crate) enum EmailTemplate {
     Create {
         subject: String,

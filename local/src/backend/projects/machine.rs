@@ -3,34 +3,45 @@ use crate::service::keys::LocalKeysConfig;
 use crate::service::secrets::LocalSecretConfig;
 use chrono::Utc;
 use secretpass_api::secrets::CreateMachinePublicKeyRequest;
-use secretpass_core::{MachinePublicKey, MachineSecretValue, User};
+use secretpass_core::{
+    InternalError, InternalResult, MachinePublicKey, MachineSecretValue, StatusCode, User, source,
+};
 use uuid::Uuid;
 
 pub async fn create_machine_public_key(
     user: &User,
     project_id: Uuid,
     request: CreateMachinePublicKeyRequest,
-) -> anyhow::Result<MachinePublicKey> {
+) -> InternalResult<MachinePublicKey> {
     let local_config = LocalServiceConfig::load()?;
 
-    let (path, project_conf) = local_config
-        .get_project_by_id(project_id)?
-        .ok_or_else(|| anyhow::anyhow!("Project not found, ensure the project is attached"))?;
+    let (path, project_conf) = local_config.get_project_by_id(project_id)?.ok_or_else(|| {
+        InternalError::new(
+            source!(),
+            StatusCode::NOT_FOUND,
+            "Project not found, ensure the project is attached",
+        )
+    })?;
 
     project_conf
         .get_contributor_by_user_id(user.id)
-        .ok_or_else(|| anyhow::anyhow!("User not found in project"))?;
+        .ok_or_else(|| {
+            InternalError::new(
+                source!(),
+                StatusCode::FORBIDDEN,
+                "User not found in project",
+            )
+        })?;
 
     let mut keys_config = LocalKeysConfig::load(&path)?;
 
     let machine_key = MachinePublicKey {
-        id: request.public_key.id,
+        id: request.id,
         name: request.name.clone(),
         description: request.description.clone(),
         project_id,
-        ecc: request.public_key.ecc.clone(),
-        kem: request.public_key.kem.clone(),
-        environments: request.environments.clone(),
+        public_key: request.public_key,
+        access: request.access.clone(),
         generated_by: user.email.clone(),
         generated_on: Utc::now(),
     };
@@ -38,10 +49,14 @@ pub async fn create_machine_public_key(
     keys_config.machines_keys.push(machine_key.clone());
     keys_config.write(&path)?;
 
-    for value in request.machine_secrets.iter() {
+    for value in request.encrypted_values.iter() {
         let mut secret_config = LocalSecretConfig::load(&path, &value.environment, &value.name)?
             .ok_or_else(|| {
-                anyhow::format_err!("Secret {}/{} not found", value.environment, value.name)
+                InternalError::new(
+                    source!(),
+                    StatusCode::NOT_FOUND,
+                    &format!("Secret {}/{} not found", value.environment, value.name),
+                )
             })?;
         secret_config.machine_values.push(MachineSecretValue {
             name: value.name.clone(),
@@ -54,7 +69,7 @@ pub async fn create_machine_public_key(
             encrypted_value: value.encrypted_value.clone(),
         });
 
-        secret_config.write(&path, &value.environment)?;
+        secret_config.write(&path)?;
     }
 
     Ok(machine_key)

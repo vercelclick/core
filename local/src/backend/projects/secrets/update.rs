@@ -1,3 +1,4 @@
+use crate::backend::projects::secrets::utils::build_latest_attributed_values;
 use crate::config::LocalServiceConfig;
 use crate::service::keys::LocalKeysConfig;
 use crate::service::secrets::LocalSecretConfig;
@@ -7,13 +8,48 @@ use secretpass_api::environments::SecretWithEncryptedValues;
 use secretpass_api::secrets::{
     ProjectSecretPathParams, UpdateSecretRequest, UpdateSecretValueRequest,
 };
-use secretpass_core::{ContributorSecretValue, MachineSecretValue, User};
+use secretpass_core::{Contributor, InternalError, InternalResult, StatusCode, User, source};
+
+fn get_permitted_secret(
+    path: &str,
+    contributor: &Contributor,
+    params: &ProjectSecretPathParams,
+) -> InternalResult<LocalSecretConfig> {
+    let access = contributor.get_access(&params.env_name).ok_or_else(|| {
+        InternalError::new(
+            source!(),
+            StatusCode::FORBIDDEN,
+            "You don't have access to this environment",
+        )
+    })?;
+
+    access
+        .can_write_secret(&params.secret_name)
+        .ok_or_else(|| {
+            InternalError::new(
+                source!(),
+                StatusCode::FORBIDDEN,
+                "You do not have permission to update this secret",
+            )
+        })?;
+
+    LocalSecretConfig::load(&path, &params.env_name, &params.secret_name)?.ok_or_else(|| {
+        InternalError::new(
+            source!(),
+            StatusCode::NOT_FOUND,
+            &format!(
+                "Secret {}/{} not found",
+                &params.env_name, &params.secret_name
+            ),
+        )
+    })
+}
 
 pub async fn update_secret(
     user: &User,
     params: ProjectSecretPathParams,
     request: UpdateSecretRequest,
-) -> anyhow::Result<SecretWithEncryptedValues> {
+) -> InternalResult<SecretWithEncryptedValues> {
     let local_config = LocalServiceConfig::load()?;
 
     let (path, _, contributor) =
@@ -21,17 +57,12 @@ pub async fn update_secret(
 
     let keys_config = LocalKeysConfig::load(&path)?;
 
-    contributor
-        .can_access(&params.env_name)
-        .ok_or_else(|| anyhow::anyhow!("You don't have access to this environment"))?;
-
-    let mut secret_config = LocalSecretConfig::load(&path, &params.env_name, &params.secret_name)?
-        .ok_or_else(|| anyhow::anyhow!("Secret not found"))?;
+    let mut secret_config = get_permitted_secret(&path, &contributor, &params)?;
 
     secret_config.definition.comments = request.comments;
 
     secret_config.definition.updated_at = Utc::now();
-    secret_config.write(&path, &params.env_name)?;
+    secret_config.write(&path)?;
 
     let keys = keys_config.get_contributor_keys(contributor.id);
 
@@ -42,7 +73,7 @@ pub async fn update_secret_value(
     user: &User,
     params: ProjectSecretPathParams,
     request: UpdateSecretValueRequest,
-) -> anyhow::Result<SecretWithEncryptedValues> {
+) -> InternalResult<SecretWithEncryptedValues> {
     let local_config = LocalServiceConfig::load()?;
 
     let (path, _, contributor) =
@@ -50,12 +81,7 @@ pub async fn update_secret_value(
 
     let keys_config = LocalKeysConfig::load(&path)?;
 
-    contributor
-        .can_access(&params.env_name)
-        .ok_or_else(|| anyhow::anyhow!("You don't have access to this environment"))?;
-
-    let mut secret_config = LocalSecretConfig::load(&path, &params.env_name, &params.secret_name)?
-        .ok_or_else(|| anyhow::anyhow!("Secret not found"))?;
+    let mut secret_config = get_permitted_secret(&path, &contributor, &params)?;
 
     // Update the latest values to previous and remove all previous values
     for value in secret_config.machine_values.iter_mut() {
@@ -69,36 +95,18 @@ pub async fn update_secret_value(
         }
     }
 
-    for value in request.machines_values {
-        secret_config.machine_values.push(MachineSecretValue {
-            name: value.name,
-            tag: LATEST_SECRET_TAG.to_string(),
-            encrypted_value: value.encrypted_value,
-            env_name: value.environment,
-            project_id: params.project_id,
-            created_at: Utc::now(),
-            data_type: value.data_type,
-            target: value.target,
-        });
-    }
+    let (contributor_values, machine_values) =
+        build_latest_attributed_values(params.project_id, &request.encrypted_values);
 
-    for value in request.contributors_values {
-        secret_config
-            .contributor_values
-            .push(ContributorSecretValue {
-                name: value.name,
-                tag: LATEST_SECRET_TAG.to_string(),
-                encrypted_value: value.encrypted_value,
-                env_name: value.environment,
-                project_id: params.project_id,
-                created_at: Utc::now(),
-                data_type: value.data_type,
-                target: value.target,
-            });
-    }
+    secret_config
+        .machine_values
+        .extend_from_slice(&machine_values);
+    secret_config
+        .contributor_values
+        .extend_from_slice(&contributor_values);
 
     secret_config.definition.updated_at = Utc::now();
-    secret_config.write(&path, &params.env_name)?;
+    secret_config.write(&path)?;
 
     let keys = keys_config.get_contributor_keys(contributor.id);
 

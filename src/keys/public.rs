@@ -1,157 +1,129 @@
-use crate::keys::derive::{EccPublicKey, KemPublicKey};
+use crate::keys::derive::DerivedPublicKey;
 use crate::types::EncryptedPackage;
-use crate::utils::{
-    bin_decode, bin_encode, bin_serialize, fill_random_bytes, get_global_rng, sha256_digest,
-};
+use crate::utils::{bin_decode, bin_encode, fill_random_bytes, get_global_rng};
 use aes_gcm::{
     Aes256Gcm, Nonce,
     aead::{Aead, KeyInit},
 };
-use ml_kem::{Encapsulate, KeyExport, TryKeyInit};
+
+use crate::result::{InternalError, InternalResult};
+use crate::source;
+use http::StatusCode;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use ts_rs::TS;
+use tsify::Tsify;
+use uuid::Uuid;
 use x25519_dalek::StaticSecret;
 
 #[derive(Clone)]
 pub struct PublicKey {
-    ecc: Option<EccPublicKey>,
-    kem: Option<KemPublicKey>,
+    pub key: DerivedPublicKey,
 }
 
 impl PublicKey {
-    pub fn from_encoded(ecc: Option<String>, kem: Option<String>) -> anyhow::Result<Self> {
-        let kem = match kem {
-            Some(value) => {
-                let bytes = bin_decode(&value)?;
-                let key = KemPublicKey::new_from_slice(&bytes)?;
-                Some(key)
-            }
-            _ => None,
-        };
+    pub fn from_encoded(encoded_value: &str) -> InternalResult<Self> {
+        let bytes = bin_decode(encoded_value)?;
+        let key_bytes: [u8; 32] = bytes.as_slice().try_into().map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::CONFLICT,
+                "Invalid public key value",
+                err,
+            )
+        })?;
+        let key = DerivedPublicKey::from(key_bytes);
 
-        let ecc = match ecc {
-            Some(value) => {
-                let bytes = bin_decode(&value)?;
-                let key_bytes: [u8; 32] = bytes.as_slice().try_into()?;
-                let key = EccPublicKey::from(key_bytes);
-                Some(key)
-            }
-            None => None,
-        };
-
-        Ok(Self { kem, ecc })
+        Ok(Self { key })
     }
 
-    pub fn from_keys(ecc: Option<EccPublicKey>, kem: Option<KemPublicKey>) -> Self {
-        Self { ecc, kem }
+    pub fn encode(&self) -> String {
+        bin_encode(&self.key.to_bytes())
     }
 
-    pub fn ecc(&self) -> Option<String> {
-        self.ecc.as_ref().map(|value| bin_encode(&value.to_bytes()))
+    pub fn access_key_id(&self) -> Uuid {
+        Uuid::new_v5(&Uuid::NAMESPACE_OID, &self.key.to_bytes())
     }
+}
 
-    pub fn kem(&self) -> Option<String> {
-        self.kem
-            .as_ref()
-            .map(|value| bin_encode(&value.clone().to_bytes()))
-    }
+async fn generate_nonce_bytes() -> [u8; 12] {
+    let mut nonce_bytes = [0u8; 12];
+    fill_random_bytes(&mut nonce_bytes).await;
 
-    fn get_ecc_aes_keys(&self) -> (Option<Vec<u8>>, Option<[u8; 32]>) {
-        if self.ecc.is_none() {
-            return (None, None);
-        }
+    nonce_bytes
+}
 
-        let target_public_key = &self.ecc.unwrap();
-        let mut rng = get_global_rng().lock().unwrap();
+impl PublicKey {
+    pub async fn encrypt(&self, payload: String) -> InternalResult<String> {
+        let nonce_bytes = generate_nonce_bytes().await;
+
+        let mut rng = get_global_rng().lock().await;
         let encryptor_secret = StaticSecret::random_from_rng(&mut rng);
 
-        let encryptor_public = EccPublicKey::from(&encryptor_secret);
-        let shared_secret = encryptor_secret.diffie_hellman(target_public_key);
+        let public_key = DerivedPublicKey::from(&encryptor_secret);
+        let shared_secret = encryptor_secret.diffie_hellman(&self.key);
 
-        (
-            Some(encryptor_public.to_bytes().to_vec()),
-            Some(shared_secret.to_bytes()),
-        )
+        let nonce = Nonce::from(nonce_bytes);
+        let cipher = Aes256Gcm::new_from_slice(shared_secret.as_bytes()).map_err(|err| {
+            InternalError::trace(
+                source!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Error generating encryption cypher",
+                err,
+            )
+        })?;
+
+        let ciphertext = cipher
+            .encrypt(&nonce, payload.into_bytes().as_slice())
+            .map_err(|err| {
+                InternalError::trace(
+                    source!(),
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Error encrypting value",
+                    err,
+                )
+            })?;
+
+        let encrypted_package = EncryptedPackage {
+            public_key: public_key.to_bytes(),
+            nonce_bytes,
+            ciphertext,
+        };
+
+        Ok(encrypted_package.encode())
     }
 
-    fn get_kem_aes_keys(&self) -> (Option<Vec<u8>>, Option<[u8; 32]>) {
-        if self.kem.is_none() {
-            return (None, None);
-        }
-
-        let mut rng = get_global_rng().lock().unwrap();
-        let target_public_key = self.kem.clone().unwrap();
-        let (ciphertext, shared_secret) = target_public_key.encapsulate_with_rng(&mut rng);
-
-        (Some(ciphertext.to_vec()), Some(shared_secret.into()))
-    }
-
-    fn aes_encrypt_payload(
-        nonce: [u8; 12],
-        shared_secret: [u8; 32],
-        payload: &Vec<u8>,
-    ) -> anyhow::Result<Vec<u8>> {
-        let nonce = Nonce::from(nonce);
-        let cipher = Aes256Gcm::new_from_slice(&shared_secret)?;
-
-        let ciphertext = cipher.encrypt(&nonce, payload.as_slice())?;
-
-        Ok(ciphertext)
-    }
-
-    // Only applies to machine keys
-    pub fn machine_key_id(&self) -> String {
-        let mut data = vec![];
-        for value in [self.ecc(), self.kem()].iter().flatten() {
-            data.push(value.to_string());
-        }
-
-        sha256_digest(&data)
-    }
-}
-
-fn generate_nonce_bytes() -> anyhow::Result<[u8; 12]> {
-    let mut nonce_bytes = [0u8; 12];
-    fill_random_bytes(&mut nonce_bytes);
-
-    Ok(nonce_bytes)
-}
-
-pub trait PublicKeyEncrypt {
-    fn encrypt(&self, payload: String) -> anyhow::Result<String>;
-    fn encrypt_package(
+    pub async fn encrypt_package(
         &self,
         decrypted_package: HashMap<String, String>,
-    ) -> anyhow::Result<HashMap<String, String>>;
-}
-
-impl PublicKeyEncrypt for PublicKey {
-    fn encrypt(&self, payload: String) -> anyhow::Result<String> {
-        let nonce_bytes = generate_nonce_bytes()?;
-
-        let (ecc_public_key, ecc_shared_secret) = self.get_ecc_aes_keys();
-        let (kem_ciphertext, kem_shared_secret) = self.get_kem_aes_keys();
-        let mut payload = payload.clone().into_bytes();
-
-        // Order of events - ECC encrypts first decrypts last, KEM encrypts last decrypts first
-        for shared_secret in [ecc_shared_secret, kem_shared_secret].into_iter().flatten() {
-            payload = Self::aes_encrypt_payload(nonce_bytes, shared_secret, &payload)?
-        }
-
-        let encrypted_package =
-            EncryptedPackage(ecc_public_key, kem_ciphertext, nonce_bytes, payload);
-
-        bin_serialize(&encrypted_package)
-    }
-
-    fn encrypt_package(
-        &self,
-        decrypted_package: HashMap<String, String>,
-    ) -> anyhow::Result<HashMap<String, String>> {
+    ) -> InternalResult<HashMap<String, String>> {
         let mut encrypted_package = HashMap::new();
         for (name, value) in decrypted_package {
-            let encrypted_value = self.encrypt(value)?;
+            let encrypted_value = self.encrypt(value).await?;
             encrypted_package.insert(name, encrypted_value);
         }
         Ok(encrypted_package)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS)]
+pub struct TargetedPublicKey {
+    pub target: Uuid,
+    pub value: String,
+}
+
+impl TargetedPublicKey {
+    pub fn is_contributor(&self) -> bool {
+        self.target.get_version_num() == 7
+    }
+
+    pub fn is_machine(&self) -> bool {
+        self.target.get_version_num() == 5
+    }
+}
+
+impl TargetedPublicKey {
+    pub fn public_key(&self) -> InternalResult<PublicKey> {
+        PublicKey::from_encoded(&self.value)
     }
 }

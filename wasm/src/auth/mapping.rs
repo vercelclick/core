@@ -2,6 +2,7 @@ use crate::passkeys::prf::{PrfDeriveConfig, PrfResults};
 use secretpass_core::passkeys::authorize::{AssertionResponse, PasskeyAuthorizationResult};
 use secretpass_core::passkeys::create::{AttestationResponse, PasskeyCreationResult};
 use secretpass_core::utils::{bin_decode, sha256_raw};
+use secretpass_core::{InternalError, InternalResult, StatusCode, source};
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::js_sys::{
     Array as JsArray, ArrayBuffer, Object as JsObject, Reflect as JsReflect, Uint8Array,
@@ -12,15 +13,19 @@ use web_sys::{
     AuthenticatorAssertionResponse, AuthenticatorAttestationResponse, PublicKeyCredential,
 };
 
-fn prf_error(id: &str) -> anyhow::Error {
-    anyhow::format_err!(
-        "PRF_ERROR<{id}>: Browser not supported! Pseudo Random Functions extension is missing or disabled"
+fn prf_error(id: &str) -> InternalError {
+    InternalError::new(
+        source!(),
+        StatusCode::CONFLICT,
+        &format!(
+            "PRF_ERROR<{id}>: Browser not supported! Pseudo Random Functions extension is missing or disabled"
+        ),
     )
 }
 
 fn get_prf_value(
     outputs: AuthenticationExtensionsClientOutputs,
-) -> anyhow::Result<Option<JsValue>> {
+) -> InternalResult<Option<JsValue>> {
     let prf_key = JsValue::from_str("prf");
 
     let prf_result = match JsReflect::get(&outputs, &prf_key) {
@@ -36,7 +41,7 @@ fn get_prf_value(
 
 pub fn map_browser_passkey_registration_response(
     pk_credential: PublicKeyCredential,
-) -> anyhow::Result<PasskeyCreationResult> {
+) -> InternalResult<PasskeyCreationResult> {
     let ext_outputs = pk_credential.get_client_extension_results();
     verify_prf_enabled(ext_outputs)?;
 
@@ -44,7 +49,12 @@ pub fn map_browser_passkey_registration_response(
         .response()
         .dyn_into::<AuthenticatorAttestationResponse>()
         .map_err(|err| {
-            anyhow::format_err!("Error parsing attestation response: {}", err.to_string())
+            InternalError::trace(
+                source!(),
+                StatusCode::BAD_GATEWAY,
+                "Error parsing attestation response",
+                err,
+            )
         })?;
 
     let attestation_response = AttestationResponse {
@@ -61,10 +71,12 @@ pub fn map_browser_passkey_registration_response(
     Ok(response)
 }
 
-pub fn verify_prf_enabled(outputs: AuthenticationExtensionsClientOutputs) -> anyhow::Result<()> {
+pub fn verify_prf_enabled(outputs: AuthenticationExtensionsClientOutputs) -> InternalResult<()> {
     let prf_result = get_prf_value(outputs)?.ok_or_else(|| {
-        anyhow::anyhow!(
-            "Pseudo Random function not supported, please use a different passkey provider"
+        InternalError::new(
+            source!(),
+            StatusCode::BAD_GATEWAY,
+            "Pseudo Random function not supported, please use a different passkey provider",
         )
     })?;
 
@@ -83,7 +95,7 @@ pub fn verify_prf_enabled(outputs: AuthenticationExtensionsClientOutputs) -> any
 
 pub fn parse_prf_result(
     outputs: AuthenticationExtensionsClientOutputs,
-) -> anyhow::Result<Option<PrfResults>> {
+) -> InternalResult<Option<PrfResults>> {
     let prf_result = match get_prf_value(outputs)? {
         Some(results) => results,
         None => return Ok(None),
@@ -111,7 +123,7 @@ pub fn parse_prf_result(
 
 pub fn map_browser_passkey_authentication(
     pk_credential: PublicKeyCredential,
-) -> anyhow::Result<(PasskeyAuthorizationResult, Option<PrfResults>)> {
+) -> InternalResult<(PasskeyAuthorizationResult, Option<PrfResults>)> {
     let ext_outputs = pk_credential.get_client_extension_results();
     let prf_results = parse_prf_result(ext_outputs)?;
 
@@ -120,7 +132,14 @@ pub fn map_browser_passkey_authentication(
         .dyn_into::<AuthenticatorAssertionResponse>()
     {
         Ok(value) => value,
-        Err(_) => return Err(anyhow::anyhow!("Error parsing assertion response")),
+        Err(err) => {
+            return Err(InternalError::trace(
+                source!(),
+                StatusCode::CONFLICT,
+                "Error parsing assertion response",
+                err,
+            ));
+        }
     };
     let user_handle = assertion_response.user_handle();
 
@@ -140,17 +159,24 @@ pub fn map_browser_passkey_authentication(
     Ok((login_response, prf_results))
 }
 
-pub fn parse_prf_value(buffer: JsValue) -> anyhow::Result<[u8; 32]> {
+pub fn parse_prf_value(buffer: JsValue) -> InternalResult<[u8; 32]> {
     let buffer = ArrayBuffer::from(buffer);
     let as_vec = Uint8Array::new(&buffer).to_vec();
     let value: [u8; 32] = match as_vec.try_into() {
         Ok(value) => value,
-        Err(_) => return Err(anyhow::anyhow!("Error parsing PRF value")),
+        Err(err) => {
+            return Err(InternalError::trace(
+                source!(),
+                StatusCode::CONFLICT,
+                "Error parsing PRF value",
+                err,
+            ));
+        }
     };
     Ok(value)
 }
 
-pub fn build_credentials_array(credential_ids: &[String]) -> anyhow::Result<JsValue> {
+pub fn build_credentials_array(credential_ids: &[String]) -> InternalResult<JsValue> {
     let credentials = JsArray::new();
     for cred_id in credential_ids {
         let id = Uint8Array::new_from_slice(&bin_decode(cred_id)?);
