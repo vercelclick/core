@@ -1,4 +1,4 @@
-use crate::backend::auth::{BackendCreateUserRequest, SessionPackage};
+use crate::backend::auth::BackendCreateUserRequest;
 use crate::backend::challenge::PendingChallenge;
 use crate::backend::environments::{
     GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues,
@@ -36,18 +36,22 @@ pub trait BackendProvider: Send + Sync + 'static {
     async fn create_user(
         &self,
         request: BackendCreateUserRequest,
-    ) -> InternalResult<SessionPackage>;
+    ) -> InternalResult<(Session, User, Vec<Passkey>)>;
 
-    // Only called for local
-    async fn record_session(&self, response: SessionPackage) -> InternalResult<()>;
+    async fn get_session(&self, session_id: Uuid, user_id: Uuid)
+    -> InternalResult<Option<Session>>;
 
-    async fn get_session(&self, id: Uuid) -> InternalResult<Option<SessionPackage>>;
-
-    async fn create_session_by_email(&self, email: String) -> InternalResult<SessionPackage>;
+    async fn create_session_by_email(
+        &self,
+        email: String,
+    ) -> InternalResult<(Session, User, Vec<Passkey>)>;
 
     async fn get_user_email(&self, email: String) -> InternalResult<Option<User>>;
 
-    async fn create_session_by_user_id(&self, user_id: Uuid) -> InternalResult<SessionPackage>;
+    async fn create_session_by_user_id(
+        &self,
+        user_id: Uuid,
+    ) -> InternalResult<(Session, User, Vec<Passkey>)>;
 
     async fn retrieve_passkey_by_cred_id(
         &self,

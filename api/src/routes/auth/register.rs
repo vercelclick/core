@@ -1,65 +1,52 @@
-use crate::backend::auth::BackendCreateUserRequest;
-use crate::backend::{ApiState, CreateUserRequest, SessionPackage};
-use crate::routes::auth::shared::{record_session, set_session_cookie};
-use crate::utils::CloudProxy;
+use crate::auth_session::create_backend_session_token;
+use crate::backend::auth::{AuthTokenResponse, BackendCreateUserRequest};
+use crate::backend::{ApiState, CreateUserRequest};
+use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
-use axum::{Extension, Json};
-use secretpass_core::enums::{ChallengeKind, OperationMode};
+use secretpass_core::enums::ChallengeKind;
 use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
 use secretpass_core::passkeys::create::PasskeyCreationResult;
 use secretpass_core::{InternalError, InternalResult};
-use tower_cookies::Cookies;
 use uuid::Uuid;
 
 #[axum::debug_handler]
 pub async fn create_user(
     State(state): State<ApiState>,
-    cookies: Cookies,
-    Extension(proxy): Extension<CloudProxy>,
     Json(request): Json<CreateUserRequest>,
-) -> InternalResult<Json<SessionPackage>> {
+) -> InternalResult<Json<AuthTokenResponse>> {
     // TODO: Add Captcha verification
+    let (cred_id, web_public_key) = validate_passkey_creation_details(
+        true,
+        &state,
+        PasskeyCreateValidationRequest {
+            create_result: request.passkey_result,
+            email_address: request.email.clone(),
+            confirmation_code: request.confirmation_code,
+            user_id: request.id,
+            auth_result: request.public_key_result.auth_response.clone(),
+        },
+    )
+    .await?;
 
-    let response = if state.mode == OperationMode::Local {
-        let result: SessionPackage = proxy.send_json(&request).await?;
-
-        record_session(&state, &result).await?;
-
-        result
-    } else {
-        let (cred_id, web_public_key) = validate_passkey_creation_details(
-            true,
-            &state,
-            PasskeyCreateValidationRequest {
-                create_result: request.passkey_result,
-                email_address: request.email.clone(),
-                confirmation_code: request.confirmation_code,
-                user_id: request.id,
-                auth_result: request.public_key_result.auth_response.clone(),
-            },
-        )
+    let (session, user, passkeys) = state
+        .backend
+        .create_user(BackendCreateUserRequest {
+            user_id: request.id,
+            user_email: request.email,
+            user_name: request.name,
+            user_salt: request.user_salt,
+            passkey_cred_id: cred_id,
+            passkey_name: request.passkey_name,
+            passkey_salt: request.passkey_salt,
+            passkey_public_key: request.public_key_result.public_key,
+            passkey_web_public_key: web_public_key,
+        })
         .await?;
 
-        state
-            .backend
-            .create_user(BackendCreateUserRequest {
-                user_id: request.id,
-                user_email: request.email,
-                user_name: request.name,
-                user_salt: request.user_salt,
-                passkey_cred_id: cred_id,
-                passkey_name: request.passkey_name,
-                passkey_salt: request.passkey_salt,
-                passkey_public_key: request.public_key_result.public_key,
-                passkey_web_public_key: web_public_key,
-            })
-            .await?
-    };
+    let token = create_backend_session_token(session, user, passkeys)?;
 
-    set_session_cookie(&cookies, &response.session);
-
-    Ok(Json(response))
+    Ok(Json(AuthTokenResponse { token }))
 }
 
 pub struct PasskeyCreateValidationRequest {

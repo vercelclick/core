@@ -25,8 +25,9 @@ pub struct Session {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Tsify, TS)]
 pub struct AuthSession {
+    pub id: Uuid,
     pub user: User,
-    pub passkey: Vec<Passkey>,
+    pub passkeys: Vec<Passkey>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -40,4 +41,14 @@ pub struct AuthTokenClaims {
     // Custom claims
     pub user: User,
     pub passkeys: Vec<Passkey>,
+}
+
+impl AuthTokenClaims {
+    pub fn make_session(self) -> AuthSession {
+        AuthSession {
+            id: self.sub,
+            user: self.user,
+            passkeys: self.passkeys,
+        }
+    }
 }

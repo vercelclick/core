@@ -4,7 +4,7 @@ use crate::auth::mapping::{
     map_browser_passkey_authentication,
 };
 use crate::passkeys::prf::{PrfDeriveConfig, PrfResults};
-use crate::session::SecureSession;
+use crate::seucre_session::SecureSession;
 use secretpass_core::constants::RP_ID;
 use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
 use secretpass_core::utils::bin_decode;

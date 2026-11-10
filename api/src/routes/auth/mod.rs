@@ -3,7 +3,6 @@ mod login;
 pub mod middleware;
 pub mod register;
 pub mod session;
-mod shared;
 
 use crate::backend::ApiState;
 use crate::routes::auth::challenge::check_challenge_handler;

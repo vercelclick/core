@@ -1,21 +1,24 @@
 use crate::backend::auth::user::retrieve_user_by_email;
 use crate::db::queries::auth::{CREATE_SESSION_QUERY, LIST_USER_PASSKEYS_BY_USER_ID};
 use crate::db::queries::user::GET_USER_BY_ID_QUERY;
-use secretpass_api::backend::SessionPackage;
 use secretpass_core::{InternalError, InternalResult, Passkey, Session, StatusCode, User};
 use sqlx::PgPool;
-use std::sync::Arc;
 use uuid::Uuid;
 
 // language=sql
 const GET_SESSION_QUERY: &str = r#"
-    UPDATE "Sessions" SET last_seen = now() WHERE "id" = $1 AND expires_on > now() RETURNING *
+    UPDATE "Sessions" SET last_seen = now() WHERE "id" = $1 AND user_id = $2 AND expires_on > now() RETURNING id
 "#;
 
-pub async fn get_session(pool: &PgPool, id: Uuid) -> InternalResult<Option<SessionPackage>> {
+pub async fn get_session(
+    pool: &PgPool,
+    id: Uuid,
+    user_id: Uuid,
+) -> InternalResult<Option<Session>> {
     // TODO: Collapse these queries to one
     let session: Option<Session> = sqlx::query_as(GET_SESSION_QUERY)
         .bind(id)
+        .bind(user_id)
         .fetch_optional(pool)
         .await
         .map_err(|err| {
@@ -26,36 +29,13 @@ pub async fn get_session(pool: &PgPool, id: Uuid) -> InternalResult<Option<Sessi
             )
         })?;
 
-    let session = match session {
-        Some(session) => session,
-        None => return Ok(None),
-    };
-
-    let user: User = sqlx::query_as(GET_USER_BY_ID_QUERY)
-        .bind(session.user_id)
-        .fetch_one(pool)
-        .await
-        .map_err(|err| {
-            InternalError::trace(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Internal error getting user",
-                err,
-            )
-        })?;
-
-    let passkeys = get_passkeys_by_user_id(pool, user.id).await?;
-
-    Ok(Some(SessionPackage {
-        user: Arc::new(user),
-        session: Arc::new(session),
-        passkeys: Arc::new(passkeys),
-    }))
+    Ok(session)
 }
 
 pub async fn create_session_by_email(
     pool: &PgPool,
     email: String,
-) -> InternalResult<SessionPackage> {
+) -> InternalResult<(Session, User, Vec<Passkey>)> {
     let user = retrieve_user_by_email(pool, email)
         .await?
         .ok_or_else(|| InternalError::new(StatusCode::NOT_FOUND, "User not found"))?;
@@ -73,17 +53,13 @@ pub async fn create_session_by_email(
         })?;
 
     let passkeys = get_passkeys_by_user_id(pool, user.id).await?;
-    Ok(SessionPackage {
-        user: Arc::new(user),
-        session: Arc::new(session),
-        passkeys: Arc::new(passkeys),
-    })
+    Ok((session, user, passkeys))
 }
 
 pub async fn create_session_by_user_id(
     pool: &PgPool,
     user_id: Uuid,
-) -> InternalResult<SessionPackage> {
+) -> InternalResult<(Session, User, Vec<Passkey>)> {
     let user: User = sqlx::query_as(GET_USER_BY_ID_QUERY)
         .bind(user_id)
         .fetch_one(pool)
@@ -109,11 +85,7 @@ pub async fn create_session_by_user_id(
         })?;
 
     let passkeys = get_passkeys_by_user_id(pool, user_id).await?;
-    Ok(SessionPackage {
-        user: Arc::new(user),
-        session: Arc::new(session),
-        passkeys: Arc::new(passkeys),
-    })
+    Ok((session, user, passkeys))
 }
 
 pub async fn get_passkeys_by_user_id(pool: &PgPool, user_id: Uuid) -> InternalResult<Vec<Passkey>> {

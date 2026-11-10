@@ -5,7 +5,7 @@ pub mod projects;
 mod provider;
 pub mod secrets;
 
-pub use auth::{CreateUserRequest, SessionPackage};
+pub use auth::CreateUserRequest;
 
 pub use challenge::{CheckChallengeResult, PendingChallenge};
 pub use provider::BackendProvider;

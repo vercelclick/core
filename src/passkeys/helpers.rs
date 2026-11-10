@@ -72,7 +72,7 @@ pub fn parse_auth_data(raw: &[u8]) -> InternalResult<(PasskeyFlags, Option<Vec<u
     if raw.len() < 37 {
         return Err(InternalError::new(
             StatusCode::CONFLICT,
-            "Invalid auth data",
+            "Invalid session data",
         ));
     }
     let rp_id_hash = raw[0..32].to_vec();

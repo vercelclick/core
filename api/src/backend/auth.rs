@@ -4,9 +4,8 @@ use secretpass_core::enums::ChallengeKind;
 use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
 use secretpass_core::passkeys::create::PasskeyCreationResult;
 use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
-use secretpass_core::{InternalError, InternalResult, Passkey, Session, User};
+use secretpass_core::{AuthSession, InternalError, InternalResult};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -67,36 +66,36 @@ pub struct StartLoginResponse {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
-pub struct SessionPackage {
-    pub session: Arc<Session>,
-    pub user: Arc<User>,
-    pub passkeys: Arc<Vec<Passkey>>,
+pub struct AuthTokenResponse {
+    pub(crate) token: String,
 }
 
-impl SessionPackage {
-    pub async fn validate_passkey_auth(
-        &self,
-        state: &ApiState,
-        result: &PasskeyAuthorizationResult,
-    ) -> InternalResult<()> {
-        let challenge = state
-            .backend
-            .get_pending_challenge(ChallengeKind::PasskeyAuthorize, self.user.email.clone())
-            .await?
-            .ok_or_else(|| {
-                InternalError::new(StatusCode::BAD_REQUEST, "Passkey challenge not found")
-            })?;
+pub async fn validate_passkey_auth(
+    session: &AuthSession,
+    state: &ApiState,
+    result: &PasskeyAuthorizationResult,
+) -> InternalResult<()> {
+    let challenge = state
+        .backend
+        .get_pending_challenge(ChallengeKind::PasskeyAuthorize, session.user.email.clone())
+        .await?
+        .ok_or_else(|| {
+            InternalError::new(StatusCode::BAD_REQUEST, "Passkey challenge not found")
+        })?;
 
-        let passkey = self
-            .passkeys
-            .iter()
-            .find(|key| key.cred_id.clone() == result.id)
-            .ok_or_else(|| InternalError::new(
+    let passkey = session
+        .passkeys
+        .iter()
+        .find(|key| key.cred_id.clone() == result.id)
+        .ok_or_else(|| InternalError::new(
 
-                StatusCode::BAD_REQUEST,
-                "Passkey not found, logout and login, then try again. If this issue persists, please raise a support request"
-            ))?;
+            StatusCode::BAD_REQUEST,
+            "Passkey not found, logout and login, then try again. If this issue persists, please raise a support request"
+        ))?;
 
-        result.validate(self.user.id, &passkey.web_public_key, &challenge.value_hash)
-    }
+    result.validate(
+        session.user.id,
+        &passkey.web_public_key,
+        &challenge.value_hash,
+    )
 }

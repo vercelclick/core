@@ -1,20 +1,19 @@
+use crate::backend::ApiState;
+use crate::backend::auth::validate_passkey_auth;
 use crate::backend::secrets::{CreateAccessKeyRequest, ProjectPathParams};
-use crate::backend::{ApiState, SessionPackage};
 use axum::extract::{Path, State};
 use axum::{Extension, Json};
-use secretpass_core::{AccessKey, InternalResult};
+use secretpass_core::{AccessKey, AuthSession, InternalResult};
 use std::sync::Arc;
 
 #[axum::debug_handler]
 pub async fn create_access_key_handler(
     State(state): State<ApiState>,
-    Extension(session): Extension<Arc<SessionPackage>>,
+    Extension(session): Extension<Arc<AuthSession>>,
     Path(params): Path<ProjectPathParams>,
     Json(request): Json<CreateAccessKeyRequest>,
 ) -> InternalResult<Json<AccessKey>> {
-    session
-        .validate_passkey_auth(&state, &request.auth_result)
-        .await?;
+    validate_passkey_auth(&session, &state, &request.auth_result).await?;
 
     let result = state
         .backend

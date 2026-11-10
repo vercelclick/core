@@ -1,8 +1,6 @@
 use crate::service::project::LocalProjectConfig;
-use secretpass_api::backend::SessionPackage;
 use secretpass_core::{Contributor, InternalError, InternalResult, StatusCode};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::LazyLock;
@@ -27,7 +25,6 @@ pub static DATA_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
 pub struct LocalServiceConfig {
     pub known_projects: Vec<String>,
     pub attached_projects: Vec<(String, Uuid)>,
-    pub sessions: HashMap<Uuid, SessionPackage>,
 }
 
 impl LocalServiceConfig {

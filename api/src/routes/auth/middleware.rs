@@ -2,15 +2,12 @@ use crate::backend::ApiState;
 use crate::routes::auth::session::get_session;
 use axum::body::Body;
 use axum::extract::Request;
-use axum::http::StatusCode;
 use std::sync::Arc;
 
 use axum::response::{IntoResponse, Response};
 use futures_util::future::BoxFuture;
 
-use secretpass_core::InternalError;
 use std::task::{Context, Poll};
-use tower_cookies::Cookies;
 use tower_layer::Layer;
 use tower_service::Service;
 
@@ -60,30 +57,23 @@ where
         let state = self.state.clone();
 
         Box::pin(async move {
-            let cookies = match req.extensions().get::<Cookies>().cloned() {
-                Some(cookies) => cookies,
-                None => {
-                    return Ok(InternalError::new(
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        "Error loading authentication, please raise a support ticket if the issue persists",
-                    )
-                        .into_response());
-                }
-            };
+            let headers = req.headers();
+            let path = req.uri().path();
 
-            let package = match get_session(&state, &cookies).await {
+            let session = match get_session(&state, path, headers).await {
                 Ok(package) => package,
                 Err(err) => {
                     return Ok(err.into_response());
                 }
             };
 
-            let package = Arc::new(package);
+            let session = Arc::new(session);
+            let user = Arc::new(session.user.clone());
+            let passkeys = Arc::new(session.passkeys.clone());
 
-            req.extensions_mut().insert(package.user.clone());
-            req.extensions_mut().insert(package.session.clone());
-            req.extensions_mut().insert(package.passkeys.clone());
-            req.extensions_mut().insert(package);
+            req.extensions_mut().insert(user);
+            req.extensions_mut().insert(passkeys);
+            req.extensions_mut().insert(session);
 
             inner.call(req).await
         })

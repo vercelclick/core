@@ -4,11 +4,11 @@ use crate::backend::projects::access_keys::create_access_key;
 use crate::backend::projects::project::{create_project, get_project_by_id, list_projects};
 use crate::backend::projects::secrets::create::create_secret;
 use crate::backend::projects::secrets::update::{update_secret, update_secret_value};
-use crate::config::LocalServiceConfig;
 use secretpass_api::backend::environments::{
     GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues,
 };
 
+use chrono::Utc;
 use secretpass_api::backend::auth::BackendCreateUserRequest;
 use secretpass_api::backend::projects::{
     CreateProjectRequest, GetProjectResult, ListProjectsResult,
@@ -18,7 +18,7 @@ use secretpass_api::backend::secrets::{
     CreateSecretRequest, ProjectAccessKeyParams, ProjectEnvPathParams, ProjectPathParams,
     ProjectSecretPathParams, UpdateSecretRequest, UpdateSecretValueRequest,
 };
-use secretpass_api::backend::{BackendProvider, PendingChallenge, SessionPackage};
+use secretpass_api::backend::{BackendProvider, PendingChallenge};
 use secretpass_core::enums::ChallengeKind;
 use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
 use secretpass_core::{
@@ -67,39 +67,35 @@ impl BackendProvider for LocalBackendProvider {
     async fn create_user(
         &self,
         _request: BackendCreateUserRequest,
-    ) -> InternalResult<SessionPackage> {
+    ) -> InternalResult<(Session, User, Vec<Passkey>)> {
         Err(not_supported("Create user"))
     }
 
-    async fn record_session(&self, response: SessionPackage) -> InternalResult<()> {
-        let mut config = LocalServiceConfig::load()?;
-        config.sessions.insert(response.session.id, response);
-
-        config.write()
+    async fn get_session(&self, id: Uuid, user_id: Uuid) -> InternalResult<Option<Session>> {
+        // On local context, JWT session verification is enough
+        Ok(Some(Session {
+            id,
+            user_id,
+            expires_on: Utc::now(),
+            last_seen: Utc::now(),
+        }))
     }
 
-    async fn get_session(&self, id: Uuid) -> InternalResult<Option<SessionPackage>> {
-        let config = LocalServiceConfig::load()?;
-
-        let response = config.sessions.get(&id);
-        Ok(response.cloned())
-    }
-
-    async fn create_session_by_email(&self, _email: String) -> InternalResult<SessionPackage> {
+    async fn create_session_by_email(
+        &self,
+        _email: String,
+    ) -> InternalResult<(Session, User, Vec<Passkey>)> {
         Err(not_supported("Create session by email"))
     }
 
-    async fn get_user_email(&self, email: String) -> InternalResult<Option<User>> {
-        let local_conf = LocalServiceConfig::load()?;
-        for (_, package) in local_conf.sessions {
-            if package.user.email == email {
-                return Ok(Some((*package.user).clone()));
-            }
-        }
-        Ok(None)
+    async fn get_user_email(&self, _email: String) -> InternalResult<Option<User>> {
+        Err(not_supported("Get user by email"))
     }
 
-    async fn create_session_by_user_id(&self, _user_id: Uuid) -> InternalResult<SessionPackage> {
+    async fn create_session_by_user_id(
+        &self,
+        _user_id: Uuid,
+    ) -> InternalResult<(Session, User, Vec<Passkey>)> {
         Err(not_supported("Create session by passkey"))
     }
 
@@ -122,12 +118,8 @@ impl BackendProvider for LocalBackendProvider {
         list_projects(user).await
     }
 
-    async fn logout_session(&self, session: &Session) -> InternalResult<()> {
-        let mut config = LocalServiceConfig::load()?;
-
-        config.sessions.remove(&session.id);
-
-        config.write()
+    async fn logout_session(&self, _session: &Session) -> InternalResult<()> {
+        Err(not_supported("Session logout"))
     }
 
     async fn save_passkey(

@@ -1,9 +1,10 @@
+use crate::backend::ApiState;
+use crate::backend::auth::validate_passkey_auth;
 use crate::backend::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
-use crate::backend::{ApiState, SessionPackage};
 use axum::Json;
 use axum::extract::{Extension, Path, State};
 use reqwest::StatusCode;
-use secretpass_core::{InternalError, InternalResult, Project, User};
+use secretpass_core::{AuthSession, InternalError, InternalResult, Project, User};
 use serde::Deserialize;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -21,12 +22,10 @@ pub async fn list_projects(
 #[axum::debug_handler]
 pub async fn create_project(
     State(state): State<ApiState>,
-    Extension(session): Extension<Arc<SessionPackage>>,
+    Extension(session): Extension<Arc<AuthSession>>,
     Json(request): Json<CreateProjectRequest>,
 ) -> InternalResult<Json<Project>> {
-    session
-        .validate_passkey_auth(&state, &request.auth_result)
-        .await?;
+    validate_passkey_auth(&session, &state, &request.auth_result).await?;
 
     let project = state
         .backend

@@ -51,7 +51,6 @@ impl PendingChallenge {
         owner: String,
         name: String,
         operation: Option<String>,
-        is_proxied: bool,
     ) -> InternalResult<(String, Self)> {
         let code = {
             let mut rng = get_global_rng().lock().unwrap();

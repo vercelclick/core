@@ -26,12 +26,11 @@ use secretpass_api::backend::secrets::{
     CreateSecretRequest, ProjectAccessKeyParams, ProjectEnvPathParams, ProjectPathParams,
     ProjectSecretPathParams, UpdateSecretRequest, UpdateSecretValueRequest,
 };
-use secretpass_api::backend::{BackendProvider, PendingChallenge, SessionPackage};
+use secretpass_api::backend::{BackendProvider, PendingChallenge};
 use secretpass_core::enums::ChallengeKind;
 use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
 use secretpass_core::{
-    AccessKey, InternalError, InternalResult, Passkey, Project, Session, StatusCode,
-    TargetedPublicKey, User,
+    AccessKey, InternalResult, Passkey, Project, Session, TargetedPublicKey, User,
 };
 use sqlx::PgPool;
 use std::collections::HashMap;
@@ -75,22 +74,18 @@ impl BackendProvider for CloudBackendProvider {
     async fn create_user(
         &self,
         request: BackendCreateUserRequest,
-    ) -> InternalResult<SessionPackage> {
+    ) -> InternalResult<(Session, User, Vec<Passkey>)> {
         create_user(&self.pool, request).await
     }
 
-    async fn record_session(&self, _session: SessionPackage) -> InternalResult<()> {
-        Err(InternalError::new(
-            StatusCode::NOT_IMPLEMENTED,
-            "Record session details not supported on cloud; please report an issue to support@secretpass.cloud",
-        ))
+    async fn get_session(&self, id: Uuid, user_id: Uuid) -> InternalResult<Option<Session>> {
+        get_session(&self.pool, id, user_id).await
     }
 
-    async fn get_session(&self, id: Uuid) -> InternalResult<Option<SessionPackage>> {
-        get_session(&self.pool, id).await
-    }
-
-    async fn create_session_by_email(&self, email: String) -> InternalResult<SessionPackage> {
+    async fn create_session_by_email(
+        &self,
+        email: String,
+    ) -> InternalResult<(Session, User, Vec<Passkey>)> {
         create_session_by_email(&self.pool, email).await
     }
 
@@ -98,7 +93,10 @@ impl BackendProvider for CloudBackendProvider {
         retrieve_user_by_email(&self.pool, email).await
     }
 
-    async fn create_session_by_user_id(&self, user_id: Uuid) -> InternalResult<SessionPackage> {
+    async fn create_session_by_user_id(
+        &self,
+        user_id: Uuid,
+    ) -> InternalResult<(Session, User, Vec<Passkey>)> {
         create_session_by_user_id(&self.pool, user_id).await
     }
 

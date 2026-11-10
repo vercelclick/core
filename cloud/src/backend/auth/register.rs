@@ -1,9 +1,7 @@
 use crate::db::queries::auth::{CREATE_PASSKEY_QUERY, CREATE_SESSION_QUERY};
-use secretpass_api::backend::SessionPackage;
 use secretpass_api::backend::auth::BackendCreateUserRequest;
 use secretpass_core::{InternalError, InternalResult, Passkey, Session, StatusCode, User};
 use sqlx::PgPool;
-use std::sync::Arc;
 
 // language=sql
 const CREATE_USER_QUERY: &str = r#"
@@ -13,7 +11,7 @@ const CREATE_USER_QUERY: &str = r#"
 pub async fn create_user(
     pool: &PgPool,
     request: BackendCreateUserRequest,
-) -> InternalResult<SessionPackage> {
+) -> InternalResult<(Session, User, Vec<Passkey>)> {
     let mut tx = pool.begin().await.map_err(|err| {
         InternalError::trace(
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -75,10 +73,6 @@ pub async fn create_user(
     })?;
 
     let passkeys = vec![passkey];
-    let result = SessionPackage {
-        user: Arc::new(user),
-        session: Arc::new(session),
-        passkeys: Arc::new(passkeys),
-    };
-    Ok(result)
+
+    Ok((session, user, passkeys))
 }

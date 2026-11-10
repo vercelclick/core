@@ -5,9 +5,8 @@ use secretpass_core::{
     AuthSession, AuthTokenClaims, InternalError, InternalResult, Passkey, Session, StatusCode, User,
 };
 use std::sync::LazyLock;
-use uuid::Uuid;
 
-const BASE_URL: &str = env!("SERVICE_BASE_URL");
+const SERVICE_BASE_URL: &str = env!("SERVICE_BASE_URL");
 
 #[cfg(feature = "session-maker")]
 static ENCODING_KEY: LazyLock<EncodingKey> =
@@ -26,7 +25,7 @@ pub fn create_backend_session_token(
         exp,
         iat: now,
         sub: session.id,
-        iss: BASE_URL.to_string(),
+        iss: SERVICE_BASE_URL.to_string(),
         aud: RP_ORIGIN.to_string(),
 
         user,
@@ -45,13 +44,10 @@ pub fn create_backend_session_token(
 static DECODING_KEY: LazyLock<DecodingKey> =
     LazyLock::new(|| DecodingKey::from_ed_pem(env!("JWT_FRONTEND_PUBLIC_KEY").as_bytes()).unwrap());
 
-pub fn verify_frontend_session_token(
-    token: &str,
-    path: &str,
-) -> InternalResult<(Uuid, AuthSession)> {
+pub fn verify_frontend_session_token(token: &str, path: &str) -> InternalResult<AuthSession> {
     let mut validation = Validation::new(Algorithm::EdDSA);
 
-    let audience = format!("{BASE_URL}{path}");
+    let audience = format!("{SERVICE_BASE_URL}{path}");
 
     validation.set_audience(&[audience]);
     validation.set_issuer(&[RP_ID]);
@@ -66,11 +62,5 @@ pub fn verify_frontend_session_token(
             )
         })?;
 
-    Ok((
-        token_data.claims.sub,
-        AuthSession {
-            user: token_data.claims.user.clone(),
-            passkey: token_data.claims.passkeys.clone(),
-        },
-    ))
+    Ok(token_data.claims.make_session())
 }

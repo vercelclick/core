@@ -1,48 +1,66 @@
-use crate::backend::{ApiState, SessionPackage};
-use crate::constants::SESSION_COOKIE_NAME;
+use crate::auth_session::verify_frontend_session_token;
+use crate::backend::ApiState;
 use axum::extract::State;
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
 use axum::{Extension, Json};
-use secretpass_core::{InternalError, InternalResult, Session};
+use secretpass_core::{AuthSession, InternalError, InternalResult, Session};
 use std::sync::Arc;
-use tower_cookies::{Cookie, Cookies};
-use uuid::Uuid;
 
 #[axum::debug_handler]
 pub(crate) async fn get_session_handler(
-    Extension(package): Extension<Arc<SessionPackage>>,
-) -> InternalResult<Json<SessionPackage>> {
-    Ok(Json((*package).clone()))
+    Extension(session): Extension<Arc<AuthSession>>,
+) -> InternalResult<Json<AuthSession>> {
+    Ok(Json((*session).clone()))
 }
 
-pub async fn get_session(state: &ApiState, cookies: &Cookies) -> InternalResult<SessionPackage> {
-    let session_cookie = cookies
-        .get(SESSION_COOKIE_NAME)
-        .ok_or_else(|| InternalError::new(StatusCode::UNAUTHORIZED, "Unauthorized request"))?;
-
-    let session_id = Uuid::parse_str(session_cookie.value())
-        .map_err(|err| InternalError::trace(StatusCode::UNAUTHORIZED, "Invalid session ID", err))?;
-
-    let package = state
-        .backend
-        .get_session(session_id)
-        .await?
+pub async fn get_session(
+    state: &ApiState,
+    path: &str,
+    headers: &HeaderMap,
+) -> InternalResult<AuthSession> {
+    let auth_header = headers
+        .get("Authorization")
         .ok_or_else(|| {
-            InternalError::new(StatusCode::BAD_REQUEST, "Session not found, try signing in")
+            InternalError::new(StatusCode::UNAUTHORIZED, "Missing authorization header")
+        })?
+        .to_str()
+        .map_err(|err| {
+            InternalError::trace(
+                StatusCode::BAD_REQUEST,
+                "Invalid authorization header, valid ASCII string expected",
+                err,
+            )
         })?;
 
-    Ok(package)
+    let auth_token = auth_header.strip_prefix("Bearer ").ok_or_else(|| {
+        InternalError::new(
+            StatusCode::BAD_REQUEST,
+            "Invalid authorization header, bearer token expected",
+        )
+    })?;
+
+    let session = verify_frontend_session_token(auth_token, path)?;
+
+    state
+        .backend
+        .get_session(session.id, session.user.id)
+        .await?
+        .ok_or_else(|| {
+            InternalError::new(
+                StatusCode::UNAUTHORIZED,
+                "Session has been revoked, please login again",
+            )
+        })?;
+
+    Ok(session)
 }
 
 #[axum::debug_handler]
 pub async fn logout_handler(
     State(state): State<ApiState>,
-    cookies: Cookies,
     Extension(session): Extension<Arc<Session>>,
 ) -> InternalResult<()> {
     state.backend.logout_session(&session).await?;
-
-    cookies.remove(Cookie::new(SESSION_COOKIE_NAME, ""));
 
     Ok(())
 }

@@ -1,10 +1,9 @@
 use crate::backend::ApiState;
 use crate::backend::{CheckChallengeResult, PendingChallenge};
-use crate::utils::CloudProxy;
 use axum::extract::State;
 use axum::http::StatusCode;
-use axum::{Extension, Json};
-use secretpass_core::enums::{ChallengeKind, OperationMode};
+use axum::Json;
+use secretpass_core::enums::ChallengeKind;
 use secretpass_core::{InternalError, InternalResult};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -29,14 +28,8 @@ pub struct GenerateChallengeResponse {
 #[axum::debug_handler]
 pub async fn generate_challenge_handler(
     State(state): State<ApiState>,
-    Extension(proxy): Extension<CloudProxy>,
     Json(request): Json<GenerateChallengeRequest>,
 ) -> InternalResult<Json<GenerateChallengeResponse>> {
-    if proxy.is_local() && request.kind.is_cloud_only() {
-        let response: GenerateChallengeResponse = proxy.send_json(&request).await?;
-        return Ok(Json(response));
-    }
-
     let user = state.backend.get_user_email(request.owner.clone()).await?;
 
     if request.kind.is_new_user_only() && user.is_some() {
@@ -53,14 +46,8 @@ pub async fn generate_challenge_handler(
 
     let (challenge, pending_challenge) = match request.kind {
         ChallengeKind::EmailSignIn => {
-            PendingChallenge::send_email_code(
-                request.kind,
-                request.owner,
-                user.unwrap().name,
-                None,
-                proxy.is_proxied(),
-            )
-            .await
+            PendingChallenge::send_email_code(request.kind, request.owner, user.unwrap().name, None)
+                .await
         }
         ChallengeKind::EmailAuthorize => {
             let operation = request.operation.clone().ok_or_else(|| {
@@ -74,7 +61,6 @@ pub async fn generate_challenge_handler(
                 request.owner,
                 user.unwrap().name,
                 Some(operation),
-                proxy.is_proxied(),
             )
             .await
         }
@@ -90,7 +76,6 @@ pub async fn generate_challenge_handler(
                 request.owner,
                 name,
                 request.operation.clone(),
-                proxy.is_proxied(),
             )
             .await
         }
@@ -116,7 +101,6 @@ pub struct CheckChallengeRequest {
 #[axum::debug_handler]
 pub async fn check_challenge_handler(
     State(state): State<ApiState>,
-    Extension(proxy): Extension<CloudProxy>,
     Json(request): Json<CheckChallengeRequest>,
 ) -> InternalResult<Json<CheckChallengeResult>> {
     if !request.kind.is_checkable() {
@@ -124,11 +108,6 @@ pub async fn check_challenge_handler(
             StatusCode::BAD_REQUEST,
             "Invalid challenge check request",
         ));
-    }
-
-    if state.mode == OperationMode::Local && request.kind.is_cloud_only() {
-        let challenge: CheckChallengeResult = proxy.send_json(&request).await?;
-        return Ok(Json(challenge));
     }
 
     let result = state

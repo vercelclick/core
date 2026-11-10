@@ -9,14 +9,12 @@ use crate::routes::auth::middleware::AuthLayer;
 use crate::routes::projects::{project_routes, public_project_routes};
 use crate::routes::user::user_routes;
 use crate::routes::utils::{add_version_header, health_endpoint, ping_endpoint};
-use crate::utils::CloudProxyLayer;
 use axum::http::header;
 use axum::http::{HeaderValue, Method};
 use axum::routing::{get, post};
 use axum::{Router, http};
 use secretpass_core::constants::RP_ORIGIN;
 use std::sync::Arc;
-use tower_cookies::CookieManagerLayer;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::layer::SubscriberExt;
@@ -67,7 +65,6 @@ pub fn create_backend_app(state: ApiStateInner) -> Router {
 
     let state = Arc::new(state);
     let auth_layer = AuthLayer::new(state.clone());
-    let proxy_layer = CloudProxyLayer::new(state.mode);
 
     Router::new()
         .nest("/api/projects", project_routes())
@@ -77,8 +74,6 @@ pub fn create_backend_app(state: ApiStateInner) -> Router {
         .nest("/api/auth", auth_router(auth_layer.clone()))
         .route("/health", get(health_endpoint))
         .route("/ping", post(ping_endpoint))
-        .layer(proxy_layer)
-        .layer(CookieManagerLayer::new())
         .layer(cors)
         .layer(trace_layer)
         .layer(axum::middleware::from_fn(add_version_header))

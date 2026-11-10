@@ -1,4 +1,5 @@
 mod auth;
+mod auth_session;
 mod exported;
 mod passkeys;
-mod session;
+mod seucre_session;
