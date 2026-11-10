@@ -2,8 +2,8 @@ use crate::config::LocalServiceConfig;
 use crate::service::keys::LocalKeysConfig;
 use crate::service::secrets::LocalSecretConfig;
 use chrono::Utc;
-use secretpass_api::secrets::CreateAccessKeyRequest;
-use secretpass_core::{AccessKey, InternalError, InternalResult, StatusCode, User, source};
+use secretpass_api::backend::secrets::CreateAccessKeyRequest;
+use secretpass_core::{AccessKey, InternalError, InternalResult, StatusCode, User};
 use uuid::Uuid;
 
 pub async fn create_access_key(
@@ -15,7 +15,6 @@ pub async fn create_access_key(
 
     let (path, project_conf) = local_config.get_project_by_id(project_id)?.ok_or_else(|| {
         InternalError::new(
-            source!(),
             StatusCode::NOT_FOUND,
             "Project not found, ensure the project is attached",
         )
@@ -23,13 +22,7 @@ pub async fn create_access_key(
 
     project_conf
         .get_contributor_by_user_id(user.id)
-        .ok_or_else(|| {
-            InternalError::new(
-                source!(),
-                StatusCode::FORBIDDEN,
-                "User not found in project",
-            )
-        })?;
+        .ok_or_else(|| InternalError::new(StatusCode::FORBIDDEN, "User not found in project"))?;
 
     let mut keys_config = LocalKeysConfig::load(&path)?;
 
@@ -51,7 +44,6 @@ pub async fn create_access_key(
         let mut secret_config = LocalSecretConfig::load(&path, &value.env_name, &value.name)?
             .ok_or_else(|| {
                 InternalError::new(
-                    source!(),
                     StatusCode::NOT_FOUND,
                     &format!("Secret {}/{} not found", value.env_name, value.name),
                 )

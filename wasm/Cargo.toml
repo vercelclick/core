@@ -11,6 +11,7 @@ homepage = { workspace = true }
 [dependencies]
 chrono = { version = "0.4.45", default-features = false, features = ["serde", "wasm-bindgen"] }
 serde = { version = "1.0.229", features = ["derive"] }
+jsonwebtoken = { version = "11.1.0", features = ["rust_crypto"] }
 secretpass-core = { path = "..", default-features = false }
 tsify = "0.5.8"
 ts-rs = { version = "12.0.1" }

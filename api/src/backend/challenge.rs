@@ -1,4 +1,4 @@
-use crate::ApiState;
+use crate::backend::ApiState;
 use chrono::{DateTime, Utc};
 use rand::RngExt;
 use secretpass_core::InternalResult;
@@ -67,7 +67,7 @@ impl PendingChallenge {
         #[cfg(feature = "email")]
         {
             use crate::emails;
-            use secretpass_core::{InternalError, StatusCode, source};
+            use secretpass_core::{InternalError, StatusCode};
 
             let name = name.trim().split(" ").next().unwrap().to_string();
             let template = match kind {
@@ -85,7 +85,6 @@ impl PendingChallenge {
                 ChallengeKind::EmailAuthorize => {
                     let operation = operation.ok_or_else(|| {
                         InternalError::new(
-                            source!(),
                             StatusCode::BAD_REQUEST,
                             "Operation required for email authorize challenge",
                         )
@@ -99,7 +98,6 @@ impl PendingChallenge {
                 }
                 _ => {
                     return Err(InternalError::new(
-                        source!(),
                         StatusCode::NOT_IMPLEMENTED,
                         &format!("Email challenge {kind} is not supported"),
                     ));

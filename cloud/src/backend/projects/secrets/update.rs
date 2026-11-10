@@ -1,13 +1,13 @@
 use crate::backend::projects::project::get_contributor_by_id;
 use crate::backend::projects::secrets::create::secret_values_insert_query_builder;
-use secretpass_api::constants::{LATEST_SECRET_TAG, PREVIOUS_SECRET_TAG};
-use secretpass_api::environments::SecretWithEncryptedValues;
-use secretpass_api::secrets::{
+use secretpass_api::backend::environments::SecretWithEncryptedValues;
+use secretpass_api::backend::secrets::{
     ProjectSecretPathParams, UpdateSecretRequest, UpdateSecretValueRequest,
 };
+use secretpass_api::constants::{LATEST_SECRET_TAG, PREVIOUS_SECRET_TAG};
 use secretpass_core::{
     ContributorPublicKey, InternalError, InternalResult, SecretDefinition, SecretValue, StatusCode,
-    User, source,
+    User,
 };
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -22,7 +22,6 @@ pub async fn update_secret(
         .await?
         .ok_or_else(|| {
             InternalError::new(
-                source!(),
                 StatusCode::FORBIDDEN,
                 "You don't have access to this project under the current user",
             )
@@ -30,7 +29,6 @@ pub async fn update_secret(
 
     let access = contributor.get_access(&params.env_name).ok_or_else(|| {
         InternalError::new(
-            source!(),
             StatusCode::FORBIDDEN,
             "You don't have access to this environment",
         )
@@ -40,7 +38,6 @@ pub async fn update_secret(
         .can_write_secret(&params.secret_name)
         .ok_or_else(|| {
             InternalError::new(
-                source!(),
                 StatusCode::FORBIDDEN,
                 "You do not have permission to update this secret",
             )
@@ -55,7 +52,7 @@ pub async fn update_secret(
         .bind(&params.secret_name)
         .fetch_one(pool).await.map_err(|err| {
         InternalError::trace(
-            source!(),
+
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error updating secret",
             err,
@@ -75,7 +72,6 @@ pub async fn update_secret_value(
         .await?
         .ok_or_else(|| {
             InternalError::new(
-                source!(),
                 StatusCode::FORBIDDEN,
                 "You don't have access to this project under the current user",
             )
@@ -83,7 +79,6 @@ pub async fn update_secret_value(
 
     let access = contributor.get_access(&params.env_name).ok_or_else(|| {
         InternalError::new(
-            source!(),
             StatusCode::FORBIDDEN,
             "You don't have access to this environment",
         )
@@ -93,7 +88,6 @@ pub async fn update_secret_value(
         .can_write_secret(&params.secret_name)
         .ok_or_else(|| {
             InternalError::new(
-                source!(),
                 StatusCode::FORBIDDEN,
                 "You do not have permission to update this secret",
             )
@@ -101,7 +95,6 @@ pub async fn update_secret_value(
 
     let mut tx = pool.begin().await.map_err(|err| {
         InternalError::trace(
-            source!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error establishing a transaction",
             err,
@@ -115,7 +108,7 @@ pub async fn update_secret_value(
         .fetch_one(&mut *tx)
         .await.map_err(|err| {
         InternalError::trace(
-            source!(),
+
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error updating secret definition",
             err,
@@ -134,7 +127,6 @@ pub async fn update_secret_value(
     .await
     .map_err(|err| {
         InternalError::trace(
-            source!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error pruning secret values",
             err,
@@ -148,7 +140,7 @@ pub async fn update_secret_value(
         .bind(&params.env_name)
         .bind(&params.secret_name).bind(LATEST_SECRET_TAG).execute(&mut *tx).await.map_err(|err| {
         InternalError::trace(
-            source!(),
+
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error updating previous secret values",
             err,
@@ -161,7 +153,6 @@ pub async fn update_secret_value(
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error adding secret values",
                 err,
@@ -170,7 +161,6 @@ pub async fn update_secret_value(
 
     tx.commit().await.map_err(|err| {
         InternalError::trace(
-            source!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error committing secret update",
             err,
@@ -195,7 +185,6 @@ async fn build_return_value(
     .await
     .map_err(|err| {
         InternalError::trace(
-            source!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error getting secret values",
             err,
@@ -209,7 +198,6 @@ async fn build_return_value(
             .await
             .map_err(|err| {
                 InternalError::trace(
-                    source!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Internal error contributor public keys",
                     err,

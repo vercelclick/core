@@ -1,14 +1,14 @@
-use crate::auth::BackendCreateUserRequest;
+use crate::backend::auth::BackendCreateUserRequest;
+use crate::backend::{ApiState, CreateUserRequest, SessionPackage};
 use crate::routes::auth::shared::{record_session, set_session_cookie};
 use crate::utils::CloudProxy;
-use crate::{ApiState, CreateUserRequest, SessionPackage};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::{Extension, Json};
 use secretpass_core::enums::{ChallengeKind, OperationMode};
 use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
 use secretpass_core::passkeys::create::PasskeyCreationResult;
-use secretpass_core::{InternalError, InternalResult, source};
+use secretpass_core::{InternalError, InternalResult};
 use tower_cookies::Cookies;
 use uuid::Uuid;
 
@@ -86,17 +86,10 @@ pub async fn validate_passkey_creation_details(
             request.email_address.clone(),
         )
         .await?
-        .ok_or_else(|| {
-            InternalError::new(
-                source!(),
-                StatusCode::NOT_FOUND,
-                "Email challenge not found",
-            )
-        })?;
+        .ok_or_else(|| InternalError::new(StatusCode::NOT_FOUND, "Email challenge not found"))?;
 
     if !email_challenge.verify_challenge(request.confirmation_code) {
         return Err(InternalError::new(
-            source!(),
             StatusCode::FORBIDDEN,
             "Invalid email confirmation code",
         ));
@@ -113,13 +106,7 @@ pub async fn validate_passkey_creation_details(
             request.email_address.clone(),
         )
         .await?
-        .ok_or_else(|| {
-            InternalError::new(
-                source!(),
-                StatusCode::NOT_FOUND,
-                "Passkey challenge not found",
-            )
-        })?;
+        .ok_or_else(|| InternalError::new(StatusCode::NOT_FOUND, "Passkey challenge not found"))?;
 
     let (passkey_cred_id, passkey_public_key) = request
         .create_result

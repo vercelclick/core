@@ -1,7 +1,7 @@
 use crate::config::LocalServiceConfig;
 use crate::service::keys::LocalKeysConfig;
 use crate::service::secrets::LocalSecretConfig;
-use secretpass_api::environments::{GetEnvironmentRequest, GetEnvironmentResult};
+use secretpass_api::backend::environments::{GetEnvironmentRequest, GetEnvironmentResult};
 use secretpass_core::{InternalResult, User};
 
 pub async fn get_environment_by_name(

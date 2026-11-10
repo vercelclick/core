@@ -1,7 +1,7 @@
 use secretpass_core::enums::ContributorRole;
 use secretpass_core::{
     AccessKey, Contributor, ContributorPublicKey, FederatedAccessKey, InternalError,
-    InternalResult, StatusCode, source,
+    InternalResult, StatusCode,
 };
 use std::fs;
 use std::path::Path;
@@ -37,7 +37,6 @@ impl LocalKeysConfig {
             } else {
                 fs::read_to_string(file_path.clone()).map_err(|err| {
                     InternalError::trace(
-                        source!(),
                         StatusCode::INTERNAL_SERVER_ERROR,
                         &format!("Error reading keys config {}", file_path.display()),
                         err,
@@ -50,7 +49,6 @@ impl LocalKeysConfig {
         let contributors_keys: Vec<ContributorPublicKey> =
             serde_json::from_str(&contributors_content?).map_err(|err| {
                 InternalError::trace(
-                    source!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     &format!(
                         "Error deserializing contributors keys config {}",
@@ -62,7 +60,6 @@ impl LocalKeysConfig {
         let access_keys: Vec<AccessKey> =
             serde_json::from_str(&access_keys_content?).map_err(|err| {
                 InternalError::trace(
-                    source!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     &format!(
                         "Error deserializing access keys config {}",
@@ -75,7 +72,6 @@ impl LocalKeysConfig {
         let federated_keys: Vec<FederatedAccessKey> =
             serde_json::from_str(&federated_keys_content?).map_err(|err| {
                 InternalError::trace(
-                    source!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     &format!(
                         "Error deserializing federated keys config {}",
@@ -97,7 +93,6 @@ impl LocalKeysConfig {
 
         let machines_content = serde_json::to_string_pretty(&self.access_keys).map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 &format!(
                     "Error serializing access keys config {}",
@@ -109,7 +104,6 @@ impl LocalKeysConfig {
         let contributors_content =
             serde_json::to_string_pretty(&self.contributors_keys).map_err(|err| {
                 InternalError::trace(
-                    source!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     &format!(
                         "Error serializing contributors keys config {}",
@@ -121,7 +115,6 @@ impl LocalKeysConfig {
 
         fs::write(path.join("machines.json"), machines_content).map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 &format!(
                     "Error writing access keys config {}",
@@ -133,7 +126,6 @@ impl LocalKeysConfig {
 
         fs::write(path.join("contributors.json"), contributors_content).map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 &format!(
                     "Error writing contributors keys config {}",

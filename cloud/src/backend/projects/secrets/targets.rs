@@ -1,8 +1,8 @@
 use crate::backend::projects::project::get_contributor_by_id;
-use secretpass_api::secrets::ProjectSecretPathParams;
+use secretpass_api::backend::secrets::ProjectSecretPathParams;
 use secretpass_core::{
     AccessKey, Contributor, ContributorPublicKey, InternalError, InternalResult, StatusCode,
-    TargetedPublicKey, User, source,
+    TargetedPublicKey, User,
 };
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -15,11 +15,7 @@ pub async fn get_secret_targets(
     get_contributor_by_id(pool, user, params.project_id)
         .await?
         .ok_or_else(|| {
-            InternalError::new(
-                source!(),
-                StatusCode::FORBIDDEN,
-                "User not found in this project",
-            )
+            InternalError::new(StatusCode::FORBIDDEN, "User not found in this project")
         })?;
 
     let contributor_keys: Vec<ContributorPublicKey> = sqlx::query_as(
@@ -35,7 +31,6 @@ pub async fn get_secret_targets(
     .await
     .map_err(|err| {
         InternalError::trace(
-            source!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error getting contributor public keys",
             err,
@@ -49,7 +44,6 @@ pub async fn get_secret_targets(
             .await
             .map_err(|err| {
                 InternalError::trace(
-                    source!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Internal error getting project contributors",
                     err,
@@ -72,7 +66,6 @@ pub async fn get_secret_targets(
             .await
             .map_err(|err| {
                 InternalError::trace(
-                    source!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Internal error getting project access keys",
                     err,

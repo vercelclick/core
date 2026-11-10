@@ -16,7 +16,7 @@ pub use projects::{
     FederatedAccessKey, Project, SecretDefinition, SecretValue,
 };
 pub use types::EncryptedPackage;
-pub use user::{Session, User};
+pub use user::{AuthSession, AuthTokenClaims, Session, User};
 pub use workspace::Workspace;
 
 pub use result::{InternalError, InternalResult, StatusCode};

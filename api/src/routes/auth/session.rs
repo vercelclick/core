@@ -1,9 +1,9 @@
+use crate::backend::{ApiState, SessionPackage};
 use crate::constants::SESSION_COOKIE_NAME;
-use crate::{ApiState, SessionPackage};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::{Extension, Json};
-use secretpass_core::{InternalError, InternalResult, Session, source};
+use secretpass_core::{InternalError, InternalResult, Session};
 use std::sync::Arc;
 use tower_cookies::{Cookie, Cookies};
 use uuid::Uuid;
@@ -16,29 +16,19 @@ pub(crate) async fn get_session_handler(
 }
 
 pub async fn get_session(state: &ApiState, cookies: &Cookies) -> InternalResult<SessionPackage> {
-    let session_cookie = cookies.get(SESSION_COOKIE_NAME).ok_or_else(|| {
-        InternalError::new(source!(), StatusCode::UNAUTHORIZED, "Unauthorized request")
-    })?;
+    let session_cookie = cookies
+        .get(SESSION_COOKIE_NAME)
+        .ok_or_else(|| InternalError::new(StatusCode::UNAUTHORIZED, "Unauthorized request"))?;
 
-    let session_id = Uuid::parse_str(session_cookie.value()).map_err(|err| {
-        InternalError::trace(
-            source!(),
-            StatusCode::UNAUTHORIZED,
-            "Invalid session ID",
-            err,
-        )
-    })?;
+    let session_id = Uuid::parse_str(session_cookie.value())
+        .map_err(|err| InternalError::trace(StatusCode::UNAUTHORIZED, "Invalid session ID", err))?;
 
     let package = state
         .backend
         .get_session(session_id)
         .await?
         .ok_or_else(|| {
-            InternalError::new(
-                source!(),
-                StatusCode::BAD_REQUEST,
-                "Session not found, try signing in",
-            )
+            InternalError::new(StatusCode::BAD_REQUEST, "Session not found, try signing in")
         })?;
 
     Ok(package)

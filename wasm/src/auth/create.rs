@@ -9,7 +9,7 @@ use tsify::Tsify;
 use secretpass_core::constants::RP_ID;
 use secretpass_core::passkeys::create::PasskeyCreationResult;
 use secretpass_core::utils::bin_decode;
-use secretpass_core::{InternalError, InternalResult, StatusCode, source};
+use secretpass_core::{InternalError, InternalResult, StatusCode};
 use wasm_bindgen::JsValue;
 use web_sys::js_sys::{Array as JsArray, Object as JsObject, Reflect as JsReflect};
 use web_sys::{
@@ -76,7 +76,7 @@ async fn register_user(params: &PasskeyCreationRequest) -> InternalResult<Passke
 
     let promise = get_credentials_container()?
         .create_with_options(&options)
-        .map_err(|err| InternalError::trace(source!(),StatusCode::UNAUTHORIZED, "Error creating passkey, please retry, if the issue persists, raise a support request", err))?;
+        .map_err(|err| InternalError::trace(StatusCode::UNAUTHORIZED, "Error creating passkey, please retry, if the issue persists, raise a support request", err))?;
 
     let credential = parse_promise(promise).await?;
 

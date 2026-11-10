@@ -1,9 +1,9 @@
-use crate::environments::SecretWithEncryptedValues;
-use crate::secrets::{
+use crate::backend::environments::SecretWithEncryptedValues;
+use crate::backend::secrets::{
     CreateSecretRequest, ProjectEnvPathParams, ProjectSecretPathParams, UpdateSecretRequest,
     UpdateSecretValueRequest,
 };
-use crate::{ApiState, SessionPackage};
+use crate::backend::{ApiState, SessionPackage};
 use axum::extract::{Path, State};
 use axum::{Extension, Json};
 use secretpass_core::{InternalResult, User};

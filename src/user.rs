@@ -1,3 +1,4 @@
+use crate::Passkey;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
@@ -20,4 +21,23 @@ pub struct Session {
     pub user_id: Uuid,
     pub last_seen: DateTime<Utc>,
     pub expires_on: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Tsify, TS)]
+pub struct AuthSession {
+    pub user: User,
+    pub passkey: Vec<Passkey>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthTokenClaims {
+    pub sub: Uuid,
+    pub iss: String,
+    pub aud: String, // Audience
+    pub exp: u64,
+    pub iat: u64,
+
+    // Custom claims
+    pub user: User,
+    pub passkeys: Vec<Passkey>,
 }

@@ -3,7 +3,7 @@ use lettre::Message;
 use lettre::message::Mailbox;
 use lettre::message::header::ContentType;
 use lettre::{AsyncSmtpTransport, AsyncTransport, Tokio1Executor};
-use secretpass_core::{InternalError, InternalResult, StatusCode, source};
+use secretpass_core::{InternalError, InternalResult, StatusCode};
 use std::env;
 use std::sync::LazyLock;
 
@@ -26,7 +26,6 @@ pub(crate) async fn send_email(recipient: &str, template: EmailTemplate) -> Inte
         .from(get_sender()?)
         .to(recipient.parse().map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::BAD_REQUEST,
                 &format!("Invalid recipient<{recipient}> email address"),
                 err,
@@ -37,7 +36,6 @@ pub(crate) async fn send_email(recipient: &str, template: EmailTemplate) -> Inte
         .body(content)
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 &format!("Error building {} error", template),
                 err,
@@ -46,7 +44,6 @@ pub(crate) async fn send_email(recipient: &str, template: EmailTemplate) -> Inte
 
     MAILER.send(message).await.map_err(|err| {
         InternalError::trace(
-            source!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             &format!("Error sending {} email", template),
             err,
@@ -58,12 +55,11 @@ pub(crate) async fn send_email(recipient: &str, template: EmailTemplate) -> Inte
 
 fn get_sender() -> InternalResult<Mailbox> {
     let mbox = Mailbox::new(
-        Some("Secretpass Secret Manager".to_string()),
+        Some("Secretpass Vault".to_string()),
         "no-reply@vault.secretpass.cloud".parse().map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
-                "Invalid local sender email address",
+                "Invalid sender email address",
                 err,
             )
         })?,

@@ -1,6 +1,6 @@
-use secretpass_api::secrets::ProjectAccessKeyParams;
+use secretpass_api::backend::secrets::ProjectAccessKeyParams;
 use secretpass_core::{
-    AccessKey, InternalError, InternalResult, SecretDefinition, SecretValue, StatusCode, source,
+    AccessKey, InternalError, InternalResult, SecretDefinition, SecretValue, StatusCode,
 };
 use sqlx::PgPool;
 use std::collections::HashMap;
@@ -22,7 +22,6 @@ pub async fn get_secret_by_name(
     .await
     .map_err(|err| {
         InternalError::trace(
-            source!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error getting secret details",
             err,
@@ -46,26 +45,23 @@ pub async fn get_access_key_secrets(
     .await
     .map_err(|err| {
         InternalError::trace(
-            source!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error getting access key details",
             err,
         )
     })?;
 
-    let access_key = access_key.ok_or_else(|| {
-        InternalError::new(source!(), StatusCode::NOT_FOUND, "Public key not found")
-    })?;
+    let access_key = access_key
+        .ok_or_else(|| InternalError::new(StatusCode::NOT_FOUND, "Public key not found"))?;
     let access = access_key.get_access(&params.env_name).ok_or_else(|| {
         InternalError::new(
-            source!(),
             StatusCode::FORBIDDEN,
             "Access key does not have access to this environment",
         )
     })?;
 
     let values: Vec<SecretValue> = sqlx::query_as(
-        r#"SELECT * FROM "MachineSecretValues"
+        r#"SELECT * FROM "SecretValues"
          WHERE project_id = $1 AND target = $2 AND env_name = $3 AND tag = $4"#,
     )
     .bind(access_key.project_id)
@@ -76,7 +72,6 @@ pub async fn get_access_key_secrets(
     .await
     .map_err(|err| {
         InternalError::trace(
-            source!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error getting secret values",
             err,

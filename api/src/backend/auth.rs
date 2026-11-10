@@ -1,10 +1,10 @@
-use crate::ApiState;
+use crate::backend::ApiState;
 use axum::http::StatusCode;
 use secretpass_core::enums::ChallengeKind;
 use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
 use secretpass_core::passkeys::create::PasskeyCreationResult;
 use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
-use secretpass_core::{InternalError, InternalResult, Passkey, Session, User, source};
+use secretpass_core::{InternalError, InternalResult, Passkey, Session, User};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use ts_rs::TS;
@@ -84,11 +84,7 @@ impl SessionPackage {
             .get_pending_challenge(ChallengeKind::PasskeyAuthorize, self.user.email.clone())
             .await?
             .ok_or_else(|| {
-                InternalError::new(
-                    source!(),
-                    StatusCode::BAD_REQUEST,
-                    "Passkey challenge not found",
-                )
+                InternalError::new(StatusCode::BAD_REQUEST, "Passkey challenge not found")
             })?;
 
         let passkey = self
@@ -96,7 +92,7 @@ impl SessionPackage {
             .iter()
             .find(|key| key.cred_id.clone() == result.id)
             .ok_or_else(|| InternalError::new(
-                source!(),
+
                 StatusCode::BAD_REQUEST,
                 "Passkey not found, logout and login, then try again. If this issue persists, please raise a support request"
             ))?;

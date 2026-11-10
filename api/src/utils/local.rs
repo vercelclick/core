@@ -7,7 +7,7 @@ use futures_util::future::BoxFuture;
 use reqwest::header::COOKIE;
 use reqwest::{Client, RequestBuilder};
 use secretpass_core::enums::OperationMode;
-use secretpass_core::{InternalError, InternalResult, source};
+use secretpass_core::{InternalError, InternalResult};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::str::FromStr;
@@ -80,7 +80,6 @@ impl CloudProxy {
     {
         let response = builder.send().await.map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::BAD_GATEWAY,
                 "Error proxying request to cloud backend",
                 err,
@@ -93,7 +92,6 @@ impl CloudProxy {
         if !status.is_success() {
             let error: InternalError = response.json().await.map_err(|err| {
                 InternalError::trace(
-                    source!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     &format!("Error<{status}> parsing proxied<{path}> request error"),
                     err,
@@ -104,7 +102,6 @@ impl CloudProxy {
 
         let payload: T = response.json().await.map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 &format!("Error parsing proxied<{path}> cloud response"),
                 err,

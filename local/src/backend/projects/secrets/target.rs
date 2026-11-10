@@ -1,6 +1,6 @@
 use crate::config::LocalServiceConfig;
 use crate::service::keys::LocalKeysConfig;
-use secretpass_api::secrets::ProjectSecretPathParams;
+use secretpass_api::backend::secrets::ProjectSecretPathParams;
 use secretpass_core::{InternalResult, TargetedPublicKey, User};
 use uuid::Uuid;
 
@@ -10,7 +10,7 @@ pub async fn get_secret_targets(
 ) -> InternalResult<Vec<TargetedPublicKey>> {
     let service_config = LocalServiceConfig::load()?;
 
-    let (path, project_config, contributor) =
+    let (path, project_config, _) =
         service_config.get_project_and_contributor(params.project_id, user.id)?;
 
     let keys_config = LocalKeysConfig::load(&path)?;

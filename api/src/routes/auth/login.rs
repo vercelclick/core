@@ -1,12 +1,14 @@
-use crate::auth::{EmailLoginRequest, PasskeyLoginRequest, StartLoginRequest, StartLoginResponse};
+use crate::backend::auth::{
+    EmailLoginRequest, PasskeyLoginRequest, StartLoginRequest, StartLoginResponse,
+};
+use crate::backend::{ApiState, PendingChallenge, SessionPackage};
 use crate::routes::auth::shared::{record_session, set_session_cookie};
 use crate::utils::CloudProxy;
-use crate::{ApiState, PendingChallenge, SessionPackage};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::{Extension, Json};
 use secretpass_core::enums::ChallengeKind;
-use secretpass_core::{InternalError, InternalResult, source};
+use secretpass_core::{InternalError, InternalResult};
 use tower_cookies::Cookies;
 
 pub async fn login_user_with_email(
@@ -26,16 +28,11 @@ pub async fn login_user_with_email(
             .get_pending_challenge(ChallengeKind::EmailSignIn, request.email_address.clone())
             .await?
             .ok_or_else(|| {
-                InternalError::new(
-                    source!(),
-                    StatusCode::BAD_REQUEST,
-                    "Email challenge not found",
-                )
+                InternalError::new(StatusCode::BAD_REQUEST, "Email challenge not found")
             })?;
 
         if !pending_challenge.verify_challenge(request.confirmation_code) {
             return Err(InternalError::new(
-                source!(),
                 StatusCode::FORBIDDEN,
                 "Invalid confirmation code",
             ));
@@ -69,11 +66,7 @@ pub async fn login_user_with_passkey(
             .get_pending_challenge(ChallengeKind::PasskeySignIn, request.owner.clone())
             .await?
             .ok_or_else(|| {
-                InternalError::new(
-                    source!(),
-                    StatusCode::BAD_REQUEST,
-                    "Passkey challenge not found",
-                )
+                InternalError::new(StatusCode::BAD_REQUEST, "Passkey challenge not found")
             })?;
 
         let passkey = state
@@ -81,11 +74,7 @@ pub async fn login_user_with_passkey(
             .retrieve_passkey_by_cred_id(request.auth_response.id.clone(), request.owner.clone())
             .await?
             .ok_or_else(|| {
-                InternalError::new(
-                    source!(),
-                    StatusCode::NOT_FOUND,
-                    "Passkey not found on your account",
-                )
+                InternalError::new(StatusCode::NOT_FOUND, "Passkey not found on your account")
             })?;
 
         request.auth_response.validate(
@@ -122,7 +111,6 @@ pub async fn start_login(
         .await?
         .ok_or_else(|| {
             InternalError::new(
-                source!(),
                 StatusCode::NOT_FOUND,
                 "User not found, try a different email or create a new account",
             )

@@ -1,8 +1,8 @@
+use crate::backend::{ApiState, SessionPackage};
 use crate::routes::auth::register::{
     PasskeyCreateValidationRequest, validate_passkey_creation_details,
 };
 use crate::utils::CloudProxy;
-use crate::{ApiState, SessionPackage};
 use axum::extract::State;
 use axum::{Extension, Json};
 use secretpass_core::passkeys::create::PasskeyCreationResult;

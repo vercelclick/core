@@ -3,13 +3,13 @@ use crate::service::keys::LocalKeysConfig;
 use crate::service::project::LocalProjectConfig;
 use crate::utils::short_path;
 use chrono::Utc;
-use secretpass_api::projects::{
+use secretpass_api::backend::projects::{
     CreateProjectRequest, GetProjectResult, ListProjectsResult, ProjectListItem, ProjectPath,
 };
 use secretpass_core::enums::{AccessGrant, ContributorRole, ContributorStatus};
 use secretpass_core::{
     Contributor, ContributorPublicKey, Environment, InternalError, InternalResult, Passkey,
-    Project, StatusCode, User, source,
+    Project, StatusCode, User,
 };
 use uuid::Uuid;
 
@@ -65,7 +65,6 @@ pub async fn create_project(
 
     let path = request.path.ok_or_else(|| {
         InternalError::new(
-            source!(),
             StatusCode::BAD_REQUEST,
             "path is required when creating a local secretpass project",
         )
@@ -77,7 +76,6 @@ pub async fn create_project(
         }
 
         return Err(InternalError::new(
-            source!(),
             StatusCode::CONFLICT,
             &format!(
                 "Project({}) already exists under {}. Please delete .spass directory if you intend to replace the project.",
@@ -173,7 +171,6 @@ pub async fn get_project_by_id(
         .get_contributor_by_user_id(user.id)
         .ok_or_else(|| {
             InternalError::new(
-                source!(),
                 StatusCode::FORBIDDEN,
                 "You do not have access to this project under the current user",
             )

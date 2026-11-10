@@ -7,28 +7,31 @@ use crate::backend::auth::session::{
     create_session_by_email, create_session_by_user_id, expire_session, get_session,
 };
 use crate::backend::auth::user::{retrieve_user_and_known_passkeys, retrieve_user_by_email};
+use crate::backend::projects::access_keys::{create_access_key, create_federated_access_key};
 use crate::backend::projects::environments::get_environment_handler;
-use crate::backend::projects::machine::create_access_key;
 use crate::backend::projects::project::{create_project, get_project_by_id, list_projects};
 use crate::backend::projects::secrets::create::create_secret;
 use crate::backend::projects::secrets::read::get_access_key_secrets;
 use crate::backend::projects::secrets::targets::get_secret_targets;
 use crate::backend::projects::secrets::update::{update_secret, update_secret_value};
-use secretpass_api::auth::BackendCreateUserRequest;
-use secretpass_api::environments::{
+use secretpass_api::backend::auth::BackendCreateUserRequest;
+use secretpass_api::backend::environments::{
     GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues,
 };
-use secretpass_api::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
-use secretpass_api::secrets::{
-    CreateAccessKeyRequest, CreateSecretRequest, ProjectAccessKeyParams, ProjectEnvPathParams,
-    ProjectPathParams, ProjectSecretPathParams, UpdateSecretRequest, UpdateSecretValueRequest,
+use secretpass_api::backend::projects::{
+    CreateProjectRequest, GetProjectResult, ListProjectsResult,
 };
-use secretpass_api::{BackendProvider, PendingChallenge, SessionPackage};
+use secretpass_api::backend::secrets::{
+    CreateAccessKeyRequest, CreateFederatedAccessKeyRequest, CreateFederatedAccessKeyResult,
+    CreateSecretRequest, ProjectAccessKeyParams, ProjectEnvPathParams, ProjectPathParams,
+    ProjectSecretPathParams, UpdateSecretRequest, UpdateSecretValueRequest,
+};
+use secretpass_api::backend::{BackendProvider, PendingChallenge, SessionPackage};
 use secretpass_core::enums::ChallengeKind;
 use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
 use secretpass_core::{
     AccessKey, InternalError, InternalResult, Passkey, Project, Session, StatusCode,
-    TargetedPublicKey, User, source,
+    TargetedPublicKey, User,
 };
 use sqlx::PgPool;
 use std::collections::HashMap;
@@ -78,7 +81,6 @@ impl BackendProvider for CloudBackendProvider {
 
     async fn record_session(&self, _session: SessionPackage) -> InternalResult<()> {
         Err(InternalError::new(
-            source!(),
             StatusCode::NOT_IMPLEMENTED,
             "Record session details not supported on cloud; please report an issue to support@secretpass.cloud",
         ))
@@ -216,5 +218,14 @@ impl BackendProvider for CloudBackendProvider {
         params: &ProjectSecretPathParams,
     ) -> InternalResult<Vec<TargetedPublicKey>> {
         get_secret_targets(&self.pool, user, params).await
+    }
+
+    async fn create_federated_access_key(
+        &self,
+        user: &User,
+        params: &ProjectPathParams,
+        request: &CreateFederatedAccessKeyRequest,
+    ) -> InternalResult<CreateFederatedAccessKeyResult> {
+        create_federated_access_key(&self.pool, user, params, request).await
     }
 }

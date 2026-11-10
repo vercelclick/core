@@ -1,6 +1,6 @@
-use secretpass_api::PendingChallenge;
+use secretpass_api::backend::PendingChallenge;
 use secretpass_core::enums::ChallengeKind;
-use secretpass_core::{InternalError, InternalResult, StatusCode, source};
+use secretpass_core::{InternalError, InternalResult, StatusCode};
 use sqlx::{PgPool, Row};
 
 // language=sql
@@ -25,7 +25,6 @@ pub async fn insert_or_replace_challenge(
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 &format!("Internal error creating {} challenge", challenge.kind),
                 err,
@@ -60,7 +59,6 @@ async fn query_pending_challenge(
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 &format!("Internal error getting {kind} challenge"),
                 err,

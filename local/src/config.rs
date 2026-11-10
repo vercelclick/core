@@ -1,6 +1,6 @@
 use crate::service::project::LocalProjectConfig;
-use secretpass_api::SessionPackage;
-use secretpass_core::{Contributor, InternalError, InternalResult, StatusCode, source};
+use secretpass_api::backend::SessionPackage;
+use secretpass_core::{Contributor, InternalError, InternalResult, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -35,7 +35,6 @@ impl LocalServiceConfig {
         if !CONFIG_DIR.exists() {
             fs::create_dir_all(CONFIG_DIR.clone()).map_err(|err| {
                 InternalError::trace(
-                    source!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     &format!(
                         "Error creating local service config directory {}",
@@ -54,7 +53,6 @@ impl LocalServiceConfig {
 
         let content = fs::read_to_string(config_file.clone()).map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 &format!(
                     "Error reading local service config {}",
@@ -73,7 +71,6 @@ impl LocalServiceConfig {
 
         let content = serde_json::to_string(self).map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 &format!(
                     "Error serializing local service config {}",
@@ -85,7 +82,6 @@ impl LocalServiceConfig {
 
         fs::write(config_file.clone(), content).map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 &format!(
                     "Error writing local service config {}",
@@ -137,7 +133,6 @@ impl LocalServiceConfig {
     ) -> InternalResult<(String, LocalProjectConfig, Contributor)> {
         let (path, project_conf) = self.get_project_by_id(project_id)?.ok_or_else(|| {
             InternalError::new(
-                source!(),
                 StatusCode::NOT_FOUND,
                 "Project not found, confirm if the project is attached",
             )
@@ -147,7 +142,6 @@ impl LocalServiceConfig {
             .get_contributor_by_user_id(user_id)
             .ok_or_else(|| {
                 InternalError::new(
-                    source!(),
                     StatusCode::FORBIDDEN,
                     "You don't have access to this project under the current user",
                 )

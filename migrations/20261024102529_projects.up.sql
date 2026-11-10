@@ -153,7 +153,7 @@ CREATE TABLE "FederatedAccessKeys"
     description  TEXT                  NOT NULL,
     project_id   UUID                  NOT NULL,
     access       "EnvironmentAccess"[] NOT NULL,
-    users        UUID[]                NOT NULL,
+    contributors UUID[]                NOT NULL,
     generated_by TEXT                  NOT NULL,
     generated_on TIMESTAMPTZ DEFAULT now(),
 

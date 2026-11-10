@@ -1,7 +1,7 @@
 use crate::constants::{RP_ID, RP_ORIGIN};
 use crate::passkeys::flags::PasskeyFlags;
 use crate::result::{InternalError, InternalResult};
-use crate::source;
+
 use crate::utils::{bin_decode, bin_encode, sha256_digest};
 use http::StatusCode;
 use serde::Deserialize;
@@ -22,7 +22,6 @@ impl ClientData {
         let challenge_bytes = bin_decode(&self.challenge)?;
         if challenge_bytes.len() != CHALLENGE_LEN {
             return Err(InternalError::new(
-                source!(),
                 StatusCode::CONFLICT,
                 "Invalid challenge value",
             ));
@@ -37,19 +36,13 @@ pub fn verify_client_data(
     expected_type: &str,
 ) -> InternalResult<()> {
     let data: ClientData = serde_json::from_slice(bytes).map_err(|err| {
-        InternalError::trace(
-            source!(),
-            StatusCode::CONFLICT,
-            "Invalid client data content",
-            err,
-        )
+        InternalError::trace(StatusCode::CONFLICT, "Invalid client data content", err)
     })?;
     let challenge = data.challenge()?;
     let challenge_hash = sha256_digest(&[bin_encode(&challenge)]);
 
     if challenge_hash != expected_challenge_hash {
         return Err(InternalError::new(
-            source!(),
             StatusCode::CONFLICT,
             "Challenge value mismatch",
         ));
@@ -58,7 +51,6 @@ pub fn verify_client_data(
     // Due to dynamic port configuration
     if data.origin != RP_ORIGIN {
         return Err(InternalError::new(
-            source!(),
             StatusCode::CONFLICT,
             &format!(
                 "Origin mismatch, expected: {}, got: {}",
@@ -69,7 +61,6 @@ pub fn verify_client_data(
 
     if data.type_ != expected_type {
         return Err(InternalError::new(
-            source!(),
             StatusCode::CONFLICT,
             &format!("Invalid operation type: {}", data.type_),
         ));
@@ -80,7 +71,6 @@ pub fn verify_client_data(
 pub fn parse_auth_data(raw: &[u8]) -> InternalResult<(PasskeyFlags, Option<Vec<u8>>)> {
     if raw.len() < 37 {
         return Err(InternalError::new(
-            source!(),
             StatusCode::CONFLICT,
             "Invalid auth data",
         ));
@@ -103,11 +93,7 @@ pub fn parse_auth_data(raw: &[u8]) -> InternalResult<(PasskeyFlags, Option<Vec<u
 fn verify_rp_id_hash(hash: &[u8]) -> InternalResult<()> {
     let expected = Sha256::digest(RP_ID.as_bytes());
     if hash != expected.as_ref() as &[u8] {
-        return Err(InternalError::new(
-            source!(),
-            StatusCode::CONFLICT,
-            "RP ID mismatch",
-        ));
+        return Err(InternalError::new(StatusCode::CONFLICT, "RP ID mismatch"));
     }
     Ok(())
 }

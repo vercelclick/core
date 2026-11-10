@@ -1,7 +1,7 @@
 use crate::db::queries::auth::{CREATE_PASSKEY_QUERY, CREATE_SESSION_QUERY};
-use secretpass_api::SessionPackage;
-use secretpass_api::auth::BackendCreateUserRequest;
-use secretpass_core::{InternalError, InternalResult, Passkey, Session, StatusCode, User, source};
+use secretpass_api::backend::SessionPackage;
+use secretpass_api::backend::auth::BackendCreateUserRequest;
+use secretpass_core::{InternalError, InternalResult, Passkey, Session, StatusCode, User};
 use sqlx::PgPool;
 use std::sync::Arc;
 
@@ -16,7 +16,6 @@ pub async fn create_user(
 ) -> InternalResult<SessionPackage> {
     let mut tx = pool.begin().await.map_err(|err| {
         InternalError::trace(
-            source!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error establishing a transaction",
             err,
@@ -32,7 +31,6 @@ pub async fn create_user(
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error creating user",
                 err,
@@ -50,7 +48,6 @@ pub async fn create_user(
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error creating passkey",
                 err,
@@ -63,7 +60,6 @@ pub async fn create_user(
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error establishing a new session",
                 err,
@@ -72,7 +68,6 @@ pub async fn create_user(
 
     tx.commit().await.map_err(|err| {
         InternalError::trace(
-            source!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error committing user creation",
             err,

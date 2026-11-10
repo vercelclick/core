@@ -1,5 +1,5 @@
 use crate::result::{InternalError, InternalResult};
-use crate::source;
+
 use crate::utils::{bin_decode, bin_encode};
 use http::StatusCode;
 
@@ -39,7 +39,6 @@ impl EncryptedPackage {
         Ok(Self {
             public_key: public_key.try_into().map_err(|err| {
                 InternalError::trace(
-                    source!(),
                     StatusCode::CONFLICT,
                     "Invalid encrypted package public key value",
                     err,
@@ -47,7 +46,6 @@ impl EncryptedPackage {
             })?,
             nonce_bytes: nonce_bytes.try_into().map_err(|err| {
                 InternalError::trace(
-                    source!(),
                     StatusCode::CONFLICT,
                     "Invalid encrypted package nonce value",
                     err,

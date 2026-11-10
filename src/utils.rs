@@ -1,5 +1,5 @@
 use crate::result::{InternalError, InternalResult};
-use crate::source;
+
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use http::StatusCode;
 use rand::rngs::{ChaCha20Rng, SysRng};
@@ -49,7 +49,6 @@ pub fn bin_encode(payload: &[u8]) -> String {
 pub fn bin_decode(payload: &str) -> InternalResult<Vec<u8>> {
     URL_SAFE_NO_PAD.decode(payload).map_err(|err| {
         InternalError::trace(
-            source!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Base64 content decode error",
             err,
@@ -63,12 +62,7 @@ where
 {
     let mut serialized = Vec::new();
     ciborium::ser::into_writer(payload, &mut serialized).map_err(|err| {
-        InternalError::trace(
-            source!(),
-            StatusCode::CONFLICT,
-            "Binary content encode error",
-            err,
-        )
+        InternalError::trace(StatusCode::CONFLICT, "Binary content encode error", err)
     })?;
 
     Ok(bin_encode(&serialized))
@@ -82,12 +76,7 @@ where
 
     let mut reader = Cursor::new(&decoded);
     let result: T = ciborium::de::from_reader(&mut reader).map_err(|err| {
-        InternalError::trace(
-            source!(),
-            StatusCode::CONFLICT,
-            "Binary content decode error",
-            err,
-        )
+        InternalError::trace(StatusCode::CONFLICT, "Binary content decode error", err)
     })?;
 
     Ok(result)

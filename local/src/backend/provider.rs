@@ -5,21 +5,25 @@ use crate::backend::projects::project::{create_project, get_project_by_id, list_
 use crate::backend::projects::secrets::create::create_secret;
 use crate::backend::projects::secrets::update::{update_secret, update_secret_value};
 use crate::config::LocalServiceConfig;
-use secretpass_api::auth::BackendCreateUserRequest;
-use secretpass_api::environments::{
+use secretpass_api::backend::environments::{
     GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues,
 };
-use secretpass_api::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
-use secretpass_api::secrets::{
-    CreateAccessKeyRequest, CreateSecretRequest, ProjectAccessKeyParams, ProjectEnvPathParams,
-    ProjectPathParams, ProjectSecretPathParams, UpdateSecretRequest, UpdateSecretValueRequest,
+
+use secretpass_api::backend::auth::BackendCreateUserRequest;
+use secretpass_api::backend::projects::{
+    CreateProjectRequest, GetProjectResult, ListProjectsResult,
 };
-use secretpass_api::{BackendProvider, PendingChallenge, SessionPackage};
+use secretpass_api::backend::secrets::{
+    CreateAccessKeyRequest, CreateFederatedAccessKeyRequest, CreateFederatedAccessKeyResult,
+    CreateSecretRequest, ProjectAccessKeyParams, ProjectEnvPathParams, ProjectPathParams,
+    ProjectSecretPathParams, UpdateSecretRequest, UpdateSecretValueRequest,
+};
+use secretpass_api::backend::{BackendProvider, PendingChallenge, SessionPackage};
 use secretpass_core::enums::ChallengeKind;
 use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
 use secretpass_core::{
     AccessKey, InternalError, InternalResult, Passkey, Project, Session, StatusCode,
-    TargetedPublicKey, User, source,
+    TargetedPublicKey, User,
 };
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -29,7 +33,6 @@ pub struct LocalBackendProvider {}
 
 fn not_supported(title: &str) -> InternalError {
     InternalError::new(
-        source!(),
         StatusCode::NOT_IMPLEMENTED,
         &format!(
             "{title} not supported locally; this call should have been proxied, please report an issue to support@secretpass.cloud"
@@ -177,7 +180,6 @@ impl BackendProvider for LocalBackendProvider {
         _params: ProjectAccessKeyParams,
     ) -> InternalResult<HashMap<String, String>> {
         Err(InternalError::new(
-            source!(),
             StatusCode::NOT_IMPLEMENTED,
             "Secrets API not supported on local server. Use `spass local run/export`",
         ))
@@ -212,9 +214,18 @@ impl BackendProvider for LocalBackendProvider {
 
     async fn get_secret_targets(
         &self,
-        user: &User,
-        params: &ProjectSecretPathParams,
+        _user: &User,
+        _params: &ProjectSecretPathParams,
     ) -> InternalResult<Vec<TargetedPublicKey>> {
+        todo!()
+    }
+
+    async fn create_federated_access_key(
+        &self,
+        _user: &User,
+        _params: &ProjectPathParams,
+        _request: &CreateFederatedAccessKeyRequest,
+    ) -> InternalResult<CreateFederatedAccessKeyResult> {
         todo!()
     }
 }

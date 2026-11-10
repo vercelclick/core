@@ -1,12 +1,12 @@
 use crate::backend::projects::project::get_contributor_by_id;
 use axum::http::StatusCode;
-use secretpass_api::environments::{
+use secretpass_api::backend::environments::{
     GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues,
 };
-use secretpass_api::projects::CreateEnvironmentRequest;
+use secretpass_api::backend::projects::CreateEnvironmentRequest;
 use secretpass_core::{
     ContributorPublicKey, Environment, InternalError, InternalResult, Project, SecretDefinition,
-    SecretValue, User, source,
+    SecretValue, User,
 };
 use sqlx::{PgPool, Postgres, QueryBuilder};
 use uuid::Uuid;
@@ -43,7 +43,6 @@ pub async fn get_environment_by_name(
             .await
             .map_err(|err| {
                 InternalError::trace(
-                    source!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Internal error getting environment details",
                     err,
@@ -70,9 +69,7 @@ pub async fn get_environment_handler(
 
     let environment = get_environment_by_name(pool, contributor.project_id, &request.env_name)
         .await?
-        .ok_or_else(|| {
-            InternalError::new(source!(), StatusCode::NOT_FOUND, "Environment not found")
-        })?;
+        .ok_or_else(|| InternalError::new(StatusCode::NOT_FOUND, "Environment not found"))?;
 
     let secret_definitions: Vec<SecretDefinition> = sqlx::query_as(
         r#"SELECT * FROM "SecretDefinitions" WHERE project_id = $1 AND env_name = $2"#,
@@ -83,7 +80,6 @@ pub async fn get_environment_handler(
     .await
     .map_err(|err| {
         InternalError::trace(
-            source!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error getting secret definitions",
             err,
@@ -101,7 +97,6 @@ pub async fn get_environment_handler(
     .await
     .map_err(|err| {
         InternalError::trace(
-            source!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error getting secret values",
             err,
@@ -117,7 +112,6 @@ pub async fn get_environment_handler(
     .await
     .map_err(|err| {
         InternalError::trace(
-            source!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error contributors public keys",
             err,

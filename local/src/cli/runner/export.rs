@@ -1,5 +1,5 @@
 use crate::cli::command::ExportFormat;
-use secretpass_core::{InternalError, KeyPair, StatusCode, source};
+use secretpass_core::{InternalError, KeyPair, StatusCode};
 use std::collections::HashMap;
 
 pub fn export_secrets(
@@ -15,7 +15,6 @@ pub fn export_secrets(
             let json_content = serde_json::to_string_pretty(&plain_values)
                 .map_err(|err| {
                     InternalError::trace(
-                        source!(),
                         StatusCode::INTERNAL_SERVER_ERROR,
                         "Error encoding secrets",
                         err,

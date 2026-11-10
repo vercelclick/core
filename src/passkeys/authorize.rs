@@ -1,6 +1,6 @@
 use crate::passkeys::helpers::{parse_auth_data, verify_client_data};
 use crate::result::{InternalError, InternalResult};
-use crate::source;
+
 use crate::utils::bin_decode;
 use ciborium::Value;
 use coset::{CborSerializable, CoseKey, Label};
@@ -43,7 +43,6 @@ impl PasskeyAuthorizationResult {
         let (flags, credential_data) = parse_auth_data(&self.response.authenticator_data)?;
         if credential_data.is_some() {
             return Err(InternalError::new(
-                source!(),
                 StatusCode::CONFLICT,
                 "Invalid credential - login object should not hold attestation data",
             ));
@@ -54,17 +53,11 @@ impl PasskeyAuthorizationResult {
         // Verify user handle if present
         if let Some(uh_bytes) = &self.response.user_handle {
             let uid_str = String::from_utf8(uh_bytes.clone()).map_err(|err| {
-                InternalError::trace(
-                    source!(),
-                    StatusCode::BAD_REQUEST,
-                    "Invalid userHandle utf8",
-                    err,
-                )
+                InternalError::trace(StatusCode::BAD_REQUEST, "Invalid userHandle utf8", err)
             })?;
             Ok(uid_str)
         } else {
             Err(InternalError::new(
-                source!(),
                 StatusCode::BAD_REQUEST,
                 "Invalid credential - missing user_id details",
             ))
@@ -80,7 +73,6 @@ impl PasskeyAuthorizationResult {
         let passkey_user_id = self.verify_challenge_and_config(challenge_hash)?;
         if user_id.to_string() != passkey_user_id {
             return Err(InternalError::new(
-                source!(),
                 StatusCode::CONFLICT,
                 "Invalid credential - user_id mismatch!",
             ));
@@ -108,7 +100,6 @@ fn verify_p256_signature(
 ) -> InternalResult<()> {
     let cose_key = CoseKey::from_slice(pub_key_cbor).map_err(|err| {
         InternalError::trace(
-            source!(),
             StatusCode::CONFLICT,
             "Signature Error, invalid COSE key",
             err,
@@ -119,7 +110,6 @@ fn verify_p256_signature(
         Some((_, Value::Bytes(b))) => b,
         _ => {
             return Err(InternalError::new(
-                source!(),
                 StatusCode::CONFLICT,
                 "Signature Error, missing x coordinate",
             ));
@@ -129,7 +119,6 @@ fn verify_p256_signature(
         Some((_, Value::Bytes(b))) => b,
         _ => {
             return Err(InternalError::new(
-                source!(),
                 StatusCode::CONFLICT,
                 "Signature Error, missing y coordinate",
             ));
@@ -138,7 +127,6 @@ fn verify_p256_signature(
 
     if x.len() != 32 || y.len() != 32 {
         return Err(InternalError::new(
-            source!(),
             StatusCode::CONFLICT,
             "Signature Error, invalid coordinate length",
         ));
@@ -147,7 +135,6 @@ fn verify_p256_signature(
     let sec_point = Sec1Point::from_affine_coordinates(
         x.as_slice().try_into().map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::CONFLICT,
                 "Signature error, invalid x coordinates",
                 err,
@@ -155,7 +142,6 @@ fn verify_p256_signature(
         })?,
         y.as_slice().try_into().map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::CONFLICT,
                 "Signature error, invalid y coordinates",
                 err,
@@ -165,7 +151,6 @@ fn verify_p256_signature(
     );
     let verifying_key = VerifyingKey::from_sec1_point(&sec_point).map_err(|e| {
         InternalError::trace(
-            source!(),
             StatusCode::CONFLICT,
             "Signature error, invalid P-256 key",
             e,
@@ -174,7 +159,6 @@ fn verify_p256_signature(
 
     let signature = Signature::from_der(signature_der).map_err(|e| {
         InternalError::trace(
-            source!(),
             StatusCode::CONFLICT,
             "Signature error, invalid signature data",
             e,
@@ -183,7 +167,6 @@ fn verify_p256_signature(
 
     verifying_key.verify(signed_data, &signature).map_err(|e| {
         InternalError::trace(
-            source!(),
             StatusCode::CONFLICT,
             "Signature error, signed data signature mismatch",
             e,

@@ -1,4 +1,4 @@
-use secretpass_core::{InternalError, InternalResult, StatusCode, source};
+use secretpass_core::{InternalError, InternalResult, StatusCode};
 use wasm_bindgen::JsCast;
 use web_sys::js_sys::Promise;
 use web_sys::{CredentialsContainer, PublicKeyCredential};
@@ -8,7 +8,6 @@ pub fn get_credentials_container() -> InternalResult<CredentialsContainer> {
         Some(window) => window,
         None => {
             return Err(InternalError::new(
-                source!(),
                 StatusCode::BAD_GATEWAY,
                 "Please run Secretpass in a supported browser",
             ));
@@ -22,7 +21,6 @@ pub fn get_credentials_container() -> InternalResult<CredentialsContainer> {
 pub async fn parse_promise(promise: Promise) -> InternalResult<PublicKeyCredential> {
     let result = promise.await.map_err(|err| {
         InternalError::trace(
-            source!(),
             StatusCode::UNAUTHORIZED,
             "Error processing passkey authentication result",
             err,
@@ -30,7 +28,6 @@ pub async fn parse_promise(promise: Promise) -> InternalResult<PublicKeyCredenti
     })?;
     let credential = result.dyn_into::<PublicKeyCredential>().map_err(|err| {
         InternalError::trace(
-            source!(),
             StatusCode::UNAUTHORIZED,
             "Error parsing passkey authentication result",
             err,

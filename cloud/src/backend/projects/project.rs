@@ -1,12 +1,12 @@
 use crate::backend::projects::environments::environments_insert_query_builder;
 use crate::backend::projects::passkeys::contributor_public_key_insert_query_builder;
-use secretpass_api::projects::{
+use secretpass_api::backend::projects::{
     CreateProjectRequest, GetProjectResult, ListProjectsResult, ProjectListItem,
 };
 use secretpass_core::enums::{ContributorRole, ContributorStatus};
 use secretpass_core::{
     AccessKey, Contributor, Environment, EnvironmentAccess, FederatedAccessKey, InternalError,
-    InternalResult, Passkey, Project, StatusCode, User, source,
+    InternalResult, Passkey, Project, StatusCode, User,
 };
 use sqlx::{FromRow, PgPool, Row};
 use uuid::Uuid;
@@ -33,7 +33,6 @@ pub async fn create_project(
 ) -> InternalResult<Project> {
     let mut tx = pool.begin().await.map_err(|err| {
         InternalError::trace(
-            source!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error establishing a transaction",
             err,
@@ -47,7 +46,6 @@ pub async fn create_project(
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error creating project",
                 err,
@@ -60,7 +58,6 @@ pub async fn create_project(
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error creating environments",
                 err,
@@ -77,7 +74,6 @@ pub async fn create_project(
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error adding a contributor",
                 err,
@@ -90,7 +86,6 @@ pub async fn create_project(
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error adding public keys",
                 err,
@@ -99,7 +94,6 @@ pub async fn create_project(
 
     tx.commit().await.map_err(|err| {
         InternalError::trace(
-            source!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error committing project creation",
             err,
@@ -123,7 +117,6 @@ pub async fn list_projects(pool: &PgPool, user: &User) -> InternalResult<ListPro
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error listing projects",
                 err,
@@ -199,7 +192,6 @@ pub async fn get_project_by_id(
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Error getting project details",
                 err,
@@ -221,7 +213,6 @@ pub async fn get_project_by_id(
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Error getting project environments",
                 err,
@@ -239,7 +230,6 @@ pub async fn get_project_by_id(
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Error getting project contributors",
                 err,
@@ -267,7 +257,6 @@ pub async fn get_project_by_id(
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Error getting project access keys",
                 err,
@@ -280,7 +269,6 @@ pub async fn get_project_by_id(
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Error getting project federated keys",
                 err,
@@ -310,7 +298,6 @@ pub async fn get_contributor_by_id(
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error getting contributor details",
                 err,

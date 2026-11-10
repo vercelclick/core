@@ -1,11 +1,11 @@
 use crate::backend::ApiState;
+use crate::backend::{CheckChallengeResult, PendingChallenge};
 use crate::utils::CloudProxy;
-use crate::{CheckChallengeResult, PendingChallenge};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::{Extension, Json};
 use secretpass_core::enums::{ChallengeKind, OperationMode};
-use secretpass_core::{InternalError, InternalResult, source};
+use secretpass_core::{InternalError, InternalResult};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -41,13 +41,11 @@ pub async fn generate_challenge_handler(
 
     if request.kind.is_new_user_only() && user.is_some() {
         return Err(InternalError::new(
-            source!(),
             StatusCode::FORBIDDEN,
             "You already have an account under this email address, try to sign in instead.",
         ));
     } else if !request.kind.is_new_user_only() && user.is_none() {
         return Err(InternalError::new(
-            source!(),
             StatusCode::BAD_REQUEST,
             "User not found",
         ));
@@ -67,7 +65,6 @@ pub async fn generate_challenge_handler(
         ChallengeKind::EmailAuthorize => {
             let operation = request.operation.clone().ok_or_else(|| {
                 InternalError::new(
-                    source!(),
                     StatusCode::BAD_REQUEST,
                     "Operation required for email authorize challenge",
                 )
@@ -84,7 +81,6 @@ pub async fn generate_challenge_handler(
         ChallengeKind::EmailSignup => {
             let name = request.name.clone().ok_or_else(|| {
                 InternalError::new(
-                    source!(),
                     StatusCode::BAD_REQUEST,
                     "Name missing for email signup challenge",
                 )
@@ -125,7 +121,6 @@ pub async fn check_challenge_handler(
 ) -> InternalResult<Json<CheckChallengeResult>> {
     if !request.kind.is_checkable() {
         return Err(InternalError::new(
-            source!(),
             StatusCode::BAD_REQUEST,
             "Invalid challenge check request",
         ));
@@ -140,9 +135,7 @@ pub async fn check_challenge_handler(
         .backend
         .retrieve_pending_challenge_for_attempt(request.kind, request.owner)
         .await?
-        .ok_or_else(|| {
-            InternalError::new(source!(), StatusCode::NOT_FOUND, "Challenge not found")
-        })?;
+        .ok_or_else(|| InternalError::new(StatusCode::NOT_FOUND, "Challenge not found"))?;
 
     let valid = result.verify_challenge(request.value);
 

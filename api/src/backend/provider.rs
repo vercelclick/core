@@ -1,11 +1,13 @@
-use crate::auth::BackendCreateUserRequest;
-use crate::backend::auth::SessionPackage;
+use crate::backend::auth::{BackendCreateUserRequest, SessionPackage};
 use crate::backend::challenge::PendingChallenge;
-use crate::environments::{GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues};
-use crate::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
-use crate::secrets::{
-    CreateAccessKeyRequest, CreateSecretRequest, ProjectAccessKeyParams, ProjectEnvPathParams,
-    ProjectPathParams, ProjectSecretPathParams, UpdateSecretRequest, UpdateSecretValueRequest,
+use crate::backend::environments::{
+    GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues,
+};
+use crate::backend::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
+use crate::backend::secrets::{
+    CreateAccessKeyRequest, CreateFederatedAccessKeyRequest, CreateFederatedAccessKeyResult,
+    CreateSecretRequest, ProjectAccessKeyParams, ProjectEnvPathParams, ProjectPathParams,
+    ProjectSecretPathParams, UpdateSecretRequest, UpdateSecretValueRequest,
 };
 use secretpass_core::enums::ChallengeKind;
 use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
@@ -128,4 +130,10 @@ pub trait BackendProvider: Send + Sync + 'static {
         user: &User,
         params: &ProjectSecretPathParams,
     ) -> InternalResult<Vec<TargetedPublicKey>>;
+    async fn create_federated_access_key(
+        &self,
+        user: &User,
+        params: &ProjectPathParams,
+        request: &CreateFederatedAccessKeyRequest,
+    ) -> InternalResult<CreateFederatedAccessKeyResult>;
 }

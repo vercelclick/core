@@ -1,5 +1,5 @@
 use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
-use secretpass_core::{EnvironmentAccess, SecretValue};
+use secretpass_core::{EnvironmentAccess, FederatedAccessKey, SecretValue};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
@@ -66,4 +66,22 @@ pub struct CreateAccessKeyRequest {
     pub auth_result: PasskeyAuthorizationResult,
     pub public_key: String,
     pub encrypted_values: Vec<SecretValue>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct CreateFederatedAccessKeyRequest {
+    pub name: String,
+    pub description: String,
+    pub access: Vec<EnvironmentAccess>,
+    pub auth_result: PasskeyAuthorizationResult,
+    pub public_key: String,
+    pub contributors: Vec<Uuid>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct CreateFederatedAccessKeyResult {
+    pub key_id: String,
+    pub access_key: FederatedAccessKey,
 }

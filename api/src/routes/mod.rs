@@ -3,7 +3,7 @@ pub mod projects;
 pub mod user;
 pub mod utils;
 
-use crate::ApiStateInner;
+use crate::backend::ApiStateInner;
 use crate::routes::auth::auth_router;
 use crate::routes::auth::middleware::AuthLayer;
 use crate::routes::projects::{project_routes, public_project_routes};

@@ -1,5 +1,5 @@
-use crate::ApiState;
-use crate::secrets::{ProjectAccessKeyParams, ProjectSecretPathParams};
+use crate::backend::ApiState;
+use crate::backend::secrets::{ProjectAccessKeyParams, ProjectSecretPathParams};
 use axum::extract::{Path, State};
 use axum::{Extension, Json};
 use secretpass_core::{InternalResult, TargetedPublicKey, User};

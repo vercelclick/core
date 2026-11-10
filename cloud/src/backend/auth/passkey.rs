@@ -1,6 +1,6 @@
 use crate::db::queries::auth::CREATE_PASSKEY_QUERY;
 use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
-use secretpass_core::{InternalError, InternalResult, Passkey, StatusCode, User, source};
+use secretpass_core::{InternalError, InternalResult, Passkey, StatusCode, User};
 use sqlx::PgPool;
 
 // language=sql
@@ -23,7 +23,6 @@ pub async fn retrieve_passkey_by_cred_id(
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error getting passkey details",
                 err,
@@ -51,7 +50,6 @@ pub async fn create_passkey(
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error creating passkey",
                 err,

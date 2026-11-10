@@ -1,8 +1,8 @@
 use crate::backend::auth::user::retrieve_user_by_email;
 use crate::db::queries::auth::{CREATE_SESSION_QUERY, LIST_USER_PASSKEYS_BY_USER_ID};
 use crate::db::queries::user::GET_USER_BY_ID_QUERY;
-use secretpass_api::SessionPackage;
-use secretpass_core::{InternalError, InternalResult, Passkey, Session, StatusCode, User, source};
+use secretpass_api::backend::SessionPackage;
+use secretpass_core::{InternalError, InternalResult, Passkey, Session, StatusCode, User};
 use sqlx::PgPool;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -20,7 +20,6 @@ pub async fn get_session(pool: &PgPool, id: Uuid) -> InternalResult<Option<Sessi
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error getting session",
                 err,
@@ -38,7 +37,6 @@ pub async fn get_session(pool: &PgPool, id: Uuid) -> InternalResult<Option<Sessi
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error getting user",
                 err,
@@ -60,7 +58,7 @@ pub async fn create_session_by_email(
 ) -> InternalResult<SessionPackage> {
     let user = retrieve_user_by_email(pool, email)
         .await?
-        .ok_or_else(|| InternalError::new(source!(), StatusCode::NOT_FOUND, "User not found"))?;
+        .ok_or_else(|| InternalError::new(StatusCode::NOT_FOUND, "User not found"))?;
 
     let session: Session = sqlx::query_as(CREATE_SESSION_QUERY)
         .bind(user.id)
@@ -68,7 +66,6 @@ pub async fn create_session_by_email(
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error creating session",
                 err,
@@ -93,7 +90,6 @@ pub async fn create_session_by_user_id(
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error getting user details",
                 err,
@@ -106,7 +102,6 @@ pub async fn create_session_by_user_id(
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error establishing a session",
                 err,
@@ -128,7 +123,6 @@ pub async fn get_passkeys_by_user_id(pool: &PgPool, user_id: Uuid) -> InternalRe
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error getting user passkeys",
                 err,
@@ -149,7 +143,6 @@ pub async fn expire_session(pool: &PgPool, session: &Session) -> InternalResult<
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error expiring session",
                 err,

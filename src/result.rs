@@ -3,8 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::{Debug, Display, Formatter};
 
-#[macro_export]
-macro_rules! source {
+macro_rules! resolve_caller {
     () => {{
         fn f() {}
         fn type_name_of<T>(_: T) -> &'static str {
@@ -32,20 +31,20 @@ pub struct InternalError {
 }
 
 impl InternalError {
-    pub fn trace(source: &str, status_code: StatusCode, message: &str, _error: impl Debug) -> Self {
+    pub fn trace(status_code: StatusCode, message: &str, _error: impl Debug) -> Self {
+        let source = resolve_caller!();
+        let source = source.strip_prefix("::trace").unwrap_or(source);
         #[cfg(feature = "trace")]
         {
-            tracing::error!("[{source} -> {status_code}] {message}: {:?}", _error);
+            tracing::error!("{} [{status_code}] {message}\n\t{:?}", source, _error);
         }
-        Self::build(source, status_code, message, vec![])
+        Self::build(source.to_string(), status_code, message, vec![])
     }
 
-    pub fn extend(
-        source: &str,
-        status_code: StatusCode,
-        message: &str,
-        error: &InternalError,
-    ) -> Self {
+    pub fn extend(status_code: StatusCode, message: &str, error: &InternalError) -> Self {
+        let source = resolve_caller!();
+        let source = source.strip_prefix("::extend").unwrap_or(source);
+
         let mut depth = error.depth.clone();
         depth.insert(
             0,
@@ -54,18 +53,26 @@ impl InternalError {
                 message: error.message.clone(),
             },
         );
-        Self::build(source, status_code, message, depth)
+        Self::build(source.to_string(), status_code, message, depth)
     }
 
-    pub fn new(source: &str, status_code: StatusCode, message: &str) -> Self {
-        Self::build(source, status_code, message, vec![])
+    pub fn new(status_code: StatusCode, message: &str) -> Self {
+        let source = resolve_caller!();
+        let source = source.strip_prefix("::new").unwrap_or(source);
+
+        Self::build(source.to_string(), status_code, message, vec![])
     }
 
-    fn build(source: &str, status_code: StatusCode, message: &str, depth: Vec<ErrorDepth>) -> Self {
+    fn build(
+        source: String,
+        status_code: StatusCode,
+        message: &str,
+        depth: Vec<ErrorDepth>,
+    ) -> Self {
         Self {
             depth,
+            source,
             code: status_code.as_u16(),
-            source: source.to_string(),
             message: message.to_string(),
             reason: status_code
                 .canonical_reason()

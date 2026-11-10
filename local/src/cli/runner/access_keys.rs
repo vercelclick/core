@@ -1,7 +1,7 @@
 use crate::service::keys::LocalKeysConfig;
 use crate::service::project::LocalProjectConfig;
 use crate::service::secrets::LocalSecretConfig;
-use secretpass_core::{InternalError, KeyPair, PrivateKeySeed, StatusCode, source};
+use secretpass_core::{InternalError, KeyPair, PrivateKeySeed, StatusCode};
 use std::collections::HashMap;
 use std::env;
 use std::fs;
@@ -38,7 +38,6 @@ pub fn get_values_from_local_project(
         .unwrap()
         .ok_or_else(|| {
             InternalError::new(
-                source!(),
                 StatusCode::NOT_FOUND,
                 &format!("Secretpass not found under {path}"),
             )
@@ -53,7 +52,6 @@ pub fn get_values_from_local_project(
         .get_environment(&env)
         .ok_or_else(|| {
             InternalError::new(
-                source!(),
                 StatusCode::NOT_FOUND,
                 &format!("Environment {env} not found"),
             )
@@ -84,7 +82,6 @@ pub fn get_values_from_local_project(
             .find(|value| value.target == key_id && value.tag == tag)
             .ok_or_else(|| {
                 InternalError::new(
-                    source!(),
                     StatusCode::NOT_FOUND,
                     &format!(
                         "{} not found in {}:{}",
@@ -110,13 +107,12 @@ pub fn get_values_from_cloud_project(
     let key_id = private_key.public_key().access_key_id();
 
     let url = format!(
-        "{endpoint}/api/projects/{project_id}/keys/access/{key_id}/env/{env_name}/tag/{tag_name}"
+        "{endpoint}/api/projects/{project_id}/access-keys/{key_id}/env/{env_name}/tag/{tag_name}"
     );
 
     let response = reqwest::blocking::get(url)
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Error fetching cloud secrets",
                 err,
@@ -133,7 +129,6 @@ pub fn get_values_from_cloud_project(
         .json()
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Error decoding cloud response",
                 err,

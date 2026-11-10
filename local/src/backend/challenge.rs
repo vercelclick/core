@@ -1,6 +1,6 @@
 use std::sync::LazyLock;
 
-use secretpass_api::PendingChallenge;
+use secretpass_api::backend::PendingChallenge;
 use secretpass_core::enums::ChallengeKind;
 use tokio::sync::Mutex;
 

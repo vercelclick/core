@@ -1,5 +1,6 @@
+use crate::constants::ACCESS_KEY_LENGTH;
 use crate::result::{InternalError, InternalResult};
-use crate::source;
+
 use crate::utils::{bin_decode, bin_encode, fill_random_bytes};
 use argon2::Argon2;
 use http::StatusCode;
@@ -25,9 +26,8 @@ impl DirectAccessKey {
     fn decode(key: &str) -> InternalResult<Self> {
         let key = bin_decode(key)?;
 
-        if key.len() != 80 {
+        if key.len() != ACCESS_KEY_LENGTH {
             return Err(InternalError::new(
-                source!(),
                 StatusCode::BAD_REQUEST,
                 "Invalid direct access key format",
             ));
@@ -39,28 +39,13 @@ impl DirectAccessKey {
 
         Ok(Self {
             project_id: Uuid::from_bytes(project_id.try_into().map_err(|err| {
-                InternalError::trace(
-                    source!(),
-                    StatusCode::BAD_REQUEST,
-                    "Invalid project ID",
-                    err,
-                )
+                InternalError::trace(StatusCode::BAD_REQUEST, "Invalid project ID", err)
             })?),
             first: first.try_into().map_err(|err| {
-                InternalError::trace(
-                    source!(),
-                    StatusCode::BAD_REQUEST,
-                    "Invalid private seed value",
-                    err,
-                )
+                InternalError::trace(StatusCode::BAD_REQUEST, "Invalid private seed value", err)
             })?,
             second: second.try_into().map_err(|err| {
-                InternalError::trace(
-                    source!(),
-                    StatusCode::BAD_REQUEST,
-                    "Invalid private seed value",
-                    err,
-                )
+                InternalError::trace(StatusCode::BAD_REQUEST, "Invalid private seed value", err)
             })?,
         })
     }
@@ -80,7 +65,6 @@ impl PrivateKeySeed {
             .hash_password_into(&self.first, &self.second, &mut seed)
             .map_err(|err| {
                 InternalError::trace(
-                    source!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Internal error hashing private key",
                     err,

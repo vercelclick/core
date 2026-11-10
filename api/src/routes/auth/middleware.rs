@@ -1,4 +1,4 @@
-use crate::ApiState;
+use crate::backend::ApiState;
 use crate::routes::auth::session::get_session;
 use axum::body::Body;
 use axum::extract::Request;
@@ -8,7 +8,7 @@ use std::sync::Arc;
 use axum::response::{IntoResponse, Response};
 use futures_util::future::BoxFuture;
 
-use secretpass_core::{InternalError, source};
+use secretpass_core::InternalError;
 use std::task::{Context, Poll};
 use tower_cookies::Cookies;
 use tower_layer::Layer;
@@ -63,7 +63,7 @@ where
             let cookies = match req.extensions().get::<Cookies>().cloned() {
                 Some(cookies) => cookies,
                 None => {
-                    return Ok(InternalError::new(source!(),
+                    return Ok(InternalError::new(
                         StatusCode::INTERNAL_SERVER_ERROR,
                         "Error loading authentication, please raise a support ticket if the issue persists",
                     )

@@ -1,5 +1,5 @@
-use crate::secrets::{CreateAccessKeyRequest, ProjectPathParams};
-use crate::{ApiState, SessionPackage};
+use crate::backend::secrets::{CreateAccessKeyRequest, ProjectPathParams};
+use crate::backend::{ApiState, SessionPackage};
 use axum::extract::{Path, State};
 use axum::{Extension, Json};
 use secretpass_core::{AccessKey, InternalResult};

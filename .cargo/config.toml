@@ -10,3 +10,11 @@ RP_ID = "secretpass.localhost"
 RP_ORIGIN = "http://secretpass.localhost:3001"
 
 TS_RS_EXPORT_DIR = { value = "../web-app/src/api-types", relative = true }
+
+# Test Keys meant for local usge - must be overriden on prod
+SERVICE_BASE_URL = "expected-api-url"
+JWT_BACKEND_PRIVATE_KEY = "MC4CAQAwBQYDK2VwBCIEIPfj4904K/KsPI0HSo/BKO36ifizLlaIMUkKv2hoaSS0"
+JWT_BACKEND_PUBLIC_KEY = "MCowBQYDK2VwAyEAemQ6PIhbFl/V93TiB5pz9cb8xNI+iiw/WOkHPzm8H48="
+
+JWT_FRONTEND_PRIVATE_KEY = "MC4CAQAwBQYDK2VwBCIEIP8YB8/vJ1aLqoIj4Wct6ybnLdzC2qgJ9g1zYY2ZCxWd"
+JWT_FRONTEND_PUBLIC_KEY = "MCowBQYDK2VwAyEAn93PChSJVZU9xkpkPEsizEQSsbtY8OYdmYf2ezlZKDs="

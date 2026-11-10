@@ -2,7 +2,8 @@ mod backend;
 pub mod db;
 
 use backend::CloudBackendProvider;
-use secretpass_api::{ApiStateInner, create_backend_app};
+use secretpass_api::backend::ApiStateInner;
+use secretpass_api::create_backend_app;
 use secretpass_core::enums::OperationMode;
 use std::env;
 use std::sync::Arc;

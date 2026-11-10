@@ -1,6 +1,6 @@
 use crate::passkeys::helpers::{parse_auth_data, verify_client_data};
 use crate::result::{InternalError, InternalResult};
-use crate::source;
+
 use crate::utils::bin_encode;
 use ciborium::Value;
 use coset::{CborSerializable, CoseKey};
@@ -37,17 +37,11 @@ impl PasskeyCreationResult {
         // Parse attestation object (CBOR)
         let att_obj: Value = ciborium::from_reader(self.response.attestation_object.as_slice())
             .map_err(|e| {
-                InternalError::trace(
-                    source!(),
-                    StatusCode::CONFLICT,
-                    "Error parsing attestation object",
-                    e,
-                )
+                InternalError::trace(StatusCode::CONFLICT, "Error parsing attestation object", e)
             })?;
 
         let Value::Map(m) = &att_obj else {
             return Err(InternalError::new(
-                source!(),
                 StatusCode::BAD_REQUEST,
                 "Invalid attestation object structure",
             ));
@@ -57,19 +51,11 @@ impl PasskeyCreationResult {
             .iter()
             .find(|(k, _)| k.as_text().is_some_and(|s| s == "authData"))
             .ok_or_else(|| {
-                InternalError::new(
-                    source!(),
-                    StatusCode::BAD_REQUEST,
-                    "Missing authentication data",
-                )
+                InternalError::new(StatusCode::BAD_REQUEST, "Missing authentication data")
             })?;
 
         let auth_data_bytes = auth_data_value.as_bytes().ok_or_else(|| {
-            InternalError::new(
-                source!(),
-                StatusCode::CONFLICT,
-                "Invalid authentication data",
-            )
+            InternalError::new(StatusCode::CONFLICT, "Invalid authentication data")
         })?;
 
         let (flags, credential_data) = parse_auth_data(auth_data_bytes)?;
@@ -77,7 +63,6 @@ impl PasskeyCreationResult {
 
         let cred_bytes = credential_data.ok_or_else(|| {
             InternalError::new(
-                source!(),
                 StatusCode::CONFLICT,
                 "Attestation data is missing from the credential returned",
             )
@@ -85,12 +70,7 @@ impl PasskeyCreationResult {
         let (cred_id, pub_key_cbor) = extract_credential(&cred_bytes)?;
         // Validate the public key parses
         CoseKey::from_slice(pub_key_cbor).map_err(|e| {
-            InternalError::trace(
-                source!(),
-                StatusCode::CONFLICT,
-                "Invalid Public Key CBOR",
-                e,
-            )
+            InternalError::trace(StatusCode::CONFLICT, "Invalid Public Key CBOR", e)
         })?;
 
         // Encode for storage
@@ -104,22 +84,16 @@ impl PasskeyCreationResult {
 fn extract_credential(data: &[u8]) -> InternalResult<(&[u8], &[u8])> {
     if data.len() < 18 {
         return Err(InternalError::new(
-            source!(),
             StatusCode::CONFLICT,
             "Invalid credential data",
         ));
     }
-    let cred_id_len = u16::from_be_bytes(data[16..18].try_into().map_err(|err| {
-        InternalError::trace(
-            source!(),
-            StatusCode::CONFLICT,
-            "Invalid credential ID",
-            err,
-        )
-    })?) as usize;
+    let cred_id_len =
+        u16::from_be_bytes(data[16..18].try_into().map_err(|err| {
+            InternalError::trace(StatusCode::CONFLICT, "Invalid credential ID", err)
+        })?) as usize;
     if data.len() < 18 + cred_id_len {
         return Err(InternalError::new(
-            source!(),
             StatusCode::CONFLICT,
             "Credential ID incomplete",
         ));

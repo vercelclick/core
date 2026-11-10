@@ -1,12 +1,12 @@
 use crate::backend::projects::environments::get_environment_by_name;
 use crate::backend::projects::project::get_contributor_by_id;
 use crate::backend::projects::secrets::read::get_secret_by_name;
-use secretpass_api::environments::SecretWithEncryptedValues;
-use secretpass_api::secrets::{CreateSecretRequest, ProjectEnvPathParams};
+use secretpass_api::backend::environments::SecretWithEncryptedValues;
+use secretpass_api::backend::secrets::{CreateSecretRequest, ProjectEnvPathParams};
 use secretpass_core::enums::SecretDataType;
 use secretpass_core::{
     ContributorPublicKey, InternalError, InternalResult, SecretDefinition, SecretValue, StatusCode,
-    User, source,
+    User,
 };
 use sqlx::{PgPool, Postgres, QueryBuilder};
 use uuid::Uuid;
@@ -26,7 +26,6 @@ pub async fn create_secret(
 ) -> InternalResult<SecretWithEncryptedValues> {
     let mut tx = pool.begin().await.map_err(|err| {
         InternalError::trace(
-            source!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error establishing a transaction",
             err,
@@ -35,23 +34,14 @@ pub async fn create_secret(
 
     let contributor = get_contributor_by_id(pool, user, params.project_id)
         .await?
-        .ok_or_else(|| {
-            InternalError::new(
-                source!(),
-                StatusCode::FORBIDDEN,
-                "User not found in project",
-            )
-        })?;
+        .ok_or_else(|| InternalError::new(StatusCode::FORBIDDEN, "User not found in project"))?;
 
     let environment = get_environment_by_name(pool, params.project_id, &params.env_name)
         .await?
-        .ok_or_else(|| {
-            InternalError::new(source!(), StatusCode::NOT_FOUND, "Environment not found")
-        })?;
+        .ok_or_else(|| InternalError::new(StatusCode::NOT_FOUND, "Environment not found"))?;
 
     let access = contributor.get_access(&params.env_name).ok_or_else(|| {
         InternalError::new(
-            source!(),
             StatusCode::FORBIDDEN,
             "You do not have access to this environment",
         )
@@ -59,7 +49,6 @@ pub async fn create_secret(
 
     access.is_env_admin().ok_or_else(|| {
         InternalError::new(
-            source!(),
             StatusCode::FORBIDDEN,
             "You do not have permission to create secrets in this environment",
         )
@@ -70,7 +59,6 @@ pub async fn create_secret(
         .is_none()
         .ok_or_else(|| {
             InternalError::new(
-                source!(),
                 StatusCode::FORBIDDEN,
                 &format!("{} already exists", request.name),
             )
@@ -85,7 +73,6 @@ pub async fn create_secret(
         .await
         .map_err(|err| {
             InternalError::trace(
-                source!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error saving secret definition",
                 err,
@@ -99,7 +86,6 @@ pub async fn create_secret(
             .await
             .map_err(|err| {
                 InternalError::trace(
-                    source!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Internal error saving secret values",
                     err,
@@ -108,7 +94,6 @@ pub async fn create_secret(
 
     tx.commit().await.map_err(|err| {
         InternalError::trace(
-            source!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error committing secret creation",
             err,
@@ -122,7 +107,6 @@ pub async fn create_secret(
             .await
             .map_err(|err| {
                 InternalError::trace(
-                    source!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Internal error getting encrypted values",
                     err,

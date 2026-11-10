@@ -1,9 +1,9 @@
-use crate::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
-use crate::{ApiState, SessionPackage};
+use crate::backend::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
+use crate::backend::{ApiState, SessionPackage};
 use axum::Json;
 use axum::extract::{Extension, Path, State};
 use reqwest::StatusCode;
-use secretpass_core::{InternalError, InternalResult, Project, User, source};
+use secretpass_core::{InternalError, InternalResult, Project, User};
 use serde::Deserialize;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -51,7 +51,7 @@ pub async fn get_project_by_id(
         .backend
         .get_project_by_id(&user, request.project_id)
         .await?
-        .ok_or_else(|| InternalError::new(source!(), StatusCode::NOT_FOUND, "Project not found"))?;
+        .ok_or_else(|| InternalError::new(StatusCode::NOT_FOUND, "Project not found"))?;
 
     Ok(Json(project))
 }

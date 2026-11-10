@@ -8,7 +8,7 @@ use crate::session::SecureSession;
 use secretpass_core::constants::RP_ID;
 use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
 use secretpass_core::utils::bin_decode;
-use secretpass_core::{InternalError, InternalResult, StatusCode, source};
+use secretpass_core::{InternalError, InternalResult, StatusCode};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use web_sys::{
@@ -54,7 +54,6 @@ impl DecryptionAuthorizationRequest {
 
         let session = prf_results.map(SecureSession::new).ok_or_else(|| {
             InternalError::new(
-                source!(),
                 StatusCode::BAD_GATEWAY,
                 "Missing Pseudo Random Function results!",
             )
@@ -92,7 +91,6 @@ async fn browser_user_authorize(
         Ok(promise) => promise,
         Err(err) => {
             return Err(InternalError::trace(
-                source!(),
                 StatusCode::CONFLICT,
                 "Error getting passkey",
                 err,

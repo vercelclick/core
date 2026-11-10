@@ -40,6 +40,7 @@ chrono = { version = "0.4.45", features = ["serde", "wasm-bindgen"] }
 getrandom = { version = "0.4.3", features = ["wasm_js"] }
 hex = "0.4.3"
 http = { version = "1.5.0", default-features = false }
+jsonwebtoken = { version = "11.1.0", features = ["rust_crypto"] }
 rand = { version = "0.10.2", default-features = false, features = ["chacha", "sys_rng"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1.0.154", features = ["alloc"] }
