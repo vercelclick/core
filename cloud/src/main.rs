@@ -1,10 +1,14 @@
+mod auth_session;
 mod backend;
 pub mod db;
+pub mod emails;
+pub mod routes;
 
+use crate::db::DB_POOL;
+use crate::routes::{cloud_routes, public_cloud_routes};
 use backend::CloudBackendProvider;
 use secretpass_api::backend::ApiStateInner;
-use secretpass_api::create_backend_app;
-use secretpass_core::enums::OperationMode;
+use secretpass_api::build_api_router;
 use std::env;
 use std::sync::Arc;
 
@@ -13,14 +17,15 @@ async fn main() {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL not defined");
     let pool = sqlx::PgPool::connect(&database_url).await.unwrap();
 
-    let provider = CloudBackendProvider::new(pool);
+    DB_POOL
+        .set(pool)
+        .expect("Database pool already initialized");
 
-    let state = ApiStateInner {
-        mode: OperationMode::Cloud,
-        backend: Arc::new(provider),
-    };
+    let backend = CloudBackendProvider();
 
-    let app = create_backend_app(state);
+    let state = ApiStateInner::new(Arc::new(backend));
+
+    let app = build_api_router(state, Some(public_cloud_routes()), Some(cloud_routes()));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
 

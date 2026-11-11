@@ -8,8 +8,6 @@ use secretpass_api::backend::environments::{
     GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues,
 };
 
-use chrono::Utc;
-use secretpass_api::backend::auth::BackendCreateUserRequest;
 use secretpass_api::backend::projects::{
     CreateProjectRequest, GetProjectResult, ListProjectsResult,
 };
@@ -20,25 +18,14 @@ use secretpass_api::backend::secrets::{
 };
 use secretpass_api::backend::{BackendProvider, PendingChallenge};
 use secretpass_core::enums::ChallengeKind;
-use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
 use secretpass_core::{
-    AccessKey, InternalError, InternalResult, Passkey, Project, Session, StatusCode,
-    TargetedPublicKey, User,
+    AccessKey, InternalError, InternalResult, Passkey, Project, StatusCode, TargetedPublicKey, User,
 };
 use std::collections::HashMap;
 use uuid::Uuid;
 
 #[derive(Default)]
 pub struct LocalBackendProvider {}
-
-fn not_supported(title: &str) -> InternalError {
-    InternalError::new(
-        StatusCode::NOT_IMPLEMENTED,
-        &format!(
-            "{title} not supported locally; this call should have been proxied, please report an issue to support@secretpass.cloud"
-        ),
-    )
-}
 
 #[async_trait::async_trait]
 impl BackendProvider for LocalBackendProvider {
@@ -47,90 +34,17 @@ impl BackendProvider for LocalBackendProvider {
         Ok(())
     }
 
-    async fn retrieve_pending_challenge_for_attempt(
-        &self,
-        _kind: ChallengeKind,
-        _owner: String,
-    ) -> InternalResult<Option<PendingChallenge>> {
-        Err(not_supported("Challenge attempts"))
-    }
-
     async fn get_pending_challenge(
         &self,
         kind: ChallengeKind,
-        owner: String,
+        owner: &str,
     ) -> InternalResult<Option<PendingChallenge>> {
         let challenge = get_pending_challenge(kind, owner).await;
         Ok(challenge)
     }
 
-    async fn create_user(
-        &self,
-        _request: BackendCreateUserRequest,
-    ) -> InternalResult<(Session, User, Vec<Passkey>)> {
-        Err(not_supported("Create user"))
-    }
-
-    async fn get_session(&self, id: Uuid, user_id: Uuid) -> InternalResult<Option<Session>> {
-        // On local context, JWT session verification is enough
-        Ok(Some(Session {
-            id,
-            user_id,
-            expires_on: Utc::now(),
-            last_seen: Utc::now(),
-        }))
-    }
-
-    async fn create_session_by_email(
-        &self,
-        _email: String,
-    ) -> InternalResult<(Session, User, Vec<Passkey>)> {
-        Err(not_supported("Create session by email"))
-    }
-
-    async fn get_user_email(&self, _email: String) -> InternalResult<Option<User>> {
-        Err(not_supported("Get user by email"))
-    }
-
-    async fn create_session_by_user_id(
-        &self,
-        _user_id: Uuid,
-    ) -> InternalResult<(Session, User, Vec<Passkey>)> {
-        Err(not_supported("Create session by passkey"))
-    }
-
-    async fn retrieve_passkey_by_cred_id(
-        &self,
-        _cred_id: String,
-        _email: String,
-    ) -> InternalResult<Option<Passkey>> {
-        Err(not_supported("Retrieve user id and public key"))
-    }
-
-    async fn retrieve_user_and_known_passkeys(
-        &self,
-        _email: String,
-    ) -> InternalResult<Option<(User, Vec<Passkey>)>> {
-        Err(not_supported("Retrieve user with passkeys"))
-    }
-
     async fn list_projects(&self, user: &User) -> InternalResult<ListProjectsResult> {
         list_projects(user).await
-    }
-
-    async fn logout_session(&self, _session: &Session) -> InternalResult<()> {
-        Err(not_supported("Session logout"))
-    }
-
-    async fn save_passkey(
-        &self,
-        _user: &User,
-        _passkey_name: String,
-        _cred_id: String,
-        _public_key: String,
-        _public_key_result: PublicKeyGenerateResult,
-    ) -> InternalResult<Passkey> {
-        Err(not_supported("Save passkey"))
     }
 
     async fn create_project(

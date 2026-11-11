@@ -1,4 +1,4 @@
-use crate::emails::template::EmailTemplate;
+use crate::emails::EmailTemplate;
 use lettre::Message;
 use lettre::message::Mailbox;
 use lettre::message::header::ContentType;
@@ -19,7 +19,7 @@ static MAILER: LazyLock<AsyncSmtpTransport<Tokio1Executor>> = LazyLock::new(|| {
         .build()
 });
 
-pub(crate) async fn send_email(recipient: &str, template: EmailTemplate) -> InternalResult<()> {
+pub async fn send_email(recipient: &str, template: EmailTemplate) -> InternalResult<()> {
     let (subject, content) = template.build();
 
     let message = Message::builder()
@@ -67,3 +67,4 @@ fn get_sender() -> InternalResult<Mailbox> {
 
     Ok(mbox)
 }
+

@@ -1,4 +1,5 @@
 use crate::backend::projects::project::get_contributor_by_id;
+use crate::db;
 use axum::http::StatusCode;
 use secretpass_api::backend::environments::{
     GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues,
@@ -8,7 +9,7 @@ use secretpass_core::{
     ContributorPublicKey, Environment, InternalError, InternalResult, Project, SecretDefinition,
     SecretValue, User,
 };
-use sqlx::{PgPool, Postgres, QueryBuilder};
+use sqlx::{Postgres, QueryBuilder};
 use uuid::Uuid;
 
 pub fn environments_insert_query_builder(
@@ -31,7 +32,6 @@ pub fn environments_insert_query_builder(
 }
 
 pub async fn get_environment_by_name(
-    pool: &PgPool,
     project_id: Uuid,
     env_name: &str,
 ) -> InternalResult<Option<Environment>> {
@@ -39,7 +39,7 @@ pub async fn get_environment_by_name(
         sqlx::query_as(r#"SELECT * FROM "Environments" WHERE project_id = $1 AND name = $2"#)
             .bind(project_id)
             .bind(env_name)
-            .fetch_optional(pool)
+            .fetch_optional(db::pool())
             .await
             .map_err(|err| {
                 InternalError::trace(
@@ -53,11 +53,10 @@ pub async fn get_environment_by_name(
 }
 
 pub async fn get_environment_handler(
-    pool: &PgPool,
     user: &User,
     request: &GetEnvironmentRequest,
 ) -> InternalResult<Option<GetEnvironmentResult>> {
-    let contributor = match get_contributor_by_id(pool, user, request.project_id).await? {
+    let contributor = match get_contributor_by_id(user, request.project_id).await? {
         Some(pu) => pu,
         None => return Ok(None),
     };
@@ -67,7 +66,7 @@ pub async fn get_environment_handler(
         None => return Ok(None),
     };
 
-    let environment = get_environment_by_name(pool, contributor.project_id, &request.env_name)
+    let environment = get_environment_by_name(contributor.project_id, &request.env_name)
         .await?
         .ok_or_else(|| InternalError::new(StatusCode::NOT_FOUND, "Environment not found"))?;
 
@@ -76,7 +75,7 @@ pub async fn get_environment_handler(
     )
     .bind(contributor.project_id)
     .bind(&request.env_name)
-    .fetch_all(pool)
+    .fetch_all(db::pool())
     .await
     .map_err(|err| {
         InternalError::trace(
@@ -93,7 +92,7 @@ pub async fn get_environment_handler(
     )
     .bind(contributor.id)
     .bind(&request.env_name)
-    .fetch_all(pool)
+    .fetch_all(db::pool())
     .await
     .map_err(|err| {
         InternalError::trace(
@@ -108,7 +107,7 @@ pub async fn get_environment_handler(
                     WHERE contributor_id = $1"#,
     )
     .bind(contributor.id)
-    .fetch_all(pool)
+    .fetch_all(db::pool())
     .await
     .map_err(|err| {
         InternalError::trace(

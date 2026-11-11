@@ -1,4 +1,3 @@
-use crate::backend::ApiState;
 use crate::routes::auth::session::get_session;
 use axum::body::Body;
 use axum::extract::Request;
@@ -12,13 +11,11 @@ use tower_layer::Layer;
 use tower_service::Service;
 
 #[derive(Clone)]
-pub struct AuthLayer {
-    state: ApiState,
-}
+pub struct AuthLayer {}
 
 impl AuthLayer {
-    pub fn new(state: ApiState) -> Self {
-        Self { state }
+    pub fn new() -> Self {
+        Self {}
     }
 }
 
@@ -26,17 +23,13 @@ impl<S> Layer<S> for AuthLayer {
     type Service = AuthService<S>;
 
     fn layer(&self, inner: S) -> Self::Service {
-        AuthService {
-            inner,
-            state: self.state.clone(),
-        }
+        AuthService { inner }
     }
 }
 
 #[derive(Clone)]
 pub struct AuthService<S> {
     inner: S,
-    state: ApiState,
 }
 
 impl<S> Service<Request<Body>> for AuthService<S>
@@ -54,13 +47,12 @@ where
 
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
         let mut inner = self.inner.clone();
-        let state = self.state.clone();
 
         Box::pin(async move {
             let headers = req.headers();
             let path = req.uri().path();
 
-            let session = match get_session(&state, path, headers).await {
+            let session = match get_session(path, headers).await {
                 Ok(package) => package,
                 Err(err) => {
                     return Ok(err.into_response());

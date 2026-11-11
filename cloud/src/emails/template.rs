@@ -5,7 +5,7 @@ const CREATE_EMAIL_TEMPLATE: &str = include_str!("templates/create_account.html"
 const CONFIRM_EMAIL_TEMPLATE: &str = include_str!("templates/confirm_email.html");
 
 #[derive(Display)]
-pub(crate) enum EmailTemplate {
+pub enum EmailTemplate {
     Create {
         subject: String,
         name: String,
@@ -20,7 +20,7 @@ pub(crate) enum EmailTemplate {
 }
 
 impl EmailTemplate {
-    pub(crate) fn build(&self) -> (String, String) {
+    pub fn build(&self) -> (String, String) {
         match self {
             EmailTemplate::Create {
                 subject,

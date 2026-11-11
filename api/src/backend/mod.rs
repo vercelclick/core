@@ -5,12 +5,12 @@ pub mod projects;
 mod provider;
 pub mod secrets;
 
-pub use auth::CreateUserRequest;
-
-pub use challenge::{CheckChallengeResult, PendingChallenge};
+pub use challenge::PendingChallenge;
 pub use provider::BackendProvider;
 use secretpass_core::enums::OperationMode;
 use std::sync::Arc;
+
+pub type ApiState = Arc<ApiStateInner>;
 
 #[derive(Clone)]
 pub struct ApiStateInner {
@@ -18,4 +18,22 @@ pub struct ApiStateInner {
     pub backend: Arc<dyn BackendProvider>,
 }
 
-pub type ApiState = Arc<ApiStateInner>;
+#[cfg(feature = "cloud")]
+impl ApiStateInner {
+    pub fn new(backend: Arc<dyn BackendProvider>) -> Self {
+        Self {
+            mode: OperationMode::Cloud,
+            backend,
+        }
+    }
+}
+
+#[cfg(not(feature = "cloud"))]
+impl ApiStateInner {
+    pub fn new(backend: Arc<dyn BackendProvider>) -> Self {
+        Self {
+            mode: OperationMode::Local,
+            backend,
+        }
+    }
+}

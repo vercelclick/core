@@ -17,7 +17,7 @@ pub async fn save_pending_challenge(challenge: &PendingChallenge) {
     store.challenge = Some(challenge.clone());
 }
 
-pub async fn get_pending_challenge(kind: ChallengeKind, owner: String) -> Option<PendingChallenge> {
+pub async fn get_pending_challenge(kind: ChallengeKind, owner: &str) -> Option<PendingChallenge> {
     let mut store = CHALLENGE_STORE.lock().await;
     if let Some(pending) = store.challenge.clone() {
         store.challenge = None;

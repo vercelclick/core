@@ -19,7 +19,7 @@ dirs = "7.0.0"
 rcgen = "0.14.10"
 reqwest = { version = "0.13.5", features = ["json", "blocking"] }
 rustls = { version = "0.23.46", default-features = false, features = ["aws-lc-rs"] }
-secretpass-api = { path = "../api" }
+secretpass-api = { path = "../api", default-features = false, features = [] }
 secretpass-core = { path = "..", features = ["axum", "trace"] }
 serde = { version = "1.0.229" }
 serde_json = "1.0.151"

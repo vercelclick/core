@@ -1,7 +1,8 @@
+use crate::db;
 use secretpass_api::backend::PendingChallenge;
 use secretpass_core::enums::ChallengeKind;
 use secretpass_core::{InternalError, InternalResult, StatusCode};
-use sqlx::{PgPool, Row};
+use sqlx::Row;
 
 // language=sql
 const PENDING_CHALLENGE_INSERT: &str = r#"
@@ -12,16 +13,13 @@ const PENDING_CHALLENGE_INSERT: &str = r#"
         do update set value_hash = EXCLUDED.value_hash, attempts_left = EXCLUDED.attempts_left, generated_on = now()
 "#;
 
-pub async fn insert_or_replace_challenge(
-    pool: &PgPool,
-    challenge: &PendingChallenge,
-) -> InternalResult<()> {
+pub async fn insert_or_replace_challenge(challenge: &PendingChallenge) -> InternalResult<()> {
     sqlx::query(PENDING_CHALLENGE_INSERT)
         .bind(&challenge.owner)
         .bind(challenge.kind)
         .bind(&challenge.value_hash)
         .bind(challenge.attempts_left)
-        .execute(pool)
+        .execute(db::pool())
         .await
         .map_err(|err| {
             InternalError::trace(
@@ -47,15 +45,14 @@ const PENDING_CHALLENGE_ATTEMPT: &str = r#"
 "#;
 
 async fn query_pending_challenge(
-    pool: &PgPool,
     query: &'static str,
     kind: ChallengeKind,
-    owner: String,
+    owner: &str,
 ) -> InternalResult<Option<PendingChallenge>> {
     let row = sqlx::query(query)
         .bind(kind)
         .bind(&owner)
-        .fetch_optional(pool)
+        .fetch_optional(db::pool())
         .await
         .map_err(|err| {
             InternalError::trace(
@@ -72,7 +69,7 @@ async fn query_pending_challenge(
 
     let challenge = PendingChallenge {
         kind,
-        owner,
+        owner: owner.to_string(),
         value_hash: row.get("value_hash"),
         generated_on: row.get("generated_on"),
         attempts_left: row.get("attempts_left"),
@@ -82,17 +79,15 @@ async fn query_pending_challenge(
 }
 
 pub async fn get_pending_challenge(
-    pool: &PgPool,
     kind: ChallengeKind,
-    owner: String,
+    owner: &str,
 ) -> InternalResult<Option<PendingChallenge>> {
-    query_pending_challenge(pool, PENDING_CHALLENGE_GET, kind, owner).await
+    query_pending_challenge(PENDING_CHALLENGE_GET, kind, owner).await
 }
 
-pub async fn retrieve_pending_challenge_for_attempt(
-    pool: &PgPool,
+pub async fn attempt_email_challenge(
     kind: ChallengeKind,
-    owner: String,
+    owner: &str,
 ) -> InternalResult<Option<PendingChallenge>> {
-    query_pending_challenge(pool, PENDING_CHALLENGE_ATTEMPT, kind, owner).await
+    query_pending_challenge(PENDING_CHALLENGE_ATTEMPT, kind, owner).await
 }

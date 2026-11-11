@@ -1,12 +1,13 @@
 use crate::backend::projects::project::get_contributor_by_id;
 use crate::backend::projects::secrets::create::secret_values_insert_query_builder;
+use crate::db;
+use crate::db::{Transaction, TransactionOperation};
 use axum::http::StatusCode;
 use secretpass_api::backend::secrets::{
     CreateAccessKeyRequest, CreateFederatedAccessKeyRequest, CreateFederatedAccessKeyResult,
     ProjectPathParams,
 };
 use secretpass_core::{AccessKey, FederatedAccessKey, InternalError, InternalResult, User};
-use sqlx::PgPool;
 use uuid::Uuid;
 
 // language=sql
@@ -23,21 +24,58 @@ const INSERT_FEDERATED_ACCESS_KEY_QUERY: &str = r#"
     RETURNING *
 "#;
 
+struct CreateAccessKeyWorkflow {
+    email: String,
+    project_id: Uuid,
+    request: CreateAccessKeyRequest,
+}
+
+#[async_trait::async_trait]
+impl TransactionOperation<AccessKey> for CreateAccessKeyWorkflow {
+    async fn execute(self, tx: &mut Transaction<'_>) -> InternalResult<AccessKey> {
+        let access_key: AccessKey = sqlx::query_as(INSERT_ACCESS_KEY_QUERY)
+            .bind(self.request.id)
+            .bind(&self.request.name)
+            .bind(&self.request.description)
+            .bind(self.project_id)
+            .bind(self.request.access.clone())
+            .bind(self.request.public_key)
+            .bind(&self.email)
+            .fetch_one(&mut **tx)
+            .await
+            .map_err(|err| {
+                InternalError::trace(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal error creating direct access key",
+                    err,
+                )
+            })?;
+
+        // TODO: Verify that the targets are matching
+        if !self.request.encrypted_values.is_empty() {
+            secret_values_insert_query_builder(self.project_id, &self.request.encrypted_values)
+                .build()
+                .execute(&mut **tx)
+                .await
+                .map_err(|err| {
+                    InternalError::trace(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Internal error adding access key values",
+                        err,
+                    )
+                })?;
+        }
+
+        Ok(access_key)
+    }
+}
+
 pub async fn create_access_key(
-    pool: &PgPool,
     user: &User,
     project_id: Uuid,
     request: CreateAccessKeyRequest,
 ) -> InternalResult<AccessKey> {
-    let mut tx = pool.begin().await.map_err(|err| {
-        InternalError::trace(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Internal error establishing a transaction",
-            err,
-        )
-    })?;
-
-    let contributor = get_contributor_by_id(pool, user, project_id)
+    let contributor = get_contributor_by_id(user, project_id)
         .await?
         .ok_or_else(|| {
             InternalError::new(
@@ -53,57 +91,20 @@ pub async fn create_access_key(
         )
     })?;
 
-    let access_key: AccessKey = sqlx::query_as(INSERT_ACCESS_KEY_QUERY)
-        .bind(request.id)
-        .bind(&request.name)
-        .bind(&request.description)
-        .bind(project_id)
-        .bind(request.access.clone())
-        .bind(request.public_key)
-        .bind(&user.email)
-        .fetch_one(&mut *tx)
-        .await
-        .map_err(|err| {
-            InternalError::trace(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Internal error creating direct access key",
-                err,
-            )
-        })?;
-
-    // TODO: Verify that the targets are matching
-    if !request.encrypted_values.is_empty() {
-        secret_values_insert_query_builder(project_id, &request.encrypted_values)
-            .build()
-            .execute(&mut *tx)
-            .await
-            .map_err(|err| {
-                InternalError::trace(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Internal error adding access key values",
-                    err,
-                )
-            })?;
-    }
-
-    tx.commit().await.map_err(|err| {
-        InternalError::trace(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Internal error committing access key creation",
-            err,
-        )
-    })?;
-
-    Ok(access_key)
+    db::with_transaction(CreateAccessKeyWorkflow {
+        project_id,
+        email: user.email.clone(),
+        request,
+    })
+    .await
 }
 
 pub async fn create_federated_access_key(
-    pool: &PgPool,
     user: &User,
     params: &ProjectPathParams,
     request: &CreateFederatedAccessKeyRequest,
 ) -> InternalResult<CreateFederatedAccessKeyResult> {
-    let contributor = get_contributor_by_id(pool, user, params.project_id)
+    let contributor = get_contributor_by_id(user, params.project_id)
         .await?
         .ok_or_else(|| {
             InternalError::new(
@@ -127,7 +128,7 @@ pub async fn create_federated_access_key(
         .bind(request.access.clone())
         .bind(request.contributors.clone())
         .bind(&user.email)
-        .fetch_one(pool)
+        .fetch_one(db::pool())
         .await
         .map_err(|err| {
             InternalError::trace(

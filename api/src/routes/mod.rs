@@ -1,13 +1,11 @@
 pub mod auth;
 pub mod projects;
-pub mod user;
 pub mod utils;
 
-use crate::backend::ApiStateInner;
+use crate::backend::{ApiState, ApiStateInner};
 use crate::routes::auth::auth_router;
 use crate::routes::auth::middleware::AuthLayer;
 use crate::routes::projects::{project_routes, public_project_routes};
-use crate::routes::user::user_routes;
 use crate::routes::utils::{add_version_header, health_endpoint, ping_endpoint};
 use axum::http::header;
 use axum::http::{HeaderValue, Method};
@@ -21,12 +19,10 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, fmt};
 
-pub fn create_backend_app(state: ApiStateInner) -> Router {
-    subscribe_tracing();
-
+fn cors_layer() -> CorsLayer {
     let allowed_origin: HeaderValue = RP_ORIGIN.parse().unwrap();
 
-    let cors = CorsLayer::new()
+    CorsLayer::new()
         .allow_origin(allowed_origin)
         .allow_credentials(true)
         .allow_methods([
@@ -43,7 +39,15 @@ pub fn create_backend_app(state: ApiStateInner) -> Router {
             header::ACCEPT_ENCODING,
             header::ACCEPT_ENCODING,
         ])
-        .allow_private_network(true);
+        .allow_private_network(true)
+}
+
+pub fn build_api_router(
+    state: ApiStateInner,
+    additional_public_router: Option<Router<ApiState>>,
+    additional_authenticated_router: Option<Router<ApiState>>,
+) -> Router {
+    subscribe_tracing();
 
     let trace_layer = TraceLayer::new_for_http()
         .make_span_with(|request: &axum::extract::Request| {
@@ -64,17 +68,25 @@ pub fn create_backend_app(state: ApiStateInner) -> Router {
         );
 
     let state = Arc::new(state);
-    let auth_layer = AuthLayer::new(state.clone());
+    let auth_layer = AuthLayer::new();
 
-    Router::new()
-        .nest("/api/projects", project_routes())
-        .nest("/api/users", user_routes())
-        .layer(auth_layer.clone())
-        .nest("/api/projects", public_project_routes())
-        .nest("/api/auth", auth_router(auth_layer.clone()))
+    let mut router = Router::new().nest("/api/v1/projects", project_routes());
+
+    if let Some(authenticated_router) = additional_authenticated_router {
+        router = router.nest("/api/v1", authenticated_router);
+    }
+
+    router = router.layer(auth_layer);
+    if let Some(public_router) = additional_public_router {
+        router = router.nest("/api/v1", public_router);
+    }
+
+    router
+        .nest("/api/v1/projects", public_project_routes())
+        .nest("/api/v1/auth", auth_router())
         .route("/health", get(health_endpoint))
         .route("/ping", post(ping_endpoint))
-        .layer(cors)
+        .layer(cors_layer())
         .layer(trace_layer)
         .layer(axum::middleware::from_fn(add_version_header))
         .with_state(state)

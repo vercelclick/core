@@ -1,13 +1,12 @@
+use crate::db;
 use secretpass_api::backend::secrets::ProjectAccessKeyParams;
 use secretpass_core::{
     AccessKey, InternalError, InternalResult, SecretDefinition, SecretValue, StatusCode,
 };
-use sqlx::PgPool;
 use std::collections::HashMap;
 use uuid::Uuid;
 
 pub async fn get_secret_by_name(
-    pool: &PgPool,
     project_id: Uuid,
     env_name: &str,
     secret_name: &str,
@@ -18,7 +17,7 @@ pub async fn get_secret_by_name(
     .bind(project_id)
     .bind(env_name)
     .bind(secret_name)
-    .fetch_optional(pool)
+    .fetch_optional(db::pool())
     .await
     .map_err(|err| {
         InternalError::trace(
@@ -32,7 +31,6 @@ pub async fn get_secret_by_name(
 }
 
 pub async fn get_access_key_secrets(
-    pool: &PgPool,
     params: ProjectAccessKeyParams,
 ) -> InternalResult<HashMap<String, String>> {
     let access_key: Option<AccessKey> = sqlx::query_as(
@@ -41,7 +39,7 @@ pub async fn get_access_key_secrets(
     )
     .bind(params.project_id)
     .bind(params.key_id)
-    .fetch_optional(pool)
+    .fetch_optional(db::pool())
     .await
     .map_err(|err| {
         InternalError::trace(
@@ -68,7 +66,7 @@ pub async fn get_access_key_secrets(
     .bind(access_key.id)
     .bind(&params.env_name)
     .bind(&params.tag_name)
-    .fetch_all(pool)
+    .fetch_all(db::pool())
     .await
     .map_err(|err| {
         InternalError::trace(

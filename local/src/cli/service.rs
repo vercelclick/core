@@ -4,8 +4,7 @@ use crate::utils::certificates::get_certificates;
 use axum_server::tls_rustls::RustlsConfig;
 use daemon_kit::{Daemon, DaemonConfig};
 use secretpass_api::backend::ApiStateInner;
-use secretpass_api::create_backend_app;
-use secretpass_core::enums::OperationMode;
+use secretpass_api::build_api_router;
 use std::fs;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
@@ -19,12 +18,9 @@ async fn run_server() {
 
     let backend = LocalBackendProvider::default();
 
-    let state = ApiStateInner {
-        mode: OperationMode::Local,
-        backend: Arc::new(backend),
-    };
+    let state = ApiStateInner::new(Arc::new(backend));
 
-    let app = create_backend_app(state);
+    let app = build_api_router(state, None, None);
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 20206);
     let listener = TcpListener::bind(addr).await
         .expect("Unable to bind to secretpass.localhost:20206, check if another instance of secretpass is already running");

@@ -1,21 +1,11 @@
-use crate::backend::ApiState;
 use chrono::{DateTime, Utc};
-use rand::RngExt;
-use secretpass_core::InternalResult;
 use secretpass_core::enums::ChallengeKind;
-use secretpass_core::utils::{bin_encode, fill_random_bytes, get_global_rng, sha256_digest};
-use serde::{Deserialize, Serialize};
+use secretpass_core::utils::{bin_encode, fill_random_bytes, sha256_digest};
+use serde::Deserialize;
 use sqlx::FromRow;
-use ts_rs::TS;
 
+#[cfg(feature = "cloud")]
 const CODE_POOL: &[u8] = b"ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-#[derive(Debug, Clone, Deserialize, Serialize, TS)]
-#[ts(export)]
-pub struct CheckChallengeResult {
-    pub valid: bool,
-    pub attempts_left: i32,
-}
 
 #[derive(Debug, Clone, Deserialize, FromRow)]
 pub struct PendingChallenge {
@@ -31,8 +21,7 @@ impl PendingChallenge {
         let mut challenge = [0u8; 32];
         fill_random_bytes(&mut challenge);
         let value = bin_encode(&challenge);
-        let digest_value = value.clone();
-        let value_hash = sha256_digest(&[digest_value]);
+        let value_hash = sha256_digest(std::slice::from_ref(&value));
 
         let pc = Self {
             kind,
@@ -45,13 +34,11 @@ impl PendingChallenge {
         (value, pc)
     }
 
-    #[allow(unused)]
-    pub(crate) async fn send_email_code(
-        kind: ChallengeKind,
-        owner: String,
-        name: String,
-        operation: Option<String>,
-    ) -> InternalResult<(String, Self)> {
+    #[cfg(feature = "cloud")]
+    pub fn generate_email_code(kind: ChallengeKind, owner: String) -> (String, Self) {
+        use rand::RngExt;
+        use secretpass_core::utils::get_global_rng;
+
         let code = {
             let mut rng = get_global_rng().lock().unwrap();
             let code: String = (0..6)
@@ -63,52 +50,9 @@ impl PendingChallenge {
             code
         };
 
-        #[cfg(feature = "email")]
-        {
-            use crate::emails;
-            use secretpass_core::{InternalError, StatusCode};
+        let value_hash = sha256_digest(std::slice::from_ref(&code));
 
-            let name = name.trim().split(" ").next().unwrap().to_string();
-            let template = match kind {
-                ChallengeKind::EmailSignup => emails::EmailTemplate::Create {
-                    subject: "Verify your email".to_string(),
-                    name,
-                    code: code.clone(),
-                },
-                ChallengeKind::EmailSignIn => emails::EmailTemplate::Confirm {
-                    subject: "Confirm sign in".to_string(),
-                    name,
-                    code: code.clone(),
-                    operation: "attempted to sign in with email".to_string(),
-                },
-                ChallengeKind::EmailAuthorize => {
-                    let operation = operation.ok_or_else(|| {
-                        InternalError::new(
-                            StatusCode::BAD_REQUEST,
-                            "Operation required for email authorize challenge",
-                        )
-                    })?;
-                    emails::EmailTemplate::Confirm {
-                        subject: "Authorize operation".to_string(),
-                        name,
-                        code: code.clone(),
-                        operation,
-                    }
-                }
-                _ => {
-                    return Err(InternalError::new(
-                        StatusCode::NOT_IMPLEMENTED,
-                        &format!("Email challenge {kind} is not supported"),
-                    ));
-                }
-            };
-
-            emails::send_email(&owner.clone(), template).await?;
-        }
-
-        let value_hash = sha256_digest(&[code]);
-
-        let pc = Self {
+        let pending_challenge = Self {
             kind,
             owner,
             value_hash,
@@ -116,16 +60,12 @@ impl PendingChallenge {
             attempts_left: 4,
         };
 
-        Ok(("Sent".to_string(), pc))
+        (code, pending_challenge)
     }
 
     pub fn verify_challenge(&self, value: String) -> bool {
         let hash = sha256_digest(&[value]);
 
         hash == self.value_hash
-    }
-
-    pub(crate) async fn record(&self, state: &ApiState) -> InternalResult<()> {
-        state.backend.record_pending_challenge(self).await
     }
 }

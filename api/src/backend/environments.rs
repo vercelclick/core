@@ -20,11 +20,11 @@ impl SecretWithEncryptedValues {
     pub fn extract(
         definition: &SecretDefinition,
         public_keys: &[ContributorPublicKey],
-        mixed_passkey_values: &[SecretValue],
+        secret_values: &[SecretValue],
     ) -> Self {
         let mut contributor_values: Vec<(ContributorPublicKey, SecretValue)> = Default::default();
 
-        for value in mixed_passkey_values {
+        for value in secret_values {
             if value.name != definition.name {
                 continue;
             }

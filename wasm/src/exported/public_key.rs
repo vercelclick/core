@@ -16,7 +16,7 @@ pub async fn generate_public_keys(
 
     let response = PublicKeyGenerateResult {
         public_key: public_key.encode(),
-        auth_response,
+        auth_result: auth_response,
     }
     .into_ts()?;
 

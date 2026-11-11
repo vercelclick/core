@@ -1,18 +1,17 @@
 use crate::backend::projects::project::get_contributor_by_id;
+use crate::db;
 use secretpass_api::backend::secrets::ProjectSecretPathParams;
 use secretpass_core::{
     AccessKey, Contributor, ContributorPublicKey, InternalError, InternalResult, StatusCode,
     TargetedPublicKey, User,
 };
-use sqlx::PgPool;
 use uuid::Uuid;
 
 pub async fn get_secret_targets(
-    pool: &PgPool,
     user: &User,
     params: &ProjectSecretPathParams,
 ) -> InternalResult<Vec<TargetedPublicKey>> {
-    get_contributor_by_id(pool, user, params.project_id)
+    get_contributor_by_id(user, params.project_id)
         .await?
         .ok_or_else(|| {
             InternalError::new(StatusCode::FORBIDDEN, "User not found in this project")
@@ -27,7 +26,7 @@ pub async fn get_secret_targets(
     "#,
     )
     .bind(params.project_id)
-    .fetch_all(pool)
+    .fetch_all(db::pool())
     .await
     .map_err(|err| {
         InternalError::trace(
@@ -40,7 +39,7 @@ pub async fn get_secret_targets(
     let contributors: Vec<Contributor> =
         sqlx::query_as(r#"SELECT * FROM "Contributors" WHERE project_id=$1"#)
             .bind(params.project_id)
-            .fetch_all(pool)
+            .fetch_all(db::pool())
             .await
             .map_err(|err| {
                 InternalError::trace(
@@ -62,7 +61,7 @@ pub async fn get_secret_targets(
     let access_keys: Vec<AccessKey> =
         sqlx::query_as(r#"SELECT * FROM "AccessKeys" WHERE project_id=$1"#)
             .bind(params.project_id)
-            .fetch_all(pool)
+            .fetch_all(db::pool())
             .await
             .map_err(|err| {
                 InternalError::trace(

@@ -1,6 +1,8 @@
 use crate::backend::projects::environments::get_environment_by_name;
 use crate::backend::projects::project::get_contributor_by_id;
 use crate::backend::projects::secrets::read::get_secret_by_name;
+use crate::db;
+use crate::db::{Transaction, TransactionOperation};
 use secretpass_api::backend::environments::SecretWithEncryptedValues;
 use secretpass_api::backend::secrets::{CreateSecretRequest, ProjectEnvPathParams};
 use secretpass_core::enums::SecretDataType;
@@ -8,7 +10,7 @@ use secretpass_core::{
     ContributorPublicKey, InternalError, InternalResult, SecretDefinition, SecretValue, StatusCode,
     User,
 };
-use sqlx::{PgPool, Postgres, QueryBuilder};
+use sqlx::{Postgres, QueryBuilder};
 use uuid::Uuid;
 
 // language=sql
@@ -18,25 +20,59 @@ const CREATE_SECRET_QUERY: &str = r#"
     RETURNING *
 "#;
 
+struct CreateSecretWorkflow {
+    project_id: Uuid,
+    env_name: String,
+    request: CreateSecretRequest,
+}
+
+#[async_trait::async_trait]
+impl TransactionOperation<(SecretDefinition, Vec<SecretValue>)> for CreateSecretWorkflow {
+    async fn execute(
+        self,
+        tx: &mut Transaction<'_>,
+    ) -> InternalResult<(SecretDefinition, Vec<SecretValue>)> {
+        let definition: SecretDefinition = sqlx::query_as(CREATE_SECRET_QUERY)
+            .bind(self.request.name.clone())
+            .bind(self.env_name.clone())
+            .bind(self.project_id)
+            .bind(self.request.comments.clone())
+            .fetch_one(&mut **tx)
+            .await
+            .map_err(|err| {
+                InternalError::trace(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal error saving secret definition",
+                    err,
+                )
+            })?;
+
+        let secret_values: Vec<SecretValue> =
+            secret_values_insert_query_builder(self.project_id, &self.request.encrypted_values)
+                .build_query_as()
+                .fetch_all(&mut **tx)
+                .await
+                .map_err(|err| {
+                    InternalError::trace(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Internal error saving secret values",
+                        err,
+                    )
+                })?;
+        Ok((definition, secret_values))
+    }
+}
+
 pub async fn create_secret(
-    pool: &PgPool,
     user: &User,
     params: ProjectEnvPathParams,
     request: CreateSecretRequest,
 ) -> InternalResult<SecretWithEncryptedValues> {
-    let mut tx = pool.begin().await.map_err(|err| {
-        InternalError::trace(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Internal error establishing a transaction",
-            err,
-        )
-    })?;
-
-    let contributor = get_contributor_by_id(pool, user, params.project_id)
+    let contributor = get_contributor_by_id(user, params.project_id)
         .await?
         .ok_or_else(|| InternalError::new(StatusCode::FORBIDDEN, "User not found in project"))?;
 
-    let environment = get_environment_by_name(pool, params.project_id, &params.env_name)
+    let environment = get_environment_by_name(params.project_id, &params.env_name)
         .await?
         .ok_or_else(|| InternalError::new(StatusCode::NOT_FOUND, "Environment not found"))?;
 
@@ -54,7 +90,7 @@ pub async fn create_secret(
         )
     })?;
 
-    get_secret_by_name(pool, params.project_id, &params.env_name, &request.name)
+    get_secret_by_name(params.project_id, &params.env_name, &request.name)
         .await?
         .is_none()
         .ok_or_else(|| {
@@ -64,46 +100,17 @@ pub async fn create_secret(
             )
         })?;
 
-    let definition: SecretDefinition = sqlx::query_as(CREATE_SECRET_QUERY)
-        .bind(request.name.clone())
-        .bind(environment.name.clone())
-        .bind(params.project_id)
-        .bind(request.comments.clone())
-        .fetch_one(&mut *tx)
-        .await
-        .map_err(|err| {
-            InternalError::trace(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Internal error saving secret definition",
-                err,
-            )
-        })?;
-
-    let contributor_values: Vec<SecretValue> =
-        secret_values_insert_query_builder(params.project_id, &request.encrypted_values)
-            .build_query_as()
-            .fetch_all(&mut *tx)
-            .await
-            .map_err(|err| {
-                InternalError::trace(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Internal error saving secret values",
-                    err,
-                )
-            })?;
-
-    tx.commit().await.map_err(|err| {
-        InternalError::trace(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Internal error committing secret creation",
-            err,
-        )
-    })?;
+    let (definition, secret_values) = db::with_transaction(CreateSecretWorkflow {
+        env_name: environment.name.clone(),
+        request,
+        project_id: contributor.project_id,
+    })
+    .await?;
 
     let contributor_keys: Vec<ContributorPublicKey> =
         sqlx::query_as(r#"SELECT * FROM "ContributorPublicKeys" WHERE contributor_id=$1"#)
             .bind(contributor.id)
-            .fetch_all(pool)
+            .fetch_all(db::pool())
             .await
             .map_err(|err| {
                 InternalError::trace(
@@ -116,7 +123,7 @@ pub async fn create_secret(
     Ok(SecretWithEncryptedValues::extract(
         &definition,
         &contributor_keys,
-        &contributor_values,
+        &secret_values,
     ))
 }
 

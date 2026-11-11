@@ -1,5 +1,7 @@
 use crate::backend::projects::environments::environments_insert_query_builder;
 use crate::backend::projects::passkeys::contributor_public_key_insert_query_builder;
+use crate::db;
+use crate::db::{Transaction, TransactionOperation};
 use secretpass_api::backend::projects::{
     CreateProjectRequest, GetProjectResult, ListProjectsResult, ProjectListItem,
 };
@@ -8,7 +10,7 @@ use secretpass_core::{
     AccessKey, Contributor, Environment, EnvironmentAccess, FederatedAccessKey, InternalError,
     InternalResult, Passkey, Project, StatusCode, User,
 };
-use sqlx::{FromRow, PgPool, Row};
+use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
 // language=sql
@@ -25,82 +27,83 @@ const CREATE_CONTRIBUTOR_QUERY: &str = r#"
     RETURNING *
 "#;
 
+struct CreateProjectWorkflow {
+    user: User,
+    passkeys: Vec<Passkey>,
+    request: CreateProjectRequest,
+}
+
+#[async_trait::async_trait]
+impl TransactionOperation<Project> for CreateProjectWorkflow {
+    async fn execute(self, tx: &mut Transaction<'_>) -> InternalResult<Project> {
+        let project: Project = sqlx::query_as(CREATE_PROJECT_QUERY)
+            .bind(&self.request.name)
+            .bind(&self.request.description)
+            .fetch_one(&mut **tx)
+            .await
+            .map_err(|err| {
+                InternalError::trace(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal error creating project",
+                    err,
+                )
+            })?;
+
+        environments_insert_query_builder(&project, &self.request.environments)
+            .build()
+            .execute(&mut **tx)
+            .await
+            .map_err(|err| {
+                InternalError::trace(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal error creating environments",
+                    err,
+                )
+            })?;
+
+        let contributor: Contributor = sqlx::query_as(CREATE_CONTRIBUTOR_QUERY)
+            .bind(self.user.id)
+            .bind(ContributorStatus::Active)
+            .bind(project.id)
+            .bind(ContributorRole::Admin)
+            .bind(Vec::<EnvironmentAccess>::new())
+            .fetch_one(&mut **tx)
+            .await
+            .map_err(|err| {
+                InternalError::trace(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal error adding a contributor",
+                    err,
+                )
+            })?;
+
+        contributor_public_key_insert_query_builder(self.user, contributor, self.passkeys)
+            .build()
+            .execute(&mut **tx)
+            .await
+            .map_err(|err| {
+                InternalError::trace(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal error adding public keys",
+                    err,
+                )
+            })?;
+
+        Ok(project)
+    }
+}
+
 pub async fn create_project(
-    pool: &PgPool,
     user: &User,
     passkeys: &[Passkey],
     request: CreateProjectRequest,
 ) -> InternalResult<Project> {
-    let mut tx = pool.begin().await.map_err(|err| {
-        InternalError::trace(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Internal error establishing a transaction",
-            err,
-        )
-    })?;
-
-    let project: Project = sqlx::query_as(CREATE_PROJECT_QUERY)
-        .bind(&request.name)
-        .bind(&request.description)
-        .fetch_one(&mut *tx)
-        .await
-        .map_err(|err| {
-            InternalError::trace(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Internal error creating project",
-                err,
-            )
-        })?;
-
-    environments_insert_query_builder(&project, &request.environments)
-        .build()
-        .execute(&mut *tx)
-        .await
-        .map_err(|err| {
-            InternalError::trace(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Internal error creating environments",
-                err,
-            )
-        })?;
-
-    let contributor: Contributor = sqlx::query_as(CREATE_CONTRIBUTOR_QUERY)
-        .bind(user.id)
-        .bind(ContributorStatus::Active)
-        .bind(project.id)
-        .bind(ContributorRole::Admin)
-        .bind(Vec::<EnvironmentAccess>::new())
-        .fetch_one(&mut *tx)
-        .await
-        .map_err(|err| {
-            InternalError::trace(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Internal error adding a contributor",
-                err,
-            )
-        })?;
-
-    contributor_public_key_insert_query_builder(user, &contributor, passkeys)
-        .build()
-        .execute(&mut *tx)
-        .await
-        .map_err(|err| {
-            InternalError::trace(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Internal error adding public keys",
-                err,
-            )
-        })?;
-
-    tx.commit().await.map_err(|err| {
-        InternalError::trace(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Internal error committing project creation",
-            err,
-        )
-    })?;
-
-    Ok(project)
+    db::with_transaction(CreateProjectWorkflow {
+        user: user.clone(),
+        passkeys: passkeys.to_vec(),
+        request,
+    })
+    .await
 }
 
 // language=sql
@@ -110,10 +113,10 @@ const LIST_PROJECTS_BY_USER_ID: &str = r#"
     WHERE users.user_id = $1
 "#;
 
-pub async fn list_projects(pool: &PgPool, user: &User) -> InternalResult<ListProjectsResult> {
+pub async fn list_projects(user: &User) -> InternalResult<ListProjectsResult> {
     let projects: Vec<Project> = sqlx::query_as(LIST_PROJECTS_BY_USER_ID)
         .bind(user.id)
-        .fetch_all(pool)
+        .fetch_all(db::pool())
         .await
         .map_err(|err| {
             InternalError::trace(
@@ -181,14 +184,13 @@ const GET_FEDERATED_ACCESS_KEYS_QUERY: &str = r#"
 "#;
 
 pub async fn get_project_by_id(
-    pool: &PgPool,
     user: &User,
     project_id: Uuid,
 ) -> InternalResult<Option<GetProjectResult>> {
     let project: Option<Project> = sqlx::query_as(GET_PROJECT_BY_CONTRIBUTOR_ID)
         .bind(project_id)
         .bind(user.id)
-        .fetch_optional(pool)
+        .fetch_optional(db::pool())
         .await
         .map_err(|err| {
             InternalError::trace(
@@ -202,14 +204,14 @@ pub async fn get_project_by_id(
         None => return Ok(None),
     };
 
-    let contributor = match get_contributor_by_id(pool, user, project_id).await? {
+    let contributor = match get_contributor_by_id(user, project_id).await? {
         Some(pu) => pu,
         None => return Ok(None),
     };
 
     let environments: Vec<Environment> = sqlx::query_as(GET_ENVIRONMENTS_BY_PROJECT_ID)
         .bind(project_id)
-        .fetch_all(pool)
+        .fetch_all(db::pool())
         .await
         .map_err(|err| {
             InternalError::trace(
@@ -226,7 +228,7 @@ pub async fn get_project_by_id(
 
     let rows = sqlx::query(GET_CONTRIBUTORS_QUERY)
         .bind(project_id)
-        .fetch_all(pool)
+        .fetch_all(db::pool())
         .await
         .map_err(|err| {
             InternalError::trace(
@@ -253,7 +255,7 @@ pub async fn get_project_by_id(
 
     let access_keys: Vec<AccessKey> = sqlx::query_as(GET_ACCESS_KEYS_QUERY)
         .bind(project_id)
-        .fetch_all(pool)
+        .fetch_all(db::pool())
         .await
         .map_err(|err| {
             InternalError::trace(
@@ -265,7 +267,7 @@ pub async fn get_project_by_id(
 
     let federated_keys: Vec<FederatedAccessKey> = sqlx::query_as(GET_FEDERATED_ACCESS_KEYS_QUERY)
         .bind(project_id)
-        .fetch_all(pool)
+        .fetch_all(db::pool())
         .await
         .map_err(|err| {
             InternalError::trace(
@@ -287,14 +289,13 @@ pub async fn get_project_by_id(
 }
 
 pub async fn get_contributor_by_id(
-    pool: &PgPool,
     user: &User,
     project_id: Uuid,
 ) -> InternalResult<Option<Contributor>> {
     let contributor: Option<Contributor> = sqlx::query_as(GET_CONTRIBUTOR_BY_USER_ID)
         .bind(project_id)
         .bind(user.id)
-        .fetch_optional(pool)
+        .fetch_optional(db::pool())
         .await
         .map_err(|err| {
             InternalError::trace(
