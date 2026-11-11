@@ -8,8 +8,8 @@ use axum::extract::State;
 use secretpass_api::backend::ApiState;
 use secretpass_api::backend::auth::AuthTokenResponse;
 use secretpass_core::InternalResult;
+use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
 use secretpass_core::passkeys::create::PasskeyCreationResult;
-use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
@@ -25,7 +25,8 @@ pub struct CreateUserRequest {
     pub passkey_name: String,
     pub passkey_salt: String,
     pub passkey_result: PasskeyCreationResult,
-    pub public_key_result: PublicKeyGenerateResult,
+    pub public_key: String,
+    pub auth_result: PasskeyAuthorizationResult,
 }
 
 #[derive(Debug, Clone)]
@@ -55,7 +56,7 @@ pub async fn create_user_handler(
             email_address: request.email.clone(),
             confirmation_code: request.confirmation_code,
             user_id: request.id,
-            auth_result: request.public_key_result.auth_result.clone(),
+            auth_result: request.auth_result.clone(),
         },
     )
     .await?;
@@ -68,7 +69,7 @@ pub async fn create_user_handler(
         passkey_cred_id: cred_id,
         passkey_name: request.passkey_name,
         passkey_salt: request.passkey_salt,
-        passkey_public_key: request.public_key_result.public_key,
+        passkey_public_key: request.public_key,
         passkey_web_public_key: web_public_key,
     })
     .await?;

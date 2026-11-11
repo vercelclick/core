@@ -4,10 +4,9 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use ts_rs::TS;
-use tsify::Tsify;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, FromRow)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS, FromRow)]
 pub struct Environment {
     pub name: String,
     pub project_id: Uuid,
@@ -17,7 +16,7 @@ pub struct Environment {
     pub created_at: DateTime<Utc>, // Fixed - invalidates keys if changed
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, sqlx::Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS, sqlx::Type)]
 #[sqlx(type_name = r#""EnvironmentAccess""#)]
 pub struct EnvironmentAccess {
     pub name: String,

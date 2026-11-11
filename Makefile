@@ -12,11 +12,6 @@ WASM_TARGET    ?= web
 RUN_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 
 
-api-export-types:
-	@echo "==> Exporting shared types"
-	rm -rf ../web-app/src/api-types
-	cargo test export_bindings -p secretpass-api
-
 cloud-run-dev:
 	echo "==> Running local cloud server"
 	export $$(cat .env | xargs) && cargo run -p secretpass-cloud
@@ -49,7 +44,8 @@ wasm-add-target:
 
 
 wasm-build-dev:
-	@echo "==> Building WASM for dev server usage"
+	@echo "==> Building WASM for development"
+	rm -r ../web-app/src/core || echo ""
 	RUSTFLAGS='--cfg=web_sys_unstable_apis' \
 	cargo rustc -p secretpass-wasm --crate-type cdylib --target wasm32-unknown-unknown
 	wasm-bindgen \
@@ -58,10 +54,14 @@ wasm-build-dev:
       --out-name index \
       --out-dir ../web-app/src/core
 
+	./.scripts/export-types
+
 
 wasm-build-prod:
-	@echo "==> Building WASM for cloud usage"
-	RP_ID="vault.secretpass.cloud" \
+	@echo "==> Building WASM for production"
+	rm -r ../web-app/src/core || echo ""
+	rm -r ../web-app/src/core
+	RP_ID="vault.vercel.click" \
 	RUSTFLAGS='--cfg=web_sys_unstable_apis' \
 	cargo rustc -p secretpass-wasm --release --crate-type cdylib --target wasm32-unknown-unknown
 	wasm-bindgen \
@@ -69,6 +69,8 @@ wasm-build-prod:
 	  --target bundler \
       --out-name index \
 	  --out-dir ../web-app/src/core
+
+	./.scripts/export-types
 
 
 # ------------------------------------------------------------------------------

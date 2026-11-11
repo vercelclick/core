@@ -11,8 +11,8 @@ use axum::http::StatusCode;
 use axum::{Extension, Json};
 use secretpass_api::backend::ApiState;
 use secretpass_api::backend::auth::AuthTokenResponse;
+use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
 use secretpass_core::passkeys::create::PasskeyCreationResult;
-use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
 use secretpass_core::{AuthSession, InternalError, InternalResult};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -24,8 +24,9 @@ pub struct CreatePasskeyRequest {
     name: String,
     salt: String,
     confirmation_code: String,
-    create_response: PasskeyCreationResult,
-    public_key_result: PublicKeyGenerateResult,
+    create_result: PasskeyCreationResult,
+    public_key: String,
+    auth_result: PasskeyAuthorizationResult,
 }
 
 pub async fn create_passkey_handler(
@@ -41,9 +42,9 @@ pub async fn create_passkey_handler(
         false,
         &state,
         PasskeyCreateValidationRequest {
-            create_result: request.create_response,
+            create_result: request.create_result,
             email_address: auth_session.user.email.clone(),
-            auth_result: request.public_key_result.auth_result.clone(),
+            auth_result: request.auth_result.clone(),
             user_id: auth_session.user.id,
             confirmation_code: request.confirmation_code,
         },
@@ -56,7 +57,7 @@ pub async fn create_passkey_handler(
         cred_id,
         web_public_key,
         salt: request.salt,
-        public_key: request.public_key_result.public_key,
+        public_key: request.public_key,
     })
     .await?;
 

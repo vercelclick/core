@@ -50,9 +50,8 @@ where
 
         Box::pin(async move {
             let headers = req.headers();
-            let path = req.uri().path();
 
-            let session = match get_session(path, headers).await {
+            let session = match get_session(headers).await {
                 Ok(package) => package,
                 Err(err) => {
                     return Ok(err.into_response());

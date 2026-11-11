@@ -17,7 +17,7 @@ secretpass-api = { path = "../api", features = ["cloud"] }
 secretpass-core = { path = "..", features = ["axum", "trace"] }
 sqlx = { version = "0.9.0", features = ["macros", "chrono", "postgres", "runtime-tokio", "derive", "sqlx-toml", "uuid", "tls-rustls-ring"] }
 strum = "0.28.0"
-ts-rs = { version = "12.0.1", features = ["chrono-impl"] }
+ts-rs = { version = "12.0.1", features = ["chrono-impl", "uuid-impl"] }
 tokio = { version = "1.53.3", features = ["full"] }
 uuid = { version = "1.29.0", features = ["serde"] }
 serde = { version = "1.0.229", features = ["derive"] }

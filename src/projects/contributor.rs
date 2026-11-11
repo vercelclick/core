@@ -5,10 +5,9 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use ts_rs::TS;
-use tsify::Tsify;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, FromRow)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS, FromRow)]
 pub struct Contributor {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -40,7 +39,7 @@ impl Contributor {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, FromRow)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS, FromRow)]
 pub struct ContributorPublicKey {
     pub id: Uuid,
     pub name: String,

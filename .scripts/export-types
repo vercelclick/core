@@ -1,0 +1,28 @@
+#! /bin/sh
+
+cargo test export_bindings -p secretpass-core
+cargo test export_bindings -p secretpass-api
+cargo test export_bindings -p secretpass-cloud
+
+# shellcheck disable=SC2164
+cd ../web-app/src/core/types
+
+wasm_types=$(cat ../index.d.ts)
+
+for f in ./*.ts ; do
+  name="${f##*/}"
+  name="${name%.ts}"
+  [ "$name" = "index" ] && continue
+  echo "import type { $name } from './types/$name';" ;
+done > ../index.d.ts
+
+
+echo "$wasm_types" >> ../index.d.ts
+
+
+for f in ./*.ts ; do
+  name="${f##*/}"
+  name="${name%.ts}"
+  [ "$name" = "index" ] && continue
+  echo "export type { $name };"
+done >> ../index.d.ts

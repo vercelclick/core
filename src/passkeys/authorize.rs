@@ -11,10 +11,9 @@ use p256::ecdsa::{Signature, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use ts_rs::TS;
-use tsify::Tsify;
 use uuid::Uuid;
 
-#[derive(Serialize, Deserialize, Debug, Clone, Tsify, TS)]
+#[derive(Serialize, Deserialize, Debug, Clone, TS)]
 pub struct AssertionResponse {
     #[serde(rename = "clientDataJSON")]
     pub client_data_json: Vec<u8>,
@@ -24,7 +23,7 @@ pub struct AssertionResponse {
     pub user_handle: Option<Vec<u8>>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Tsify, TS)]
+#[derive(Serialize, Deserialize, Debug, Clone, TS)]
 pub struct PasskeyAuthorizationResult {
     pub id: String,
     #[serde(rename = "type")]

@@ -1,8 +1,15 @@
 use crate::auth::DecryptionAuthorizationRequest;
-use secretpass_core::passkeys::public_key::PublicKeyGenerateResult;
+use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
+use serde::{Deserialize, Serialize};
 use tsify::{Ts, Tsify};
 use wasm_bindgen::JsError;
 use wasm_bindgen::prelude::wasm_bindgen;
+
+#[derive(Serialize, Deserialize, Debug, Clone, Tsify)]
+pub struct PublicKeyGenerateResult {
+    pub public_key: String,
+    pub auth_result: PasskeyAuthorizationResult,
+}
 
 #[wasm_bindgen]
 pub async fn generate_public_keys(

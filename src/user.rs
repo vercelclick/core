@@ -3,10 +3,9 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use ts_rs::TS;
-use tsify::Tsify;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, FromRow)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS, FromRow)]
 pub struct User {
     pub id: Uuid,
     pub email: String,
@@ -15,7 +14,7 @@ pub struct User {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, FromRow)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS, FromRow)]
 pub struct Session {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -23,7 +22,8 @@ pub struct Session {
     pub expires_on: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Tsify, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct AuthSession {
     pub id: Uuid,
     pub user: User,

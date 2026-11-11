@@ -24,7 +24,7 @@ sqlx = { version = "0.9.0", features = ["chrono", "uuid", "macros"] }
 tower-http = { version = "0.7.1", features = ["cors", "trace"] }
 tower-service = "0.3.3"
 tower-layer = "0.3.3"
-ts-rs = { version = "12.0.1", features = ["chrono-impl"] }
+ts-rs = { version = "12.0.1", features = ["chrono-impl", "uuid-impl"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
 uuid = { version = "1.29.0", features = ["serde", "v4", "v7"] }

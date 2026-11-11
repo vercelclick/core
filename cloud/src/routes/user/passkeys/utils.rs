@@ -52,6 +52,7 @@ pub async fn validate_passkey_creation_details(
 
     let (passkey_cred_id, passkey_public_key) = request
         .create_result
+        .response
         .validate(&passkey_challenge.value_hash)?;
 
     request.auth_result.validate(

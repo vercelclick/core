@@ -4,7 +4,6 @@ use secretpass_core::enums::SecretDataType;
 use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
 use secretpass_core::{ContributorPublicKey, SecretValue, TargetedPublicKey};
 use serde::{Deserialize, Serialize};
-use ts_rs::TS;
 use tsify::{Ts, Tsify};
 use uuid::Uuid;
 use wasm_bindgen::JsError;
@@ -18,10 +17,11 @@ pub struct EncryptSecretRequest {
     pub env_name: String,
     pub tag_name: String,
     pub secret_value: String,
+    #[tsify(type = "string")]
     pub project_id: Uuid,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Tsify, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, Tsify)]
 pub struct EncryptSecretResult {
     pub auth_result: PasskeyAuthorizationResult,
     pub encrypted_values: Vec<SecretValue>,

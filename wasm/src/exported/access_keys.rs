@@ -10,14 +10,15 @@ use wasm_bindgen::JsError;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 #[derive(Deserialize, Tsify)]
-pub struct GenerateMachineKeyRequest {
+pub struct GenerateAccessKeyRequest {
+    #[tsify(type = "string")]
     project_id: Uuid,
     auth_request: DecryptionAuthorizationRequest,
     encrypted_secrets: Vec<(ContributorPublicKey, SecretValue)>,
 }
 
 #[derive(Serialize, Tsify)]
-pub struct GenerateMachineKeyResult {
+pub struct GenerateAccessKeyResult {
     auth_result: PasskeyAuthorizationResult,
     private_key: String,
     public_key: TargetedPublicKey,
@@ -26,9 +27,9 @@ pub struct GenerateMachineKeyResult {
 
 #[wasm_bindgen]
 pub async fn generate_access_key(
-    ts_request: Ts<GenerateMachineKeyRequest>,
-) -> Result<Ts<GenerateMachineKeyResult>, JsError> {
-    let request: GenerateMachineKeyRequest = ts_request.to_rust()?;
+    ts_request: Ts<GenerateAccessKeyRequest>,
+) -> Result<Ts<GenerateAccessKeyResult>, JsError> {
+    let request: GenerateAccessKeyRequest = ts_request.to_rust()?;
 
     let (auth_response, session) = request
         .auth_request
@@ -61,7 +62,7 @@ pub async fn generate_access_key(
         );
     }
 
-    let result = GenerateMachineKeyResult {
+    let result = GenerateAccessKeyResult {
         auth_result: auth_response,
         public_key: targeted_key,
         private_key,

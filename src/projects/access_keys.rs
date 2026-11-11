@@ -7,11 +7,9 @@ use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use ts_rs::TS;
-use tsify::Tsify;
 use uuid::Uuid;
-use wasm_bindgen::prelude::wasm_bindgen;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, FromRow)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS, FromRow)]
 pub struct AccessKey {
     pub id: Uuid,
     pub name: String,
@@ -32,7 +30,7 @@ impl AccessKey {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS, FromRow)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS, FromRow)]
 pub struct FederatedAccessKey {
     pub id: Uuid,
     pub name: String,

@@ -7,16 +7,14 @@ use coset::{CborSerializable, CoseKey};
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
-use tsify::Tsify;
 
-#[derive(Serialize, Deserialize, Debug, Clone, Tsify, TS)]
+#[derive(Serialize, Deserialize, Debug, Clone, TS)]
 pub struct AttestationResponse {
     pub client_data_json: Vec<u8>,
     pub attestation_object: Vec<u8>,
 }
 
-// Client response types
-#[derive(Serialize, Deserialize, Debug, Clone, Tsify, TS)]
+#[derive(Serialize, Deserialize, Debug, Clone, TS)]
 pub struct PasskeyCreationResult {
     pub id: String,
     #[serde(rename = "type")]
@@ -24,19 +22,15 @@ pub struct PasskeyCreationResult {
     pub response: AttestationResponse,
 }
 
-impl PasskeyCreationResult {
+impl AttestationResponse {
     /// Validates the client response against the stored challenge and RP configuration.
     /// On success, returns the credential ID and the public key
     pub fn validate(&self, challenge_hash: &str) -> InternalResult<(String, String)> {
-        verify_client_data(
-            &self.response.client_data_json,
-            challenge_hash,
-            "webauthn.create",
-        )?;
+        verify_client_data(&self.client_data_json, challenge_hash, "webauthn.create")?;
 
         // Parse attestation object (CBOR)
-        let att_obj: Value = ciborium::from_reader(self.response.attestation_object.as_slice())
-            .map_err(|e| {
+        let att_obj: Value =
+            ciborium::from_reader(self.attestation_object.as_slice()).map_err(|e| {
                 InternalError::trace(StatusCode::CONFLICT, "Error parsing attestation object", e)
             })?;
 

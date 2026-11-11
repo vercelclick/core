@@ -1,8 +1,8 @@
-use crate::auth_session::verify_frontend_session_token;
+use crate::auth_session::verify_session_token;
 use axum::http::{HeaderMap, StatusCode};
 use secretpass_core::{AuthSession, InternalError, InternalResult};
 
-pub async fn get_session(path: &str, headers: &HeaderMap) -> InternalResult<AuthSession> {
+pub async fn get_session(headers: &HeaderMap) -> InternalResult<AuthSession> {
     let auth_header = headers
         .get("Authorization")
         .ok_or_else(|| {
@@ -24,7 +24,7 @@ pub async fn get_session(path: &str, headers: &HeaderMap) -> InternalResult<Auth
         )
     })?;
 
-    let session = verify_frontend_session_token(auth_token, path)?;
+    let session = verify_session_token(auth_token)?;
 
     Ok(session)
 }

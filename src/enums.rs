@@ -2,66 +2,28 @@ use serde::{Deserialize, Serialize};
 use std::cmp::PartialEq;
 use strum::{Display, EnumString};
 use ts_rs::TS;
-use tsify::Tsify;
-use wasm_bindgen::prelude::wasm_bindgen;
 
-#[wasm_bindgen(skip_typescript)]
 #[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Serialize,
-    Deserialize,
-    EnumString,
-    Display,
-    Tsify,
-    TS,
-    sqlx::Type,
+    Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, TS, sqlx::Type,
 )]
-#[tsify(namespace)]
 #[sqlx(type_name = r#""ContributorRole""#)]
 pub enum ContributorRole {
     Admin,
     Standard,
 }
 
-#[wasm_bindgen(skip_typescript)]
 #[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Serialize,
-    Deserialize,
-    EnumString,
-    Display,
-    Tsify,
-    TS,
-    sqlx::Type,
+    Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, TS, sqlx::Type,
 )]
-#[tsify(namespace)]
 #[sqlx(type_name = r#""EnvironmentAccessLevel""#)]
 pub enum EnvironmentAccessLevel {
     ReadOnly,
     ReadWrite,
 }
 
-#[wasm_bindgen(skip_typescript)]
 #[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Serialize,
-    Deserialize,
-    EnumString,
-    Display,
-    Tsify,
-    TS,
-    sqlx::Type,
+    Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, TS, sqlx::Type,
 )]
-#[tsify(namespace)]
 #[sqlx(type_name = r#""SecretDataType""#)]
 pub enum SecretDataType {
     Text,
@@ -70,19 +32,8 @@ pub enum SecretDataType {
 }
 
 #[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Serialize,
-    Deserialize,
-    EnumString,
-    Display,
-    Tsify,
-    TS,
-    sqlx::Type,
+    Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, TS, sqlx::Type,
 )]
-#[tsify(namespace)]
 #[sqlx(type_name = r#""ChallengeKind""#)]
 pub enum ChallengeKind {
     EmailSignup,
@@ -111,46 +62,23 @@ impl ChallengeKind {
 }
 
 #[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Serialize,
-    Deserialize,
-    EnumString,
-    Display,
-    Tsify,
-    TS,
-    sqlx::Type,
+    Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, TS, sqlx::Type,
 )]
-#[tsify(namespace)]
 #[sqlx(type_name = r#""AccessGrant""#)]
 pub enum AccessGrant {
     Pending,
     Granted,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, Tsify, TS)]
-#[tsify(namespace)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, TS)]
 pub enum OperationMode {
     Local,
     Cloud,
 }
 
 #[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Serialize,
-    Deserialize,
-    EnumString,
-    Display,
-    Tsify,
-    TS,
-    sqlx::Type,
+    Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, TS, sqlx::Type,
 )]
-#[tsify(namespace)]
 #[sqlx(type_name = r#""ContributorStatus""#)]
 pub enum ContributorStatus {
     Active,

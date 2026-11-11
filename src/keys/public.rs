@@ -12,7 +12,6 @@ use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use ts_rs::TS;
-use tsify::Tsify;
 use uuid::Uuid;
 use x25519_dalek::StaticSecret;
 
@@ -99,7 +98,8 @@ impl PublicKey {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Tsify, TS)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct TargetedPublicKey {
     pub target: Uuid,
     pub value: String,

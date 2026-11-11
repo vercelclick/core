@@ -1,10 +1,8 @@
 use secretpass_core::{AuthTokenClaims, InternalError, InternalResult, StatusCode, constants};
 use std::sync::LazyLock;
 
-const SERVICE_BASE_URL: &str = env!("SERVICE_BASE_URL");
-
 static ENCODING_KEY: LazyLock<jsonwebtoken::EncodingKey> = LazyLock::new(|| {
-    jsonwebtoken::EncodingKey::from_ed_pem(env!("JWT_BACKEND_PRIVATE_KEY").as_bytes()).unwrap()
+    jsonwebtoken::EncodingKey::from_ed_pem(env!("JWT_CLOUD_PRIVATE_KEY").as_bytes()).unwrap()
 });
 
 pub fn create_backend_session_token(
@@ -19,7 +17,7 @@ pub fn create_backend_session_token(
         exp,
         iat: now,
         sub: session.id,
-        iss: SERVICE_BASE_URL.to_string(),
+        iss: "api.vercel.click".to_string(),
         aud: constants::RP_ORIGIN.to_string(),
 
         user,
