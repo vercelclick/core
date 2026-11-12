@@ -2,7 +2,7 @@ use crate::cli::runner::access_keys::{
     get_values_from_cloud_project, get_values_from_local_project,
 };
 use crate::cli::runner::human::get_values_from_web;
-use secretpass_core::KeyPair;
+use click_core::KeyPair;
 use std::collections::HashMap;
 
 pub fn get_local_values(

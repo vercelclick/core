@@ -6,7 +6,7 @@ use crate::cli::service::{check_status_command, start_service_command, stop_serv
 use clap::{Parser, Subcommand, ValueEnum};
 
 #[derive(Debug, Parser)]
-#[command(name = "spass", author, version, about)]
+#[command(name = "click", author, version, about)]
 pub struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -20,17 +20,17 @@ pub enum ExportFormat {
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum LocalCommand {
-    /// Start secretpass service
+    /// Start the click local vault service
     Start {
         /// Start as a standard cli process instead of running it in the background, defaults to false
         #[arg(long, default_value_t = false)]
         foreground: bool,
     },
-    /// Stop secretpass service
+    /// Stop the click local vault service
     Stop,
-    /// Check the status of secretpass service
+    /// Check the status of click local vault service
     Status,
-    /// Attach the current running directory as a secretpass project, setup can be done from the UI if not already completed
+    /// Attach the current running directory as a local click vault project, setup can be done from the UI if not already completed
     Attach {
         /// Set to true to prevent opening the browser after attaching
         #[arg(long, default_value_t = false)]
@@ -38,7 +38,7 @@ pub enum LocalCommand {
     },
     /// Export exposed secrets to a file or pipe them to another command
     Export {
-        /// (optional) Secretpass project directory; defaults to the current working directory
+        /// (optional) click local vault project directory; defaults to the current working directory
         #[arg(long, global = true, default_value = None)]
         project_dir: Option<String>,
 
@@ -56,7 +56,7 @@ pub enum LocalCommand {
     },
     /// Run a command with exposed secrets injected as environment variables
     Run {
-        /// (optional) Secretpass project directory; defaults to the current working directory
+        /// (optional) click local vault project directory; defaults to the current working directory
         #[arg(long, global = true, default_value = None)]
         project_dir: Option<String>,
 
@@ -116,21 +116,21 @@ pub enum CloudCommand {
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum Command {
-    /// Group of commands to manage and inject secrets stored locally
+    /// Group of commands to manage and inject secrets from the local vault
     Local {
         #[command(subcommand)]
         command: LocalCommand,
     },
-    /// Group of commands to inject secrets from secretpass.local
+    /// Group of commands to inject secrets from the cloud vault
     Cloud {
         /// (optional) If running on an in-house cloud deployment, change this URL accordingly
-        #[arg(long, global = true, default_value = "https://api.secretpass.cloud")]
+        #[arg(long, global = true, default_value = "https://api.vercel.click")]
         endpoint: String,
         #[command(subcommand)]
         command: CloudCommand,
     },
     #[cfg(target_os = "macos")]
-    /// For macOS Safari blocks calls to local service from https://local.secretpass.cloud
+    /// For macOS Safari blocks calls to local service from https://vault.vercel.click
     /// Install these certificates to trust the local https certificate
     InstallCertificates,
 }

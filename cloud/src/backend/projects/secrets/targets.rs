@@ -1,26 +1,30 @@
 use crate::backend::projects::project::get_contributor_by_id;
 use crate::db;
-use secretpass_api::backend::secrets::ProjectSecretPathParams;
-use secretpass_core::{
+use click_api::backend::secrets::ProjectSecretPathParams;
+use click_core::{
     AccessKey, Contributor, ContributorPublicKey, InternalError, InternalResult, StatusCode,
-    TargetedPublicKey, User,
+    TargetedPublicKey, User, caller,
 };
 use uuid::Uuid;
 
 pub async fn get_secret_targets(
     user: &User,
-    params: &ProjectSecretPathParams,
+    params: ProjectSecretPathParams,
 ) -> InternalResult<Vec<TargetedPublicKey>> {
     get_contributor_by_id(user, params.project_id)
         .await?
         .ok_or_else(|| {
-            InternalError::new(StatusCode::FORBIDDEN, "User not found in this project")
+            InternalError::new(
+                caller!(),
+                StatusCode::FORBIDDEN,
+                "User not found in this project",
+            )
         })?;
 
     let contributor_keys: Vec<ContributorPublicKey> = sqlx::query_as(
         r#"
-        SELECT cpk.* FROM secretpass.public."ContributorPublicKeys" as cpk
-            INNER JOIN secretpass.public."Contributors" as contributor
+        SELECT cpk.* FROM "ContributorPublicKeys" as cpk
+            INNER JOIN "Contributors" as contributor
                 ON cpk.contributor_id = contributor.id
         WHERE contributor.project_id = $1
     "#,
@@ -30,6 +34,7 @@ pub async fn get_secret_targets(
     .await
     .map_err(|err| {
         InternalError::trace(
+            caller!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error getting contributor public keys",
             err,
@@ -43,6 +48,7 @@ pub async fn get_secret_targets(
             .await
             .map_err(|err| {
                 InternalError::trace(
+                    caller!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Internal error getting project contributors",
                     err,
@@ -65,6 +71,7 @@ pub async fn get_secret_targets(
             .await
             .map_err(|err| {
                 InternalError::trace(
+                    caller!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Internal error getting project access keys",
                     err,

@@ -1,8 +1,6 @@
 use crate::auth::DecryptionAuthorizationRequest;
-use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
-use secretpass_core::{
-    ContributorPublicKey, KeyPair, PrivateKeySeed, SecretValue, TargetedPublicKey,
-};
+use click_core::passkeys::authorize::PasskeyAuthorizationResult;
+use click_core::{ContributorPublicKey, KeyPair, PrivateKeySeed, SecretValue, TargetedPublicKey};
 use serde::{Deserialize, Serialize};
 use tsify::{Ts, Tsify};
 use uuid::Uuid;

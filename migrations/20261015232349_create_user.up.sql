@@ -27,24 +27,39 @@ CREATE TABLE "Passkeys"
             ON DELETE CASCADE
 );
 
-CREATE TYPE "ChallengeKind" AS ENUM (
+CREATE TYPE "EmailChallengeKind" AS ENUM (
     'EmailSignup',
     'EmailSignIn',
-    'PasskeySignup',
-    'PasskeySignIn',
-    'PasskeyAuthorize',
-    'PasskeyCreate',
     'EmailAuthorize'
     );
 
+
+CREATE TYPE "WebauthnChallengeKind" AS ENUM (
+    'PasskeySignup',
+    'PasskeySignIn',
+    'PasskeyAuthorize',
+    'PasskeyCreate'
+    );
+
 -- If a challenge is lost, the user can simply create a new one
-CREATE UNLOGGED TABLE "PendingChallenge"
+CREATE UNLOGGED TABLE "EmailChallenge"
 (
     owner         TEXT,
-    kind          "ChallengeKind",
+    kind          "EmailChallengeKind",
     value_hash    TEXT,
-    generated_on  TIMESTAMPTZ DEFAULT NOW(),
-    attempts_left INT NOT NULL,
+    expires_on    TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '5 minutes'),
+    attempts_left INT         DEFAULT 5,
+
+    PRIMARY KEY (owner, kind)
+);
+
+-- If a challenge is lost, the user can simply create a new one
+CREATE UNLOGGED TABLE "WebauthnChallenge"
+(
+    owner      TEXT,
+    kind       "WebauthnChallengeKind",
+    value_hash TEXT,
+    expires_on TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '5 minutes'),
 
     PRIMARY KEY (owner, kind)
 );

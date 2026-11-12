@@ -1,5 +1,5 @@
-use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
-use secretpass_core::{
+use click_core::passkeys::authorize::PasskeyAuthorizationResult;
+use click_core::{
     AccessKey, Contributor, Environment, FederatedAccessKey, Project, User, Workspace,
 };
 use serde::{Deserialize, Serialize};

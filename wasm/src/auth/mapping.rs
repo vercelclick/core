@@ -1,8 +1,9 @@
 use crate::passkeys::prf::{PrfDeriveConfig, PrfResults};
-use secretpass_core::passkeys::authorize::{AssertionResponse, PasskeyAuthorizationResult};
-use secretpass_core::passkeys::create::{AttestationResponse, PasskeyCreationResult};
-use secretpass_core::utils::{bin_decode, sha256_raw};
-use secretpass_core::{InternalError, InternalResult, StatusCode};
+use click_core::passkeys::authorize::{AssertionResponse, PasskeyAuthorizationResult};
+use click_core::passkeys::create::{AttestationResponse, PasskeyCreationResult};
+use click_core::utils::{bin_decode, sha256_raw};
+use click_core::{InternalError, InternalResult, StatusCode, caller};
+use uuid::Uuid;
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::js_sys::{
     Array as JsArray, ArrayBuffer, Object as JsObject, Reflect as JsReflect, Uint8Array,
@@ -15,6 +16,7 @@ use web_sys::{
 
 fn prf_error(id: &str) -> InternalError {
     InternalError::new(
+        caller!(),
         StatusCode::CONFLICT,
         &format!(
             "PRF_ERROR<{id}>: Browser not supported! Pseudo Random Functions extension is missing or disabled"
@@ -49,6 +51,7 @@ pub fn map_browser_passkey_registration_response(
         .dyn_into::<AuthenticatorAttestationResponse>()
         .map_err(|err| {
             InternalError::trace(
+                caller!(),
                 StatusCode::BAD_GATEWAY,
                 "Error parsing attestation response",
                 err,
@@ -72,6 +75,7 @@ pub fn map_browser_passkey_registration_response(
 pub fn verify_prf_enabled(outputs: AuthenticationExtensionsClientOutputs) -> InternalResult<()> {
     let prf_result = get_prf_value(outputs)?.ok_or_else(|| {
         InternalError::new(
+            caller!(),
             StatusCode::BAD_GATEWAY,
             "Pseudo Random function not supported, please use a different passkey provider",
         )
@@ -131,26 +135,33 @@ pub fn map_browser_passkey_authentication(
         Ok(value) => value,
         Err(err) => {
             return Err(InternalError::trace(
+                caller!(),
                 StatusCode::CONFLICT,
                 "Error parsing assertion response",
                 err,
             ));
         }
     };
-    let user_handle = assertion_response.user_handle();
+
+    let user_handle = assertion_response.user_handle().ok_or_else(|| {
+        InternalError::new(
+            caller!(),
+            StatusCode::BAD_REQUEST,
+            "Invalid credential - missing user_id details",
+        )
+    })?;
+
+    let user_id = Uuid::from_bytes(Uint8Array::new(&user_handle).to_vec().try_into().map_err(
+        |err| InternalError::trace(caller!(), StatusCode::CONFLICT, "Invalid user ID", err),
+    )?);
 
     let response = AssertionResponse {
         authenticator_data: Uint8Array::new(&assertion_response.authenticator_data()).to_vec(),
         client_data_json: Uint8Array::new(&assertion_response.client_data_json()).to_vec(),
         signature: Uint8Array::new(&assertion_response.signature()).to_vec(),
-        user_handle: user_handle.map(|value| Uint8Array::new(&value).to_vec()),
     };
 
-    let login_response = PasskeyAuthorizationResult {
-        id: pk_credential.id(),
-        type_: pk_credential.type_(),
-        response,
-    };
+    let login_response = PasskeyAuthorizationResult::new(pk_credential.id(), user_id, response);
 
     Ok((login_response, prf_results))
 }
@@ -162,6 +173,7 @@ pub fn parse_prf_value(buffer: JsValue) -> InternalResult<[u8; 32]> {
         Ok(value) => value,
         Err(err) => {
             return Err(InternalError::trace(
+                caller!(),
                 StatusCode::CONFLICT,
                 "Error parsing PRF value",
                 err,

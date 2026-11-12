@@ -3,11 +3,11 @@ use crate::backend::projects::secrets::create::secret_values_insert_query_builde
 use crate::db;
 use crate::db::{Transaction, TransactionOperation};
 use axum::http::StatusCode;
-use secretpass_api::backend::secrets::{
+use click_api::backend::secrets::{
     CreateAccessKeyRequest, CreateFederatedAccessKeyRequest, CreateFederatedAccessKeyResult,
     ProjectPathParams,
 };
-use secretpass_core::{AccessKey, FederatedAccessKey, InternalError, InternalResult, User};
+use click_core::{AccessKey, FederatedAccessKey, InternalError, InternalResult, User, caller};
 use uuid::Uuid;
 
 // language=sql
@@ -45,6 +45,7 @@ impl TransactionOperation<AccessKey> for CreateAccessKeyWorkflow {
             .await
             .map_err(|err| {
                 InternalError::trace(
+                    caller!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Internal error creating direct access key",
                     err,
@@ -59,6 +60,7 @@ impl TransactionOperation<AccessKey> for CreateAccessKeyWorkflow {
                 .await
                 .map_err(|err| {
                     InternalError::trace(
+                        caller!(),
                         StatusCode::INTERNAL_SERVER_ERROR,
                         "Internal error adding access key values",
                         err,
@@ -79,6 +81,7 @@ pub async fn create_access_key(
         .await?
         .ok_or_else(|| {
             InternalError::new(
+                caller!(),
                 StatusCode::FORBIDDEN,
                 "You do not have access to this project",
             )
@@ -86,6 +89,7 @@ pub async fn create_access_key(
 
     contributor.is_admin().ok_or_else(|| {
         InternalError::new(
+            caller!(),
             StatusCode::FORBIDDEN,
             "Only admins can create direct access keys",
         )
@@ -94,20 +98,21 @@ pub async fn create_access_key(
     db::with_transaction(CreateAccessKeyWorkflow {
         project_id,
         email: user.email.clone(),
-        request,
+        request: request.clone(),
     })
     .await
 }
 
 pub async fn create_federated_access_key(
     user: &User,
-    params: &ProjectPathParams,
-    request: &CreateFederatedAccessKeyRequest,
+    params: ProjectPathParams,
+    request: CreateFederatedAccessKeyRequest,
 ) -> InternalResult<CreateFederatedAccessKeyResult> {
     let contributor = get_contributor_by_id(user, params.project_id)
         .await?
         .ok_or_else(|| {
             InternalError::new(
+                caller!(),
                 StatusCode::FORBIDDEN,
                 "You do not have access to this project",
             )
@@ -115,6 +120,7 @@ pub async fn create_federated_access_key(
 
     contributor.is_admin().ok_or_else(|| {
         InternalError::new(
+            caller!(),
             StatusCode::FORBIDDEN,
             "Only admins can create federated access keys",
         )
@@ -132,6 +138,7 @@ pub async fn create_federated_access_key(
         .await
         .map_err(|err| {
             InternalError::trace(
+                caller!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error creating direct access key",
                 err,

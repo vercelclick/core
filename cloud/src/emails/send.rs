@@ -1,9 +1,9 @@
 use crate::emails::EmailTemplate;
+use click_core::{InternalError, InternalResult, StatusCode, caller};
 use lettre::Message;
 use lettre::message::Mailbox;
 use lettre::message::header::ContentType;
 use lettre::{AsyncSmtpTransport, AsyncTransport, Tokio1Executor};
-use secretpass_core::{InternalError, InternalResult, StatusCode};
 use std::env;
 use std::sync::LazyLock;
 
@@ -26,6 +26,7 @@ pub async fn send_email(recipient: &str, template: EmailTemplate) -> InternalRes
         .from(get_sender()?)
         .to(recipient.parse().map_err(|err| {
             InternalError::trace(
+                caller!(),
                 StatusCode::BAD_REQUEST,
                 &format!("Invalid recipient<{recipient}> email address"),
                 err,
@@ -36,6 +37,7 @@ pub async fn send_email(recipient: &str, template: EmailTemplate) -> InternalRes
         .body(content)
         .map_err(|err| {
             InternalError::trace(
+                caller!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 &format!("Error building {} error", template),
                 err,
@@ -44,6 +46,7 @@ pub async fn send_email(recipient: &str, template: EmailTemplate) -> InternalRes
 
     MAILER.send(message).await.map_err(|err| {
         InternalError::trace(
+            caller!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             &format!("Error sending {} email", template),
             err,
@@ -55,9 +58,10 @@ pub async fn send_email(recipient: &str, template: EmailTemplate) -> InternalRes
 
 fn get_sender() -> InternalResult<Mailbox> {
     let mbox = Mailbox::new(
-        Some("Secretpass Vault".to_string()),
+        Some("Click Vault".to_string()),
         "no-reply@vault.secretpass.cloud".parse().map_err(|err| {
             InternalError::trace(
+                caller!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Invalid sender email address",
                 err,
@@ -67,4 +71,3 @@ fn get_sender() -> InternalResult<Mailbox> {
 
     Ok(mbox)
 }
-

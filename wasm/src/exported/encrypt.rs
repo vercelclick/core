@@ -1,8 +1,8 @@
 use crate::auth::{AuthorizationRequest, DecryptionAuthorizationRequest};
 use chrono::Utc;
-use secretpass_core::enums::SecretDataType;
-use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
-use secretpass_core::{ContributorPublicKey, SecretValue, TargetedPublicKey};
+use click_core::enums::SecretDataType;
+use click_core::passkeys::authorize::PasskeyAuthorizationResult;
+use click_core::{ContributorPublicKey, SecretValue, TargetedPublicKey};
 use serde::{Deserialize, Serialize};
 use tsify::{Ts, Tsify};
 use uuid::Uuid;

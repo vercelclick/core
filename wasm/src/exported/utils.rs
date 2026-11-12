@@ -1,4 +1,4 @@
-use secretpass_core::utils::{bin_encode, fill_random_bytes};
+use click_core::utils::{bin_encode, fill_random_bytes};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 #[wasm_bindgen]

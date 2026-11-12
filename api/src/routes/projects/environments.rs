@@ -3,7 +3,7 @@ use crate::backend::environments::{GetEnvironmentRequest, GetEnvironmentResult};
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::{Extension, Json};
-use secretpass_core::{InternalError, InternalResult, User};
+use click_core::{InternalError, InternalResult, User, caller};
 use std::sync::Arc;
 
 pub async fn get_environment_by_name(
@@ -15,7 +15,9 @@ pub async fn get_environment_by_name(
         .backend
         .get_environment_by_name(&user, request)
         .await?
-        .ok_or_else(|| InternalError::new(StatusCode::NOT_FOUND, "Environment not found"))?;
+        .ok_or_else(|| {
+            InternalError::new(caller!(), StatusCode::NOT_FOUND, "Environment not found")
+        })?;
 
     Ok(Json(result))
 }

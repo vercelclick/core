@@ -59,11 +59,6 @@ where
             };
 
             let session = Arc::new(session);
-            let user = Arc::new(session.user.clone());
-            let passkeys = Arc::new(session.passkeys.clone());
-
-            req.extensions_mut().insert(user);
-            req.extensions_mut().insert(passkeys);
             req.extensions_mut().insert(session);
 
             inner.call(req).await

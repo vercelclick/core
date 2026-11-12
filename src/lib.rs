@@ -6,7 +6,7 @@ pub mod passkeys;
 mod projects;
 pub mod result;
 pub mod types;
-mod user;
+mod users;
 pub mod utils;
 mod workspace;
 
@@ -16,7 +16,7 @@ pub use projects::{
     FederatedAccessKey, Project, SecretDefinition, SecretValue,
 };
 pub use types::EncryptedPackage;
-pub use user::{AuthSession, AuthTokenClaims, Session, User};
+pub use users::{AuthSession, AuthTokenClaims, EmailChallenge, Session, User, WebauthnChallenge};
 pub use workspace::Workspace;
 
 pub use result::{InternalError, InternalResult, StatusCode};

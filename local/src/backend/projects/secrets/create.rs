@@ -2,9 +2,9 @@ use crate::config::LocalServiceConfig;
 use crate::service::keys::LocalKeysConfig;
 use crate::service::secrets::LocalSecretConfig;
 use chrono::Utc;
-use secretpass_api::backend::environments::SecretWithEncryptedValues;
-use secretpass_api::backend::secrets::{CreateSecretRequest, ProjectEnvPathParams};
-use secretpass_core::{InternalError, InternalResult, SecretDefinition, StatusCode, User};
+use click_api::backend::environments::SecretWithEncryptedValues;
+use click_api::backend::secrets::{CreateSecretRequest, ProjectEnvPathParams};
+use click_core::{InternalError, InternalResult, SecretDefinition, StatusCode, User, caller};
 
 pub async fn create_secret(
     user: &User,
@@ -18,6 +18,7 @@ pub async fn create_secret(
 
     let access = contributor.get_access(&params.env_name).ok_or_else(|| {
         InternalError::new(
+            caller!(),
             StatusCode::FORBIDDEN,
             "You don't have access to this environment",
         )
@@ -25,6 +26,7 @@ pub async fn create_secret(
 
     access.is_env_admin().ok_or_else(|| {
         InternalError::new(
+            caller!(),
             StatusCode::FORBIDDEN,
             "You do not have permission to add secrets to this environment",
         )
@@ -34,6 +36,7 @@ pub async fn create_secret(
         .get_environment(&params.env_name)
         .ok_or_else(|| {
             InternalError::new(
+                caller!(),
                 StatusCode::NOT_FOUND,
                 &format!("Environment '{}' not found", params.env_name),
             )
@@ -44,6 +47,7 @@ pub async fn create_secret(
         .is_none()
         .ok_or_else(|| {
             InternalError::new(
+                caller!(),
                 StatusCode::CONFLICT,
                 &format!(
                     "Secret {}/{} already exists",

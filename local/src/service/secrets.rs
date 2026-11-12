@@ -1,6 +1,8 @@
-use secretpass_api::backend::environments::SecretWithEncryptedValues;
-use secretpass_core::{
+use click_api::backend::environments::SecretWithEncryptedValues;
+use click_core::constants::APP_SLUG;
+use click_core::{
     ContributorPublicKey, InternalError, InternalResult, SecretDefinition, SecretValue, StatusCode,
+    caller,
 };
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -15,7 +17,7 @@ pub struct LocalSecretConfig {
 impl LocalSecretConfig {
     pub fn load(path: &str, env_name: &str, secret_name: &str) -> InternalResult<Option<Self>> {
         let path = Path::new(path)
-            .join(".spass")
+            .join(format!(".{}", APP_SLUG))
             .join("secrets")
             .join(env_name);
         if !path.exists() {
@@ -29,6 +31,7 @@ impl LocalSecretConfig {
 
         let content = fs::read_to_string(config_file.clone()).map_err(|err| {
             InternalError::trace(
+                caller!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 &format!("Error reading secret config {}", config_file.display()),
                 err,
@@ -37,6 +40,7 @@ impl LocalSecretConfig {
 
         let config: Self = serde_json::from_str(&content).map_err(|err| {
             InternalError::trace(
+                caller!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 &format!(
                     "Error deserializing secret config {}",
@@ -51,7 +55,7 @@ impl LocalSecretConfig {
 
     pub fn load_env(path: &str, env_name: &str) -> InternalResult<Vec<Self>> {
         let env_path = Path::new(path)
-            .join(".spass")
+            .join(format!(".{}", APP_SLUG))
             .join("secrets")
             .join(env_name);
         if !env_path.exists() {
@@ -60,6 +64,7 @@ impl LocalSecretConfig {
 
         let entries = fs::read_dir(env_path.clone()).map_err(|err| {
             InternalError::trace(
+                caller!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 &format!("Error reading environment directory {}", env_path.display()),
                 err,
@@ -71,6 +76,7 @@ impl LocalSecretConfig {
         for entry in entries.into_iter() {
             let entry = entry.map_err(|err| {
                 InternalError::trace(
+                    caller!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     &format!("Error processing secret entry from {}", env_path.display()),
                     err,
@@ -99,13 +105,14 @@ impl LocalSecretConfig {
 
     pub fn write(&self, path: &str) -> InternalResult<()> {
         let path = Path::new(path)
-            .join(".spass")
+            .join(format!(".{}", APP_SLUG))
             .join("secrets")
             .join(&self.definition.env_name);
 
         if !path.exists() {
             fs::create_dir_all(path.clone()).map_err(|err| {
                 InternalError::trace(
+                    caller!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Internal error establishing a transaction",
                     err,
@@ -117,6 +124,7 @@ impl LocalSecretConfig {
 
         let content = serde_json::to_string_pretty(self).map_err(|err| {
             InternalError::trace(
+                caller!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 &format!("Error serializing secret config {}", config_file.display()),
                 err,
@@ -124,6 +132,7 @@ impl LocalSecretConfig {
         })?;
         fs::write(config_file.clone(), content).map_err(|err| {
             InternalError::trace(
+                caller!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 &format!("Error writing secret config {}", config_file.display()),
                 err,

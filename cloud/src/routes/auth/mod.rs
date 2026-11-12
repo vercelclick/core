@@ -1,16 +1,21 @@
 use axum::Router;
 use axum::routing::post;
-use secretpass_api::backend::ApiState;
+use click_api::backend::ApiState;
 
 mod challenge;
-mod login;
-pub mod register;
+mod signin;
+pub mod signup;
 
-pub fn auth_router() -> Router<ApiState> {
+pub fn auth_routes() -> Router<ApiState> {
     Router::new()
-        .route("/register", post(register::create_user_handler))
-        .route("/login/email", post(login::login_user_with_email))
-        .route("/login/passkey", post(login::login_user_with_passkey))
+        .route("/signup", post(signup::signup_handler))
+        .route("/signup/challenge", post(signup::signup_passkey_challenge))
+        .route("/signin/email", post(signin::signin_with_email))
+        .route("/signin/passkey", post(signin::signin_with_passkey))
+        .route(
+            "/signin/passkey/challenge",
+            post(signin::signin_with_passkey_challenge),
+        )
         .route(
             "/challenge/email",
             post(challenge::send_email_challenge_handler),

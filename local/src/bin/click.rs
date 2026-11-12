@@ -4,10 +4,10 @@
 * Over time we do intend to opensource pieces of the core, or the full core logic.
 **/
 use clap::Parser;
-use secretpass_local::cli;
+use click_local::cli;
 
 fn main() {
-    let spass_cli = cli::Cli::parse();
+    let click_cli = cli::Cli::parse();
 
-    spass_cli.execute()
+    click_cli.execute()
 }

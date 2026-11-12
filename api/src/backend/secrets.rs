@@ -1,5 +1,5 @@
-use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
-use secretpass_core::{EnvironmentAccess, FederatedAccessKey, SecretValue};
+use click_core::passkeys::authorize::PasskeyAuthorizationResult;
+use click_core::{EnvironmentAccess, FederatedAccessKey, SecretValue};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;

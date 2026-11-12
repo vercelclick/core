@@ -1,5 +1,5 @@
 [package]
-name = "secretpass-api"
+name = "click-api"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
@@ -13,14 +13,10 @@ cloud = []
 [dependencies]
 async-trait = "0.1.92"
 axum = { version = "0.8.9", features = ["tokio", "macros", "json", "query"] }
-chrono = { version = "0.4.45", features = ["serde", "wasm-bindgen"] }
 futures-util = "0.3.34"
-jsonwebtoken = { version = "11.1.0", features = ["rust_crypto"] }
-secretpass-core = { path = "..", features = ["trace", "axum"] }
-serde = { version = "1.0.229", features = ["derive"] }
-rand = { version = "0.10.3" }
-reqwest = { version = "0.13.5", features = ["json", "cookies"] }
-sqlx = { version = "0.9.0", features = ["chrono", "uuid", "macros"] }
+jsonwebtoken = { version = "11.1.0", features = ["rust_crypto", "use_pem"] }
+click-core = { path = "..", features = ["trace", "axum"] }
+serde = { version = "1.0.229", features = ["derive", "rc"] }
 tower-http = { version = "0.7.1", features = ["cors", "trace"] }
 tower-service = "0.3.3"
 tower-layer = "0.3.3"

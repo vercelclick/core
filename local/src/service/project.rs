@@ -1,5 +1,6 @@
-use secretpass_core::{
-    Contributor, Environment, InternalError, InternalResult, Project, StatusCode, User,
+use click_core::constants::APP_SLUG;
+use click_core::{
+    Contributor, Environment, InternalError, InternalResult, Project, StatusCode, User, caller,
 };
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -15,7 +16,9 @@ pub struct LocalProjectConfig {
 
 impl LocalProjectConfig {
     pub fn load(path: &str) -> InternalResult<Option<Self>> {
-        let path = Path::new(path).join(".spass").join("config.json");
+        let path = Path::new(path)
+            .join(format!(".{}", APP_SLUG))
+            .join("config.json");
 
         if !path.exists() {
             return Ok(None);
@@ -23,6 +26,7 @@ impl LocalProjectConfig {
 
         let content = fs::read_to_string(path.clone()).map_err(|err| {
             InternalError::trace(
+                caller!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 &format!("Error reading project config {}", path.display()),
                 err,
@@ -30,6 +34,7 @@ impl LocalProjectConfig {
         })?;
         let config: Self = serde_json::from_str(&content).map_err(|err| {
             InternalError::trace(
+                caller!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 &format!("Error deserializing project config {}", path.display()),
                 err,
@@ -40,11 +45,12 @@ impl LocalProjectConfig {
     }
 
     pub fn write(&self, path: &str) -> InternalResult<()> {
-        let path = Path::new(path).join(".spass");
+        let path = Path::new(path).join(format!(".{}", APP_SLUG));
 
         if !path.exists() {
             fs::create_dir_all(path.clone()).map_err(|err| {
                 InternalError::trace(
+                    caller!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     &format!("Error creating project directory {}", path.display()),
                     err,
@@ -55,6 +61,7 @@ impl LocalProjectConfig {
         let config_file = path.join("config.json");
         let content = serde_json::to_string_pretty(self).map_err(|err| {
             InternalError::trace(
+                caller!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 &format!("Error serializing project config {}", config_file.display()),
                 err,
@@ -63,6 +70,7 @@ impl LocalProjectConfig {
 
         fs::write(config_file.clone(), content).map_err(|err| {
             InternalError::trace(
+                caller!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 &format!("Error writing project config {}", path.display()),
                 err,

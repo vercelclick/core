@@ -11,7 +11,7 @@ use axum::http::header;
 use axum::http::{HeaderValue, Method};
 use axum::routing::{get, post};
 use axum::{Router, http};
-use secretpass_core::constants::RP_ORIGIN;
+use click_core::constants::RP_ORIGIN;
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
@@ -68,15 +68,14 @@ pub fn build_api_router(
         );
 
     let state = Arc::new(state);
-    let auth_layer = AuthLayer::new();
 
-    let mut router = Router::new().nest("/api/v1/projects", project_routes());
+    let mut router =
+        Router::new().nest("/api/v1/projects", project_routes().layer(AuthLayer::new()));
 
     if let Some(authenticated_router) = additional_authenticated_router {
-        router = router.nest("/api/v1", authenticated_router);
+        router = router.nest("/api/v1", authenticated_router.layer(AuthLayer::new()));
     }
 
-    router = router.layer(auth_layer);
     if let Some(public_router) = additional_public_router {
         router = router.nest("/api/v1", public_router);
     }

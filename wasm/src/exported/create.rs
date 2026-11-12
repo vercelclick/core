@@ -1,5 +1,5 @@
 use crate::auth::PasskeyCreationRequest;
-use secretpass_core::passkeys::create::PasskeyCreationResult;
+use click_core::passkeys::create::PasskeyCreationResult;
 use serde::{Deserialize, Serialize};
 use tsify::{Ts, Tsify};
 use wasm_bindgen::JsError;

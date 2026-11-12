@@ -12,8 +12,9 @@ TS_RS_EXPORT_DIR = { value = "../web-app/src/core/types", relative = true }
 
 # Test Keys meant for local usge - must be overriden on prod
 SERVICE_BASE_URL = "expected-api-url"
-JWT_CLOUD_PRIVATE_KEY = "MC4CAQAwBQYDK2VwBCIEIPfj4904K/KsPI0HSo/BKO36ifizLlaIMUkKv2hoaSS0"
-JWT_CLOUD_PUBLIC_KEY = "MCowBQYDK2VwAyEAemQ6PIhbFl/V93TiB5pz9cb8xNI+iiw/WOkHPzm8H48="
-
-
-CLOUD_BASE_URL = ""
+JWT_CLOUD_PRIVATE_KEY = """-----BEGIN PRIVATE KEY-----
+MC4CAQAwBQYDK2VwBCIEIFE+sGY7qKfnsR6gCaoN2rHsfk2Qj9+9PanPj0yo5fzU
+-----END PRIVATE KEY-----"""
+JWT_CLOUD_PUBLIC_KEY = """-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEA0d/qkfs1bgAkjOp/KXiU5YVzlSnntb2PfLBY87yYqFk=
+-----END PUBLIC KEY-----"""

@@ -1,7 +1,7 @@
 use crate::db;
-use secretpass_api::backend::secrets::ProjectAccessKeyParams;
-use secretpass_core::{
-    AccessKey, InternalError, InternalResult, SecretDefinition, SecretValue, StatusCode,
+use click_api::backend::secrets::ProjectAccessKeyParams;
+use click_core::{
+    AccessKey, InternalError, InternalResult, SecretDefinition, SecretValue, StatusCode, caller,
 };
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -21,6 +21,7 @@ pub async fn get_secret_by_name(
     .await
     .map_err(|err| {
         InternalError::trace(
+            caller!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error getting secret details",
             err,
@@ -43,16 +44,19 @@ pub async fn get_access_key_secrets(
     .await
     .map_err(|err| {
         InternalError::trace(
+            caller!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error getting access key details",
             err,
         )
     })?;
 
-    let access_key = access_key
-        .ok_or_else(|| InternalError::new(StatusCode::NOT_FOUND, "Public key not found"))?;
+    let access_key = access_key.ok_or_else(|| {
+        InternalError::new(caller!(), StatusCode::NOT_FOUND, "Public key not found")
+    })?;
     let access = access_key.get_access(&params.env_name).ok_or_else(|| {
         InternalError::new(
+            caller!(),
             StatusCode::FORBIDDEN,
             "Access key does not have access to this environment",
         )
@@ -70,6 +74,7 @@ pub async fn get_access_key_secrets(
     .await
     .map_err(|err| {
         InternalError::trace(
+            caller!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error getting secret values",
             err,

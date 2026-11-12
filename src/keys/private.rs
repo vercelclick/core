@@ -2,6 +2,7 @@ use crate::keys::derive::{DerivedPrivateKey, DerivedPublicKey, PrivateKeySeed};
 use crate::keys::public::PublicKey;
 use crate::result::{InternalError, InternalResult};
 
+use crate::caller;
 use crate::types::EncryptedPackage;
 use aes_gcm::aead::Aead;
 use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
@@ -31,18 +32,34 @@ impl KeyPair {
         let shared_secret = self.private_key.diffie_hellman(&encryptor_public_key);
 
         let cipher = Aes256Gcm::new_from_slice(shared_secret.as_bytes()).map_err(|err| {
-            InternalError::trace(StatusCode::CONFLICT, "Invalid shared secret value", err)
+            InternalError::trace(
+                caller!(),
+                StatusCode::CONFLICT,
+                "Invalid shared secret value",
+                err,
+            )
         })?;
         let nonce = Nonce::from(encrypted_package.nonce_bytes);
 
         let decrypted_payload = cipher
             .decrypt(&nonce, encrypted_package.ciphertext.as_slice())
             .map_err(|err| {
-                InternalError::trace(StatusCode::CONFLICT, "Error decrypting value", err)
+                InternalError::trace(
+                    caller!(),
+                    StatusCode::CONFLICT,
+                    "Error decrypting value",
+                    err,
+                )
             })?;
 
-        String::from_utf8(decrypted_payload)
-            .map_err(|err| InternalError::trace(StatusCode::BAD_REQUEST, "Invalid project ID", err))
+        String::from_utf8(decrypted_payload).map_err(|err| {
+            InternalError::trace(
+                caller!(),
+                StatusCode::BAD_REQUEST,
+                "Invalid project ID",
+                err,
+            )
+        })
     }
 
     pub fn decrypt_package(

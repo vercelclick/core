@@ -1,7 +1,7 @@
 use crate::config::LocalServiceConfig;
 use crate::service::keys::LocalKeysConfig;
-use secretpass_api::backend::secrets::ProjectSecretPathParams;
-use secretpass_core::{InternalResult, TargetedPublicKey, User};
+use click_api::backend::secrets::ProjectSecretPathParams;
+use click_core::{InternalResult, TargetedPublicKey, User};
 use uuid::Uuid;
 
 pub async fn get_secret_targets(

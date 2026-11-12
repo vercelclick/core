@@ -1,5 +1,5 @@
+use click_core::{AuthSession, AuthTokenClaims, InternalError, InternalResult, StatusCode, caller};
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode};
-use secretpass_core::{AuthSession, AuthTokenClaims, InternalError, InternalResult, StatusCode};
 use std::sync::LazyLock;
 
 static DECODING_KEY: LazyLock<DecodingKey> =
@@ -11,6 +11,7 @@ pub fn verify_session_token(token: &str) -> InternalResult<AuthSession> {
     let token_data =
         decode::<AuthTokenClaims>(token, &DECODING_KEY, &validation).map_err(|err| {
             InternalError::trace(
+                caller!(),
                 StatusCode::UNAUTHORIZED,
                 "Invalid authorization token, create a new session and retry",
                 err,

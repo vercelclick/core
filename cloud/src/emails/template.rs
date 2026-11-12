@@ -1,4 +1,4 @@
-use secretpass_core::constants::RP_ORIGIN;
+use click_core::constants::RP_ORIGIN;
 use strum::Display;
 
 const CREATE_EMAIL_TEMPLATE: &str = include_str!("templates/create_account.html");

@@ -1,7 +1,7 @@
 use crate::constants::FEDERATED_ACCESS_KEY_LENGTH;
 use crate::projects::EnvironmentAccess;
 use crate::utils::{bin_decode, bin_encode};
-use crate::{InternalError, InternalResult};
+use crate::{InternalError, InternalResult, caller};
 use chrono::{DateTime, Utc};
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -56,6 +56,7 @@ impl FederatedAccessKey {
 
         if key.len() != FEDERATED_ACCESS_KEY_LENGTH {
             return Err(InternalError::new(
+                caller!(),
                 StatusCode::BAD_REQUEST,
                 "Invalid federated access key format",
             ));
@@ -66,13 +67,19 @@ impl FederatedAccessKey {
 
         let id = Uuid::from_bytes(id.try_into().map_err(|err| {
             InternalError::trace(
+                caller!(),
                 StatusCode::BAD_REQUEST,
                 "Invalid federal access key ID",
                 err,
             )
         })?);
         let project_id = Uuid::from_bytes(project_id.try_into().map_err(|err| {
-            InternalError::trace(StatusCode::BAD_REQUEST, "Invalid project ID", err)
+            InternalError::trace(
+                caller!(),
+                StatusCode::BAD_REQUEST,
+                "Invalid project ID",
+                err,
+            )
         })?);
 
         Ok((id, project_id))

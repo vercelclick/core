@@ -2,7 +2,7 @@ use crate::backend::ApiState;
 use crate::backend::secrets::{ProjectAccessKeyParams, ProjectSecretPathParams};
 use axum::extract::{Path, State};
 use axum::{Extension, Json};
-use secretpass_core::{InternalResult, TargetedPublicKey, User};
+use click_core::{AuthSession, InternalResult, TargetedPublicKey};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -19,10 +19,13 @@ pub async fn get_access_key_secrets(
 #[axum::debug_handler]
 pub async fn get_secret_targets(
     State(state): State<ApiState>,
-    Extension(user): Extension<Arc<User>>,
+    Extension(session): Extension<Arc<AuthSession>>,
     Path(params): Path<ProjectSecretPathParams>,
 ) -> InternalResult<Json<Vec<TargetedPublicKey>>> {
-    let targets = state.backend.get_secret_targets(&user, &params).await?;
+    let targets = state
+        .backend
+        .get_secret_targets(&session.user, params)
+        .await?;
 
     Ok(Json(targets))
 }

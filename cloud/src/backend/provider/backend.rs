@@ -1,4 +1,3 @@
-use crate::backend::auth::challenge::{get_pending_challenge, insert_or_replace_challenge};
 use crate::backend::projects::access_keys::{create_access_key, create_federated_access_key};
 use crate::backend::projects::environments::get_environment_handler;
 use crate::backend::projects::project::{create_project, get_project_by_id, list_projects};
@@ -6,20 +5,22 @@ use crate::backend::projects::secrets::create::create_secret;
 use crate::backend::projects::secrets::read::get_access_key_secrets;
 use crate::backend::projects::secrets::targets::get_secret_targets;
 use crate::backend::projects::secrets::update::{update_secret, update_secret_value};
-use secretpass_api::backend::environments::{
+use crate::db;
+use crate::db::workflows::UpsertWebauthnChallengeWorkflow;
+use click_api::backend::BackendProvider;
+use click_api::backend::environments::{
     GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues,
 };
-use secretpass_api::backend::projects::{
-    CreateProjectRequest, GetProjectResult, ListProjectsResult,
-};
-use secretpass_api::backend::secrets::{
+use click_api::backend::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
+use click_api::backend::secrets::{
     CreateAccessKeyRequest, CreateFederatedAccessKeyRequest, CreateFederatedAccessKeyResult,
     CreateSecretRequest, ProjectAccessKeyParams, ProjectEnvPathParams, ProjectPathParams,
     ProjectSecretPathParams, UpdateSecretRequest, UpdateSecretValueRequest,
 };
-use secretpass_api::backend::{BackendProvider, PendingChallenge};
-use secretpass_core::enums::ChallengeKind;
-use secretpass_core::{AccessKey, InternalResult, Passkey, Project, TargetedPublicKey, User};
+use click_core::enums::WebauthnChallengeKind;
+use click_core::{
+    AccessKey, InternalResult, Passkey, Project, TargetedPublicKey, User, WebauthnChallenge,
+};
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -27,16 +28,20 @@ pub struct CloudBackendProvider();
 
 #[async_trait::async_trait]
 impl BackendProvider for CloudBackendProvider {
-    async fn record_pending_challenge(&self, challenge: &PendingChallenge) -> InternalResult<()> {
-        insert_or_replace_challenge(challenge).await
-    }
-
-    async fn get_pending_challenge(
+    async fn generate_webauthn_authorization_challenge(
         &self,
-        kind: ChallengeKind,
-        owner: &str,
-    ) -> InternalResult<Option<PendingChallenge>> {
-        get_pending_challenge(kind, owner).await
+        user: &User,
+    ) -> InternalResult<String> {
+        let (challenge, hash) = WebauthnChallenge::generate();
+
+        db::with_transaction(UpsertWebauthnChallengeWorkflow {
+            owner: user.email.clone(),
+            kind: WebauthnChallengeKind::PasskeyAuthorize,
+            hash,
+        })
+        .await?;
+
+        Ok(challenge)
     }
 
     async fn list_projects(&self, user: &User) -> InternalResult<ListProjectsResult> {
@@ -114,7 +119,7 @@ impl BackendProvider for CloudBackendProvider {
     async fn get_secret_targets(
         &self,
         user: &User,
-        params: &ProjectSecretPathParams,
+        params: ProjectSecretPathParams,
     ) -> InternalResult<Vec<TargetedPublicKey>> {
         get_secret_targets(user, params).await
     }
@@ -122,8 +127,8 @@ impl BackendProvider for CloudBackendProvider {
     async fn create_federated_access_key(
         &self,
         user: &User,
-        params: &ProjectPathParams,
-        request: &CreateFederatedAccessKeyRequest,
+        params: ProjectPathParams,
+        request: CreateFederatedAccessKeyRequest,
     ) -> InternalResult<CreateFederatedAccessKeyResult> {
         create_federated_access_key(user, params, request).await
     }

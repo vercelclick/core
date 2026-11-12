@@ -1,8 +1,8 @@
-use secretpass_core::{InternalError, InternalResult, StatusCode};
+use click_core::{InternalError, InternalResult, StatusCode, caller};
 use sqlx::{PgConnection, PgPool, Postgres, Transaction as SqlxTransaction};
 use std::sync::OnceLock;
 
-pub mod queries;
+pub mod workflows;
 
 pub static DB_POOL: OnceLock<PgPool> = OnceLock::new();
 
@@ -22,18 +22,20 @@ pub async fn with_transaction<T, Op>(op: Op) -> InternalResult<T>
 where
     Op: TransactionOperation<T>,
 {
-    let mut transaction = pool().begin().await.map_err(|err| {
+    let mut tx = pool().begin().await.map_err(|err| {
         InternalError::trace(
+            caller!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal error establishing a transaction",
             err,
         )
     })?;
 
-    match op.execute(&mut transaction).await {
+    match op.execute(&mut tx).await {
         Ok(res) => {
-            transaction.commit().await.map_err(|err| {
+            tx.commit().await.map_err(|err| {
                 InternalError::trace(
+                    caller!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Internal error committing database transaction",
                     err,
@@ -42,8 +44,9 @@ where
             Ok(res)
         }
         Err(e) => {
-            transaction.rollback().await.map_err(|err| {
+            tx.rollback().await.map_err(|err| {
                 InternalError::trace(
+                    caller!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Internal error rolling back database transaction",
                     err,

@@ -34,30 +34,27 @@ pub enum SecretDataType {
 #[derive(
     Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, TS, sqlx::Type,
 )]
-#[sqlx(type_name = r#""ChallengeKind""#)]
-pub enum ChallengeKind {
+#[sqlx(type_name = r#""EmailChallengeKind""#)]
+pub enum EmailChallengeKind {
     EmailSignup,
     EmailSignIn,
-    PasskeySignup,
-    PasskeySignIn,
-    PasskeyAuthorize,
-    PasskeyCreate,
     EmailAuthorize,
 }
 
-impl ChallengeKind {
+#[derive(
+    Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, TS, sqlx::Type,
+)]
+#[sqlx(type_name = r#""WebauthnChallengeKind""#)]
+pub enum WebauthnChallengeKind {
+    PasskeySignup,
+    PasskeySignIn,
+    PasskeyCreate,
+    PasskeyAuthorize,
+}
+
+impl WebauthnChallengeKind {
     pub fn is_cloud_only(&self) -> bool {
-        *self != ChallengeKind::PasskeyAuthorize
-    }
-
-    pub fn is_checkable(&self) -> bool {
-        *self == ChallengeKind::EmailSignup
-            || *self == ChallengeKind::EmailSignIn
-            || *self == ChallengeKind::EmailAuthorize
-    }
-
-    pub fn is_new_user_only(&self) -> bool {
-        *self == ChallengeKind::EmailSignup || *self == ChallengeKind::PasskeySignup
+        *self != Self::PasskeyAuthorize
     }
 }
 

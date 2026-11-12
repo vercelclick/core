@@ -3,13 +3,14 @@ use crate::service::keys::LocalKeysConfig;
 use crate::service::project::LocalProjectConfig;
 use crate::utils::short_path;
 use chrono::Utc;
-use secretpass_api::backend::projects::{
+use click_api::backend::projects::{
     CreateProjectRequest, GetProjectResult, ListProjectsResult, ProjectListItem, ProjectPath,
 };
-use secretpass_core::enums::{AccessGrant, ContributorRole, ContributorStatus};
-use secretpass_core::{
+use click_core::constants::APP_SLUG;
+use click_core::enums::{AccessGrant, ContributorRole, ContributorStatus};
+use click_core::{
     Contributor, ContributorPublicKey, Environment, InternalError, InternalResult, Passkey,
-    Project, StatusCode, User,
+    Project, StatusCode, User, caller,
 };
 use uuid::Uuid;
 
@@ -65,8 +66,9 @@ pub async fn create_project(
 
     let path = request.path.ok_or_else(|| {
         InternalError::new(
+            caller!(),
             StatusCode::BAD_REQUEST,
-            "path is required when creating a local secretpass project",
+            "path is required when creating a local click vault project",
         )
     })?;
 
@@ -76,11 +78,13 @@ pub async fn create_project(
         }
 
         return Err(InternalError::new(
+            caller!(),
             StatusCode::CONFLICT,
             &format!(
-                "Project({}) already exists under {}. Please delete .spass directory if you intend to replace the project.",
+                "Project({}) already exists under {}. Please delete .{} directory if you intend to replace the project.",
                 project_config.project.name,
-                short_path(&path)
+                short_path(&path),
+                APP_SLUG
             ),
         ));
     }
@@ -171,6 +175,7 @@ pub async fn get_project_by_id(
         .get_contributor_by_user_id(user.id)
         .ok_or_else(|| {
             InternalError::new(
+                caller!(),
                 StatusCode::FORBIDDEN,
                 "You do not have access to this project under the current user",
             )

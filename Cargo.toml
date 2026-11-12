@@ -5,13 +5,13 @@ members = ["api", "local", "cloud", "wasm"]
 [workspace.package]
 version = "0.2.3"
 edition = "2024"
-repository = "https://github.com/secretpass/core"
-authors = ["Secretpass Inc", "Billcountry Mwaniki"]
-description = "Secretpass cli allows you to manage secrets locally secured through passkeys for human access and generated private keys for machine access"
-homepage = "https://secretpass.cloud"
+repository = "https://github.com/clicksecrets/core"
+authors = ["Click Secrets Inc", "Billcountry Mwaniki"]
+description = "Click Vault cli allows you to manage secrets locally secured through passkeys for human access and generated private keys for machine access"
+homepage = "https://vercel.click"
 
 [package]
-name = "secretpass-core"
+name = "click-core"
 version = { workspace = true }
 edition = { workspace = true }
 repository = { workspace = true }

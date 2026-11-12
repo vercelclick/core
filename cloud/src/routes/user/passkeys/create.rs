@@ -1,19 +1,17 @@
 use crate::auth_session::create_backend_session_token;
-use crate::backend::auth::session::get_session;
-use crate::backend::auth::user::get_user_by_email_with_passkeys;
 use crate::backend::projects::passkeys::SavePasskeyWorkflow;
 use crate::db;
-use crate::routes::user::passkeys::utils::{
-    PasskeyCreateValidationRequest, validate_passkey_creation_details,
-};
-use axum::extract::State;
-use axum::http::StatusCode;
+use crate::db::workflows::session::CreateSessionWorkflow;
+use crate::db::workflows::{UpsertWebauthnChallengeWorkflow, UseEmailChallengeWorkflow};
+use crate::db::{Transaction, TransactionOperation, with_transaction};
+use crate::workfows::passkeys::NewPasskeyValidationWorkflow;
+use async_trait::async_trait;
 use axum::{Extension, Json};
-use secretpass_api::backend::ApiState;
-use secretpass_api::backend::auth::AuthTokenResponse;
-use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
-use secretpass_core::passkeys::create::PasskeyCreationResult;
-use secretpass_core::{AuthSession, InternalError, InternalResult};
+use click_api::backend::auth::{AuthTokenResponse, WebauthnChallengeResponse};
+use click_core::enums::{EmailChallengeKind, WebauthnChallengeKind};
+use click_core::passkeys::authorize::PasskeyAuthorizationResult;
+use click_core::passkeys::create::PasskeyCreationResult;
+use click_core::{AuthSession, InternalResult, User, WebauthnChallenge};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use ts_rs::TS;
@@ -29,48 +27,74 @@ pub struct CreatePasskeyRequest {
     auth_result: PasskeyAuthorizationResult,
 }
 
-pub async fn create_passkey_handler(
-    State(state): State<ApiState>,
+struct CreatePasskeyWorkflow {
+    user: User,
+    request: CreatePasskeyRequest,
+}
+
+#[async_trait]
+impl TransactionOperation<String> for CreatePasskeyWorkflow {
+    async fn execute(self, tx: &mut Transaction<'_>) -> InternalResult<String> {
+        UseEmailChallengeWorkflow {
+            owner: self.user.email.clone(),
+            kind: EmailChallengeKind::EmailAuthorize,
+            confirmation_code: self.request.confirmation_code.clone(),
+        }
+        .execute(tx)
+        .await?;
+
+        let (cred_id, web_public_key) = NewPasskeyValidationWorkflow {
+            kind: WebauthnChallengeKind::PasskeyCreate,
+            user_id: self.user.id,
+            email_address: self.user.email.clone(),
+            create_result: self.request.create_result,
+            auth_result: self.request.auth_result,
+        }
+        .execute(tx)
+        .await?;
+
+        SavePasskeyWorkflow {
+            public_key: self.request.public_key,
+            name: self.request.name,
+            user_id: self.user.id,
+            salt: self.request.salt,
+            cred_id,
+            web_public_key,
+        }
+        .execute(tx)
+        .await?;
+
+        let (session, user, passkeys) = CreateSessionWorkflow { user: self.user }
+            .execute(tx)
+            .await?;
+
+        create_backend_session_token(session, user, passkeys)
+    }
+}
+
+pub async fn passkey_create_handler(
     Extension(auth_session): Extension<Arc<AuthSession>>,
     Json(request): Json<CreatePasskeyRequest>,
 ) -> InternalResult<Json<AuthTokenResponse>> {
-    let session = get_session(auth_session.id, auth_session.user.id)
-        .await?
-        .ok_or_else(|| InternalError::new(StatusCode::UNAUTHORIZED, "Session not found"))?;
-
-    let (cred_id, web_public_key) = validate_passkey_creation_details(
-        false,
-        &state,
-        PasskeyCreateValidationRequest {
-            create_result: request.create_result,
-            email_address: auth_session.user.email.clone(),
-            auth_result: request.auth_result.clone(),
-            user_id: auth_session.user.id,
-            confirmation_code: request.confirmation_code,
-        },
-    )
-    .await?;
-
-    db::with_transaction(SavePasskeyWorkflow {
-        user_id: auth_session.user.id,
-        name: request.name,
-        cred_id,
-        web_public_key,
-        salt: request.salt,
-        public_key: request.public_key,
+    let token = db::with_transaction(CreatePasskeyWorkflow {
+        user: auth_session.user.clone(),
+        request,
     })
     .await?;
 
-    let (user, passkeys) = get_user_by_email_with_passkeys(auth_session.user.email.clone())
-        .await?
-        .ok_or_else(|| {
-            InternalError::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "User not found for a verified session",
-            )
-        })?;
-
-    let token = create_backend_session_token(session, user, passkeys)?;
-
     Ok(Json(AuthTokenResponse { token }))
+}
+pub async fn passkey_create_challenge(
+    Extension(auth_session): Extension<Arc<AuthSession>>,
+) -> InternalResult<Json<WebauthnChallengeResponse>> {
+    let (challenge, hash) = WebauthnChallenge::generate();
+
+    with_transaction(UpsertWebauthnChallengeWorkflow {
+        owner: auth_session.user.email.clone(),
+        kind: WebauthnChallengeKind::PasskeySignIn,
+        hash,
+    })
+    .await?;
+
+    Ok(Json(WebauthnChallengeResponse { challenge }))
 }

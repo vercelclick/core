@@ -1,4 +1,4 @@
-use secretpass_core::{InternalError, InternalResult, StatusCode};
+use click_core::{InternalError, InternalResult, StatusCode, caller};
 use wasm_bindgen::JsCast;
 use web_sys::js_sys::Promise;
 use web_sys::{CredentialsContainer, PublicKeyCredential};
@@ -8,8 +8,9 @@ pub fn get_credentials_container() -> InternalResult<CredentialsContainer> {
         Some(window) => window,
         None => {
             return Err(InternalError::new(
+                caller!(),
                 StatusCode::BAD_GATEWAY,
-                "Please run Secretpass in a supported browser",
+                "Please run open click vault in a supported browser",
             ));
         }
     };
@@ -21,6 +22,7 @@ pub fn get_credentials_container() -> InternalResult<CredentialsContainer> {
 pub async fn parse_promise(promise: Promise) -> InternalResult<PublicKeyCredential> {
     let result = promise.await.map_err(|err| {
         InternalError::trace(
+            caller!(),
             StatusCode::UNAUTHORIZED,
             "Error processing passkey authentication result",
             err,
@@ -28,6 +30,7 @@ pub async fn parse_promise(promise: Promise) -> InternalResult<PublicKeyCredenti
     })?;
     let credential = result.dyn_into::<PublicKeyCredential>().map_err(|err| {
         InternalError::trace(
+            caller!(),
             StatusCode::UNAUTHORIZED,
             "Error parsing passkey authentication result",
             err,

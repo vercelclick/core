@@ -1,6 +1,6 @@
+use click_core::utils::get_global_rng;
+use click_core::{InternalResult, KeyPair, PrivateKeySeed};
 use rand::Rng;
-use secretpass_core::utils::get_global_rng;
-use secretpass_core::{InternalResult, KeyPair, PrivateKeySeed};
 
 fn create_seed_keys() -> ([u8; 32], [u8; 32]) {
     let mut rng = get_global_rng().lock().unwrap();

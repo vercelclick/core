@@ -1,10 +1,10 @@
-# Secretpass – Local Secret Storage
+# Click Vault – Local Secret Storage
 
 Local-based storage allows you to securely store secrets locally and sync them through git as part of your project.
-These secrets are secured by passkeys and can be conveniently managed through the web interface bundled with the `spass`
+These secrets are secured by passkeys and can be conveniently managed through the web interface bundled with the `click`
 cli.
 
-The project folder `.spass` has the following structure:
+The project folder `.click` has the following structure:
 
 - `config.json` - This file holds the primary configuration for the project including the project details, environments
   and users.
@@ -18,9 +18,9 @@ The project folder `.spass` has the following structure:
 
 ## Create a new project
 
-The sequence below depicts the registration process when the user runs `spass` for the first time in a project folder
+The sequence below depicts the registration process when the user runs `click` for the first time in a project folder
 that does not have a
-`.spass` folder. It creates a new project with the user as the admin.
+`.click` folder. It creates a new project with the user as the admin.
 
 ```mermaid
 ---
@@ -205,7 +205,7 @@ sequenceDiagram
     actor User
     participant App@{"type": "control"} as Web App
     participant Cli@{"type": "control"} as  Cli
-    User -->> Cli: Run spass-cli
+    User -->> Cli: Run click-cli
     User ->> App: Open web interface
     App ->> User: Present options<br/>- Login<br/>- Generate public key
     User ->> App: Selects generate public key

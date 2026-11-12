@@ -1,25 +1,25 @@
-use crate::backend::challenge::{get_pending_challenge, save_pending_challenge};
 use crate::backend::environments::get_environment_by_name;
 use crate::backend::projects::access_keys::create_access_key;
 use crate::backend::projects::project::{create_project, get_project_by_id, list_projects};
 use crate::backend::projects::secrets::create::create_secret;
 use crate::backend::projects::secrets::update::{update_secret, update_secret_value};
-use secretpass_api::backend::environments::{
+use click_api::backend::environments::{
     GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues,
 };
 
-use secretpass_api::backend::projects::{
-    CreateProjectRequest, GetProjectResult, ListProjectsResult,
-};
-use secretpass_api::backend::secrets::{
+use crate::backend::challenge::save_challenge;
+use chrono::{Duration, Utc};
+use click_api::backend::BackendProvider;
+use click_api::backend::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
+use click_api::backend::secrets::{
     CreateAccessKeyRequest, CreateFederatedAccessKeyRequest, CreateFederatedAccessKeyResult,
     CreateSecretRequest, ProjectAccessKeyParams, ProjectEnvPathParams, ProjectPathParams,
     ProjectSecretPathParams, UpdateSecretRequest, UpdateSecretValueRequest,
 };
-use secretpass_api::backend::{BackendProvider, PendingChallenge};
-use secretpass_core::enums::ChallengeKind;
-use secretpass_core::{
-    AccessKey, InternalError, InternalResult, Passkey, Project, StatusCode, TargetedPublicKey, User,
+use click_core::enums::WebauthnChallengeKind;
+use click_core::{
+    AccessKey, InternalError, InternalResult, Passkey, Project, StatusCode, TargetedPublicKey,
+    User, WebauthnChallenge, caller,
 };
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -29,17 +29,20 @@ pub struct LocalBackendProvider {}
 
 #[async_trait::async_trait]
 impl BackendProvider for LocalBackendProvider {
-    async fn record_pending_challenge(&self, challenge: &PendingChallenge) -> InternalResult<()> {
-        save_pending_challenge(challenge).await;
-        Ok(())
-    }
-
-    async fn get_pending_challenge(
+    async fn generate_webauthn_authorization_challenge(
         &self,
-        kind: ChallengeKind,
-        owner: &str,
-    ) -> InternalResult<Option<PendingChallenge>> {
-        let challenge = get_pending_challenge(kind, owner).await;
+        user: &User,
+    ) -> InternalResult<String> {
+        let (challenge, hash) = WebauthnChallenge::generate();
+
+        save_challenge(&WebauthnChallenge {
+            kind: WebauthnChallengeKind::PasskeyAuthorize,
+            owner: user.email.clone(),
+            value_hash: hash,
+            expires_on: Utc::now() + Duration::minutes(5),
+        })
+        .await;
+
         Ok(challenge)
     }
 
@@ -86,8 +89,9 @@ impl BackendProvider for LocalBackendProvider {
         _params: ProjectAccessKeyParams,
     ) -> InternalResult<HashMap<String, String>> {
         Err(InternalError::new(
+            caller!(),
             StatusCode::NOT_IMPLEMENTED,
-            "Secrets API not supported on local server. Use `spass local run/export`",
+            "Secrets API not supported on local server. Use `click local run/export`",
         ))
     }
 
@@ -121,7 +125,7 @@ impl BackendProvider for LocalBackendProvider {
     async fn get_secret_targets(
         &self,
         _user: &User,
-        _params: &ProjectSecretPathParams,
+        _params: ProjectSecretPathParams,
     ) -> InternalResult<Vec<TargetedPublicKey>> {
         todo!()
     }
@@ -129,8 +133,8 @@ impl BackendProvider for LocalBackendProvider {
     async fn create_federated_access_key(
         &self,
         _user: &User,
-        _params: &ProjectPathParams,
-        _request: &CreateFederatedAccessKeyRequest,
+        _params: ProjectPathParams,
+        _request: CreateFederatedAccessKeyRequest,
     ) -> InternalResult<CreateFederatedAccessKeyResult> {
         todo!()
     }

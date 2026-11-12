@@ -1,7 +1,7 @@
 use crate::service::keys::LocalKeysConfig;
 use crate::service::project::LocalProjectConfig;
 use crate::service::secrets::LocalSecretConfig;
-use secretpass_core::{InternalError, KeyPair, PrivateKeySeed, StatusCode};
+use click_core::{InternalError, KeyPair, PrivateKeySeed, StatusCode, caller};
 use std::collections::HashMap;
 use std::env;
 use std::fs;
@@ -38,6 +38,7 @@ pub fn get_values_from_local_project(
         .unwrap()
         .ok_or_else(|| {
             InternalError::new(
+                caller!(),
                 StatusCode::NOT_FOUND,
                 &format!("Secretpass not found under {path}"),
             )
@@ -52,6 +53,7 @@ pub fn get_values_from_local_project(
         .get_environment(&env)
         .ok_or_else(|| {
             InternalError::new(
+                caller!(),
                 StatusCode::NOT_FOUND,
                 &format!("Environment {env} not found"),
             )
@@ -82,6 +84,7 @@ pub fn get_values_from_local_project(
             .find(|value| value.target == key_id && value.tag == tag)
             .ok_or_else(|| {
                 InternalError::new(
+                    caller!(),
                     StatusCode::NOT_FOUND,
                     &format!(
                         "{} not found in {}:{}",
@@ -113,6 +116,7 @@ pub fn get_values_from_cloud_project(
     let response = reqwest::blocking::get(url)
         .map_err(|err| {
             InternalError::trace(
+                caller!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Error fetching cloud secrets",
                 err,
@@ -129,6 +133,7 @@ pub fn get_values_from_cloud_project(
         .json()
         .map_err(|err| {
             InternalError::trace(
+                caller!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Error decoding cloud response",
                 err,

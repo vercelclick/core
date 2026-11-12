@@ -1,8 +1,8 @@
 #! /bin/sh
 
-cargo test export_bindings -p secretpass-core
-cargo test export_bindings -p secretpass-api
-cargo test export_bindings -p secretpass-cloud
+cargo test export_bindings -p click-core
+cargo test export_bindings -p click-api
+cargo test export_bindings -p click-cloud
 
 # shellcheck disable=SC2164
 cd ../web-app/src/core/types

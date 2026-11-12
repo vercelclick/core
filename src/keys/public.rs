@@ -8,6 +8,7 @@ use aes_gcm::{
 
 use crate::result::{InternalError, InternalResult};
 
+use crate::caller;
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -24,7 +25,12 @@ impl PublicKey {
     pub fn from_encoded(encoded_value: &str) -> InternalResult<Self> {
         let bytes = bin_decode(encoded_value)?;
         let key_bytes: [u8; 32] = bytes.as_slice().try_into().map_err(|err| {
-            InternalError::trace(StatusCode::CONFLICT, "Invalid public key value", err)
+            InternalError::trace(
+                caller!(),
+                StatusCode::CONFLICT,
+                "Invalid public key value",
+                err,
+            )
         })?;
         let key = DerivedPublicKey::from(key_bytes);
 
@@ -60,6 +66,7 @@ impl PublicKey {
         let nonce = Nonce::from(nonce_bytes);
         let cipher = Aes256Gcm::new_from_slice(shared_secret.as_bytes()).map_err(|err| {
             InternalError::trace(
+                caller!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Error generating encryption cypher",
                 err,
@@ -70,6 +77,7 @@ impl PublicKey {
             .encrypt(&nonce, payload.into_bytes().as_slice())
             .map_err(|err| {
                 InternalError::trace(
+                    caller!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Error encrypting value",
                     err,

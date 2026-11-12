@@ -1,4 +1,5 @@
 use crate::config::{CONFIG_DIR, LocalServiceConfig};
+use click_core::constants::APP_SLUG;
 use std::env;
 use std::path::Path;
 
@@ -11,35 +12,36 @@ pub fn attach_project(silent: bool) {
     );
 
     let load_error = &format!(
-        "Error loading secretpass config, please check permissions for {}",
+        "Error loading local click vault config, please check permissions for {}",
         CONFIG_DIR.display()
     );
 
     let mut config = LocalServiceConfig::load().expect(load_error);
 
     if config.known_projects.contains(&cwd) {
-        if Path::new(&cwd).join(".spass/config.json").is_file() {
-            eprintln!(
-                "Project is already attached, you can manage on https://local.secretpass.cloud"
-            )
+        if Path::new(&cwd)
+            .join(format!(".{}/config.json", APP_SLUG))
+            .is_file()
+        {
+            eprintln!("Project is already attached, you can manage on https://vault.vercel.click")
         } else {
             eprintln!(
-                "Project is already attached but not setup, you can complete the setup on https://local.secretpass.cloud"
+                "Project is already attached but not setup, you can complete the setup on https://vault.verce.click"
             )
         }
     } else {
         config.known_projects.push(cwd.clone());
 
         let write_error = &format!(
-            "Error writing secretpass config, please check permissions for {}",
+            "Error writing local click vault config, please check permissions for {}",
             CONFIG_DIR.display()
         );
         config.write().expect(write_error);
 
-        eprintln!("{cwd} attached, you can now manage it through https://local.secretpass.cloud");
+        eprintln!("{cwd} attached, you can now manage it through https://vault.vercel.click");
     }
 
     if !silent {
-        let _ = webbrowser::open("https://local.secretpass.cloud");
+        let _ = webbrowser::open("https://vault.vercel.click");
     }
 }

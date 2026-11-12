@@ -1,13 +1,13 @@
 use crate::db::{Transaction, TransactionOperation};
-use secretpass_core::enums::AccessGrant;
-use secretpass_core::{Contributor, InternalError, InternalResult, Passkey, StatusCode, User};
+use click_core::enums::AccessGrant;
+use click_core::{Contributor, InternalError, InternalResult, Passkey, StatusCode, User, caller};
 use sqlx::types::chrono::Utc;
 use sqlx::{Postgres, QueryBuilder};
 use uuid::Uuid;
 
 // language=sql
 const CREATE_CONTRIBUTOR_PUBLIC_KEY_QUERY: &str = r#"
-INSERT INTO secretpass.public."ContributorPublicKeys"
+INSERT INTO "ContributorPublicKeys"
     (name, user_id, cred_id, contributor_id, access, user_salt, passkey_salt, public_key, granted_by, granted_on)
 "#;
 
@@ -39,7 +39,7 @@ pub fn contributor_public_key_insert_query_builder(
 
 // language=sql
 pub const CREATE_PASSKEY_QUERY: &str = r#"
-    INSERT INTO secretpass.public."Passkeys" (user_id, name, cred_id, key_salt, public_key, web_public_key)
+    INSERT INTO "Passkeys" (user_id, name, cred_id, key_salt, public_key, web_public_key)
     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *
 "#;
 
@@ -66,6 +66,7 @@ impl TransactionOperation<Passkey> for SavePasskeyWorkflow {
             .await
             .map_err(|err| {
                 InternalError::trace(
+                    caller!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Internal error creating passkey",
                     err,

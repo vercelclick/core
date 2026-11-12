@@ -5,8 +5,8 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use axum_server::tls_rustls::RustlsConfig;
-use secretpass_core::constants::RP_ORIGIN;
-use secretpass_core::{KeyPair, PrivateKeySeed, TargetedPublicKey};
+use click_core::constants::RP_ORIGIN;
+use click_core::{KeyPair, PrivateKeySeed, TargetedPublicKey};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -83,7 +83,7 @@ async fn get_values_from_web_async(command: Option<String>) -> (KeyPair, HashMap
 
     let (cert_path, key_path) = get_certificates();
     let tls_config = RustlsConfig::from_pem_file(cert_path, key_path).await
-        .expect("Error parsing TLS certificate, please raise a support ticket with support@secretpass.cloud");
+        .expect("Error parsing TLS certificate, please raise a support ticket with support@vercel.click");
     let port = listener.local_addr().unwrap().port();
 
     let child = tokio::spawn(
@@ -107,7 +107,9 @@ async fn get_values_from_web_async(command: Option<String>) -> (KeyPair, HashMap
 }
 
 pub fn get_values_from_web(command: Option<String>) -> (KeyPair, HashMap<String, String>) {
-    let rt = tokio::runtime::Runtime::new().expect("Error creating IO runtime, , please raise a support ticket through support@secretpass.cloud");
+    let rt = tokio::runtime::Runtime::new().expect(
+        "Error creating IO runtime, , please raise a support ticket through support@vercel.click",
+    );
 
     rt.block_on(get_values_from_web_async(command))
 }

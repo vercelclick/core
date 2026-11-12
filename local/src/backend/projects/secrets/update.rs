@@ -2,12 +2,12 @@ use crate::config::LocalServiceConfig;
 use crate::service::keys::LocalKeysConfig;
 use crate::service::secrets::LocalSecretConfig;
 use chrono::Utc;
-use secretpass_api::backend::environments::SecretWithEncryptedValues;
-use secretpass_api::backend::secrets::{
+use click_api::backend::environments::SecretWithEncryptedValues;
+use click_api::backend::secrets::{
     ProjectSecretPathParams, UpdateSecretRequest, UpdateSecretValueRequest,
 };
-use secretpass_api::constants::{LATEST_SECRET_TAG, PREVIOUS_SECRET_TAG};
-use secretpass_core::{Contributor, InternalError, InternalResult, StatusCode, User};
+use click_api::constants::{LATEST_SECRET_TAG, PREVIOUS_SECRET_TAG};
+use click_core::{Contributor, InternalError, InternalResult, StatusCode, User, caller};
 
 fn get_permitted_secret(
     path: &str,
@@ -16,6 +16,7 @@ fn get_permitted_secret(
 ) -> InternalResult<LocalSecretConfig> {
     let access = contributor.get_access(&params.env_name).ok_or_else(|| {
         InternalError::new(
+            caller!(),
             StatusCode::FORBIDDEN,
             "You don't have access to this environment",
         )
@@ -25,6 +26,7 @@ fn get_permitted_secret(
         .can_write_secret(&params.secret_name)
         .ok_or_else(|| {
             InternalError::new(
+                caller!(),
                 StatusCode::FORBIDDEN,
                 "You do not have permission to update this secret",
             )
@@ -32,6 +34,7 @@ fn get_permitted_secret(
 
     LocalSecretConfig::load(&path, &params.env_name, &params.secret_name)?.ok_or_else(|| {
         InternalError::new(
+            caller!(),
             StatusCode::NOT_FOUND,
             &format!(
                 "Secret {}/{} not found",

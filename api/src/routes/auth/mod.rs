@@ -11,5 +11,8 @@ use axum::Router;
 use axum::routing::post;
 
 pub fn auth_router() -> Router<ApiState> {
-    Router::new().route("/challenge", post(generate_webauthn_challenge_handler))
+    Router::new().route(
+        "/challenge/webauthn/authorize",
+        post(generate_webauthn_challenge_handler),
+    )
 }

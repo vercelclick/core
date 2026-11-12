@@ -5,10 +5,10 @@ use crate::auth::mapping::{
 };
 use crate::passkeys::prf::{PrfDeriveConfig, PrfResults};
 use crate::seucre_session::SecureSession;
-use secretpass_core::constants::RP_ID;
-use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
-use secretpass_core::utils::bin_decode;
-use secretpass_core::{InternalError, InternalResult, StatusCode};
+use click_core::constants::RP_ID;
+use click_core::passkeys::authorize::PasskeyAuthorizationResult;
+use click_core::utils::bin_decode;
+use click_core::{InternalError, InternalResult, StatusCode, caller};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use web_sys::{
@@ -18,7 +18,7 @@ use web_sys::{
 #[derive(Debug, Clone, Serialize, Deserialize, Tsify)]
 pub struct AuthorizationRequest {
     challenge: String,
-    allowed_credentials: Option<Vec<String>>,
+    allowed_credentials: Vec<String>,
 }
 
 impl AuthorizationRequest {
@@ -47,13 +47,14 @@ impl DecryptionAuthorizationRequest {
 
         let (login_response, prf_results) = browser_user_authorize(
             &self.challenge,
-            &Some(allowed_credentials),
+            &allowed_credentials,
             &Some(self.prf_configs.clone()),
         )
         .await?;
 
         let session = prf_results.map(SecureSession::new).ok_or_else(|| {
             InternalError::new(
+                caller!(),
                 StatusCode::BAD_GATEWAY,
                 "Missing Pseudo Random Function results!",
             )
@@ -65,16 +66,14 @@ impl DecryptionAuthorizationRequest {
 
 async fn browser_user_authorize(
     challenge: &str,
-    allowed_credentials: &Option<Vec<String>>,
+    allowed_credentials: &[String],
     prf_configs: &Option<Vec<PrfDeriveConfig>>,
 ) -> InternalResult<(PasskeyAuthorizationResult, Option<PrfResults>)> {
     let mut challenge = bin_decode(challenge)?;
 
     let pk_options = PublicKeyCredentialRequestOptions::new_with_u8_slice(&mut challenge);
     pk_options.set_rp_id(RP_ID);
-    if let Some(allowed_credentials) = allowed_credentials {
-        pk_options.set_allow_credentials(&build_credentials_array(allowed_credentials)?);
-    }
+    pk_options.set_allow_credentials(&build_credentials_array(allowed_credentials)?);
     pk_options.set_user_verification(UserVerificationRequirement::Required);
 
     // Not every login requires PRF
@@ -93,6 +92,7 @@ async fn browser_user_authorize(
         Ok(promise) => promise,
         Err(err) => {
             return Err(InternalError::trace(
+                caller!(),
                 StatusCode::CONFLICT,
                 "Error getting passkey",
                 err,

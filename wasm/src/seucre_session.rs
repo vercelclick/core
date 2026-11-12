@@ -1,7 +1,7 @@
 use crate::passkeys::prf::PrfResults;
 use chrono::Utc;
-use secretpass_core::enums::SecretDataType;
-use secretpass_core::{
+use click_core::enums::SecretDataType;
+use click_core::{
     InternalResult, KeyPair, PrivateKeySeed, PublicKey, SecretValue, TargetedPublicKey,
 };
 

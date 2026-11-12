@@ -1,4 +1,4 @@
-use secretpass_core::KeyPair;
+use click_core::KeyPair;
 use std::collections::HashMap;
 use std::process::Command;
 

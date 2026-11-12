@@ -1,5 +1,5 @@
 [package]
-name = "secretpass-wasm"
+name = "click-wasm"
 version = { workspace = true }
 edition = { workspace = true }
 repository = { workspace = true }
@@ -12,17 +12,13 @@ homepage = { workspace = true }
 chrono = { version = "0.4.45", default-features = false, features = ["serde", "wasm-bindgen"] }
 serde = { version = "1.0.229", features = ["derive"] }
 jwt-simple = { version = "0.15.0", features = [] }
-secretpass-core = { path = "..", default-features = false }
+click-core = { path = "..", default-features = false }
 tsify = { version = "0.5.8", features = ["wasm-bindgen", "js"] }
 uuid = { version = "1.29.0", features = ["js", "v4", "v7", "serde"] }
 # This version must be matched with the version installed in CI
 wasm-bindgen = { version = "0.2.130" }
 wasm-bindgen-futures = "0.4.80"
-
-
-[dependencies.web-sys]
-version = "0.3.105"
-features = [
+web-sys = { version = "0.3.107", features = [
     "CredentialsContainer",
     "Credential",
     "Navigator",
@@ -46,4 +42,7 @@ features = [
     "AuthenticatorSelectionCriteria",
     "AttestationConveyancePreference",
     "AuthenticatorAttachment",
-]
+    "AbortController",
+    "AbortSignal",
+] }
+

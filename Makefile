@@ -14,14 +14,11 @@ RUN_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 
 cloud-run-dev:
 	echo "==> Running local cloud server"
-	export $$(cat .env | xargs) && cargo run -p secretpass-cloud
+	export $$(cat .env | xargs) && cargo run -p click-cloud
 
 local-run-dev:
 	@echo "==> Run api dev"
-	RUST_BACKTRACE=1 cargo run -p secretpass-local --bin spass -- local start --foreground
-
-db-export-url:
-	export DATABASE_URL=postgres://api:L0calApiPass@localhost:5432/secretpass
+	RUST_BACKTRACE=1 cargo run -p click-local --bin click -- local start --foreground
 
 migration-create:
 	@echo "==> Create migration"
@@ -45,11 +42,11 @@ wasm-add-target:
 
 wasm-build-dev:
 	@echo "==> Building WASM for development"
-	rm -r ../web-app/src/core || echo ""
+	rm -r ../web-app/src/core/types || echo ""
 	RUSTFLAGS='--cfg=web_sys_unstable_apis' \
-	cargo rustc -p secretpass-wasm --crate-type cdylib --target wasm32-unknown-unknown
+	cargo rustc -p click-wasm --crate-type cdylib --target wasm32-unknown-unknown
 	wasm-bindgen \
-      target/wasm32-unknown-unknown/debug/secretpass_wasm.wasm \
+      target/wasm32-unknown-unknown/debug/click_wasm.wasm \
       --target bundler \
       --out-name index \
       --out-dir ../web-app/src/core
@@ -59,13 +56,12 @@ wasm-build-dev:
 
 wasm-build-prod:
 	@echo "==> Building WASM for production"
-	rm -r ../web-app/src/core || echo ""
-	rm -r ../web-app/src/core
+	rm -r ../web-app/src/core/types || echo ""
 	RP_ID="vault.vercel.click" \
 	RUSTFLAGS='--cfg=web_sys_unstable_apis' \
-	cargo rustc -p secretpass-wasm --release --crate-type cdylib --target wasm32-unknown-unknown
+	cargo rustc -p click-wasm --release --crate-type cdylib --target wasm32-unknown-unknown
 	wasm-bindgen \
-	  target/wasm32-unknown-unknown/release/secretpass_wasm.wasm \
+	  target/wasm32-unknown-unknown/release/click_wasm.wasm \
 	  --target bundler \
       --out-name index \
 	  --out-dir ../web-app/src/core
@@ -79,7 +75,6 @@ wasm-build-prod:
 clean:
 	@echo "==> Cleaning generated WASM packages and target directory..."
 	rm -rf ../web-app/src/core
-	rm -rf ../web-app/src/api-types
 	cargo clean
 
 infra:

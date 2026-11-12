@@ -1,5 +1,5 @@
 use crate::auth::AuthorizationRequest;
-use secretpass_core::passkeys::authorize::PasskeyAuthorizationResult;
+use click_core::passkeys::authorize::PasskeyAuthorizationResult;
 use serde::{Deserialize, Serialize};
 use tsify::{Ts, Tsify};
 use wasm_bindgen::JsError;

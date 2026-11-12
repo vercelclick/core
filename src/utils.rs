@@ -8,6 +8,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use sha2::{Digest, Sha256};
 
+use crate::caller;
 use std::io::Cursor;
 use std::sync::{Mutex, OnceLock};
 
@@ -26,10 +27,10 @@ pub fn fill_random_bytes(bytes: &mut [u8]) {
     rng.fill(bytes);
 }
 
-pub fn sha256_raw(items: &[String]) -> [u8; 32] {
+pub fn sha256_raw(items: &[impl ToString]) -> [u8; 32] {
     let mut hash = Sha256::new();
     for value in items {
-        hash.update(value.as_bytes());
+        hash.update(value.to_string().as_bytes());
     }
 
     let result = hash.finalize();
@@ -38,7 +39,7 @@ pub fn sha256_raw(items: &[String]) -> [u8; 32] {
     output
 }
 
-pub fn sha256_digest(items: &[String]) -> String {
+pub fn sha256_digest(items: &[impl ToString]) -> String {
     hex::encode(sha256_raw(items))
 }
 
@@ -49,6 +50,7 @@ pub fn bin_encode(payload: &[u8]) -> String {
 pub fn bin_decode(payload: &str) -> InternalResult<Vec<u8>> {
     URL_SAFE_NO_PAD.decode(payload).map_err(|err| {
         InternalError::trace(
+            caller!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Base64 content decode error",
             err,
@@ -62,7 +64,12 @@ where
 {
     let mut serialized = Vec::new();
     ciborium::ser::into_writer(payload, &mut serialized).map_err(|err| {
-        InternalError::trace(StatusCode::CONFLICT, "Binary content encode error", err)
+        InternalError::trace(
+            caller!(),
+            StatusCode::CONFLICT,
+            "Binary content encode error",
+            err,
+        )
     })?;
 
     Ok(bin_encode(&serialized))
@@ -76,7 +83,12 @@ where
 
     let mut reader = Cursor::new(&decoded);
     let result: T = ciborium::de::from_reader(&mut reader).map_err(|err| {
-        InternalError::trace(StatusCode::CONFLICT, "Binary content decode error", err)
+        InternalError::trace(
+            caller!(),
+            StatusCode::CONFLICT,
+            "Binary content decode error",
+            err,
+        )
     })?;
 
     Ok(result)

@@ -2,8 +2,10 @@ pub use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::{Debug, Display, Formatter};
+use ts_rs::TS;
 
-macro_rules! resolve_caller {
+#[macro_export]
+macro_rules! caller {
     () => {{
         fn f() {}
         fn type_name_of<T>(_: T) -> &'static str {
@@ -15,13 +17,14 @@ macro_rules! resolve_caller {
     }};
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ErrorDepth {
     pub source: String,
     pub message: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct InternalError {
     pub code: u16,
     pub reason: Option<String>,
@@ -31,20 +34,20 @@ pub struct InternalError {
 }
 
 impl InternalError {
-    pub fn trace(status_code: StatusCode, message: &str, _error: impl Debug) -> Self {
-        let source = resolve_caller!();
-        let source = source.strip_prefix("::trace").unwrap_or(source);
+    pub fn trace(source: &str, status_code: StatusCode, message: &str, _error: impl Debug) -> Self {
         #[cfg(feature = "trace")]
         {
             tracing::error!("{} [{status_code}] {message}\n\t{:?}", source, _error);
         }
-        Self::build(source.to_string(), status_code, message, vec![])
+        Self::build(source, status_code, message, vec![])
     }
 
-    pub fn extend(status_code: StatusCode, message: &str, error: &InternalError) -> Self {
-        let source = resolve_caller!();
-        let source = source.strip_prefix("::extend").unwrap_or(source);
-
+    pub fn extend(
+        source: &str,
+        status_code: StatusCode,
+        message: &str,
+        error: &InternalError,
+    ) -> Self {
         let mut depth = error.depth.clone();
         depth.insert(
             0,
@@ -53,25 +56,17 @@ impl InternalError {
                 message: error.message.clone(),
             },
         );
-        Self::build(source.to_string(), status_code, message, depth)
+        Self::build(source, status_code, message, depth)
     }
 
-    pub fn new(status_code: StatusCode, message: &str) -> Self {
-        let source = resolve_caller!();
-        let source = source.strip_prefix("::new").unwrap_or(source);
-
-        Self::build(source.to_string(), status_code, message, vec![])
+    pub fn new(source: &str, status_code: StatusCode, message: &str) -> Self {
+        Self::build(source, status_code, message, vec![])
     }
 
-    fn build(
-        source: String,
-        status_code: StatusCode,
-        message: &str,
-        depth: Vec<ErrorDepth>,
-    ) -> Self {
+    fn build(source: &str, status_code: StatusCode, message: &str, depth: Vec<ErrorDepth>) -> Self {
         Self {
             depth,
-            source,
+            source: source.to_string(),
             code: status_code.as_u16(),
             message: message.to_string(),
             reason: status_code

@@ -5,3 +5,9 @@ pub const ENVIRONMENT_ALL_ACCESS: &str = "$ALL$";
 
 pub const ACCESS_KEY_LENGTH: usize = 80;
 pub const FEDERATED_ACCESS_KEY_LENGTH: usize = 32;
+
+#[cfg(debug_assertions)]
+pub const APP_SLUG: &str = "click-dev";
+
+#[cfg(not(debug_assertions))]
+pub const APP_SLUG: &str = "click";

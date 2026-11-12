@@ -3,12 +3,13 @@ mod backend;
 pub mod db;
 pub mod emails;
 pub mod routes;
+pub mod workfows;
 
 use crate::db::DB_POOL;
 use crate::routes::{cloud_routes, public_cloud_routes};
 use backend::CloudBackendProvider;
-use secretpass_api::backend::ApiStateInner;
-use secretpass_api::build_api_router;
+use click_api::backend::ApiStateInner;
+use click_api::build_api_router;
 use std::env;
 use std::sync::Arc;
 

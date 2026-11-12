@@ -1,73 +1,71 @@
+use crate::auth_session::create_backend_session_token;
 use crate::backend::projects::passkeys::SavePasskeyWorkflow;
 use crate::db;
-use crate::db::queries::auth::CREATE_SESSION_QUERY;
-use crate::routes::auth::register::BackendCreateUserRequest;
-use secretpass_core::{InternalError, InternalResult, Passkey, Session, StatusCode, User};
+use crate::routes::auth::signup::SignupRequest;
+use crate::workfows::passkeys::NewPasskeyValidationWorkflow;
+use click_core::enums::WebauthnChallengeKind;
+use click_core::{InternalError, InternalResult, Session, StatusCode, User, caller};
 use sqlx::{Postgres, Transaction};
 
-// language=sql
-const CREATE_USER_QUERY: &str = r#"
-    INSERT INTO "Users" (id, name, email, key_salt) VALUES ($1, $2, $3, $4) RETURNING *
-"#;
-
-struct CreateUserWorkflow {
-    request: BackendCreateUserRequest,
+pub struct CreateUserWorkflow {
+    pub request: SignupRequest,
 }
 
 #[async_trait::async_trait]
-impl db::TransactionOperation<(Session, User, Vec<Passkey>)> for CreateUserWorkflow {
-    async fn execute(
-        self,
-        tx: &mut Transaction<'_, Postgres>,
-    ) -> InternalResult<(Session, User, Vec<Passkey>)> {
-        let user: User = sqlx::query_as(CREATE_USER_QUERY)
-            .bind(self.request.user_id)
-            .bind(&self.request.user_name)
-            .bind(&self.request.user_email)
+impl db::TransactionOperation<String> for CreateUserWorkflow {
+    async fn execute(self, tx: &mut Transaction<'_, Postgres>) -> InternalResult<String> {
+        let user: User = sqlx::query_as(r#"INSERT INTO "Users" (id, name, email, key_salt) VALUES ($1, $2, $3, $4) RETURNING *"#)
+            .bind(self.request.id)
+            .bind(&self.request.name)
+            .bind(self.request.email.to_lowercase())
             .bind(&self.request.user_salt)
             .fetch_one(&mut **tx)
             .await
             .map_err(|err| {
-                InternalError::trace(
+                InternalError::trace(caller!(),
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Internal error creating user",
                     err,
                 )
             })?;
 
-        let passkey = SavePasskeyWorkflow {
-            user_id: user.id,
-            name: self.request.passkey_name.clone(),
-            salt: self.request.passkey_salt.clone(),
-            cred_id: self.request.passkey_cred_id.clone(),
-            public_key: self.request.passkey_public_key.clone(),
-            web_public_key: self.request.passkey_web_public_key.clone(),
+        let (cred_id, web_public_key) = NewPasskeyValidationWorkflow {
+            kind: WebauthnChallengeKind::PasskeySignup,
+            user_id: self.request.id,
+            email_address: self.request.email,
+            create_result: self.request.passkey_result,
+            auth_result: self.request.auth_result,
         }
         .execute(tx)
         .await?;
 
-        let session: Session = sqlx::query_as(CREATE_SESSION_QUERY)
-            .bind(user.id)
-            .fetch_one(&mut **tx)
-            .await
-            .map_err(|err| {
-                InternalError::trace(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Internal error establishing a new session",
-                    err,
-                )
-            })?;
+        let passkey = SavePasskeyWorkflow {
+            user_id: user.id,
+            name: self.request.passkey_name.clone(),
+            salt: self.request.passkey_salt.clone(),
+            cred_id,
+            public_key: self.request.public_key,
+            web_public_key,
+        }
+        .execute(tx)
+        .await?;
+
+        let session: Session =
+            sqlx::query_as(r#"INSERT INTO "Sessions" (user_id) VALUES ($1) RETURNING *"#)
+                .bind(user.id)
+                .fetch_one(&mut **tx)
+                .await
+                .map_err(|err| {
+                    InternalError::trace(
+                        caller!(),
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Internal error establishing a new session",
+                        err,
+                    )
+                })?;
 
         let passkeys = vec![passkey];
 
-        Ok((session, user, passkeys))
+        create_backend_session_token(session, user, passkeys)
     }
-}
-
-pub async fn create_user(
-    request: BackendCreateUserRequest,
-) -> InternalResult<(Session, User, Vec<Passkey>)> {
-    let result = db::with_transaction(CreateUserWorkflow { request }).await?;
-
-    Ok(result)
 }

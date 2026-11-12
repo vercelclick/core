@@ -1,10 +1,8 @@
 use crate::backend::ApiState;
-use crate::backend::auth::validate_passkey_auth;
 use crate::backend::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
 use axum::Json;
 use axum::extract::{Extension, Path, State};
-use reqwest::StatusCode;
-use secretpass_core::{AuthSession, InternalError, InternalResult, Project, User};
+use click_core::{AuthSession, InternalError, InternalResult, Project, StatusCode, User, caller};
 use serde::Deserialize;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -12,9 +10,9 @@ use uuid::Uuid;
 #[axum::debug_handler]
 pub async fn list_projects(
     State(state): State<ApiState>,
-    Extension(user): Extension<Arc<User>>,
+    Extension(session): Extension<Arc<AuthSession>>,
 ) -> InternalResult<Json<ListProjectsResult>> {
-    let result = state.backend.list_projects(&user).await?;
+    let result = state.backend.list_projects(&session.user).await?;
 
     Ok(Json(result))
 }
@@ -25,12 +23,13 @@ pub async fn create_project(
     Extension(session): Extension<Arc<AuthSession>>,
     Json(request): Json<CreateProjectRequest>,
 ) -> InternalResult<Json<Project>> {
-    validate_passkey_auth(&session, &state, &request.auth_result).await?;
-
+    let auth_result = request.auth_result.clone();
     let project = state
         .backend
         .create_project(&session.user, &session.passkeys, request)
         .await?;
+
+    auth_result.assert_validation()?;
 
     Ok(Json(project))
 }
@@ -50,7 +49,7 @@ pub async fn get_project_by_id(
         .backend
         .get_project_by_id(&user, request.project_id)
         .await?
-        .ok_or_else(|| InternalError::new(StatusCode::NOT_FOUND, "Project not found"))?;
+        .ok_or_else(|| InternalError::new(caller!(), StatusCode::NOT_FOUND, "Project not found"))?;
 
     Ok(Json(project))
 }

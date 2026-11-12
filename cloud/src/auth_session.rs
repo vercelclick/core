@@ -1,14 +1,14 @@
-use secretpass_core::{AuthTokenClaims, InternalError, InternalResult, StatusCode, constants};
+use click_core::{AuthTokenClaims, InternalError, InternalResult, StatusCode, caller, constants};
+use jsonwebtoken::{Algorithm, EncodingKey, Header, encode};
 use std::sync::LazyLock;
 
-static ENCODING_KEY: LazyLock<jsonwebtoken::EncodingKey> = LazyLock::new(|| {
-    jsonwebtoken::EncodingKey::from_ed_pem(env!("JWT_CLOUD_PRIVATE_KEY").as_bytes()).unwrap()
-});
+static ENCODING_KEY: LazyLock<EncodingKey> =
+    LazyLock::new(|| EncodingKey::from_ed_pem(env!("JWT_CLOUD_PRIVATE_KEY").as_bytes()).unwrap());
 
 pub fn create_backend_session_token(
-    session: secretpass_core::Session,
-    user: secretpass_core::User,
-    passkeys: Vec<secretpass_core::Passkey>,
+    session: click_core::Session,
+    user: click_core::User,
+    passkeys: Vec<click_core::Passkey>,
 ) -> InternalResult<String> {
     let now = chrono::Utc::now().timestamp() as u64;
     let exp = session.expires_on.timestamp() as u64;
@@ -24,8 +24,9 @@ pub fn create_backend_session_token(
         passkeys,
     };
 
-    jsonwebtoken::encode(&jsonwebtoken::Header::default(), &claims, &ENCODING_KEY).map_err(|err| {
+    encode(&Header::new(Algorithm::EdDSA), &claims, &ENCODING_KEY).map_err(|err| {
         InternalError::trace(
+            caller!(),
             StatusCode::INTERNAL_SERVER_ERROR,
             "Error encoding session token",
             err,

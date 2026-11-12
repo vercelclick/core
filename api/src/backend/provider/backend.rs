@@ -1,4 +1,3 @@
-use crate::backend::challenge::PendingChallenge;
 use crate::backend::environments::{
     GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues,
 };
@@ -8,20 +7,16 @@ use crate::backend::secrets::{
     CreateSecretRequest, ProjectAccessKeyParams, ProjectEnvPathParams, ProjectPathParams,
     ProjectSecretPathParams, UpdateSecretRequest, UpdateSecretValueRequest,
 };
-use secretpass_core::enums::ChallengeKind;
-use secretpass_core::{AccessKey, InternalResult, Passkey, Project, TargetedPublicKey, User};
+use click_core::{AccessKey, InternalResult, Passkey, Project, TargetedPublicKey, User};
 use std::collections::HashMap;
 use uuid::Uuid;
 
 #[async_trait::async_trait]
 pub trait BackendProvider: Send + Sync + 'static {
-    async fn record_pending_challenge(&self, challenge: &PendingChallenge) -> InternalResult<()>;
-
-    async fn get_pending_challenge(
+    async fn generate_webauthn_authorization_challenge(
         &self,
-        kind: ChallengeKind,
-        owner: &str,
-    ) -> InternalResult<Option<PendingChallenge>>;
+        user: &User,
+    ) -> InternalResult<String>;
 
     async fn list_projects(&self, user: &User) -> InternalResult<ListProjectsResult>;
 
@@ -80,12 +75,12 @@ pub trait BackendProvider: Send + Sync + 'static {
     async fn get_secret_targets(
         &self,
         user: &User,
-        params: &ProjectSecretPathParams,
+        params: ProjectSecretPathParams,
     ) -> InternalResult<Vec<TargetedPublicKey>>;
     async fn create_federated_access_key(
         &self,
         user: &User,
-        params: &ProjectPathParams,
-        request: &CreateFederatedAccessKeyRequest,
+        params: ProjectPathParams,
+        request: CreateFederatedAccessKeyRequest,
     ) -> InternalResult<CreateFederatedAccessKeyResult>;
 }

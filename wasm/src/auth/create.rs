@@ -3,13 +3,13 @@ use crate::auth::mapping::{
     build_credential_request_extensions, build_credentials_array,
     map_browser_passkey_registration_response,
 };
+use click_core::constants::RP_ID;
+use click_core::passkeys::create::PasskeyCreationResult;
+use click_core::utils::bin_decode;
+use click_core::{InternalError, InternalResult, StatusCode, caller};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
-
-use secretpass_core::constants::RP_ID;
-use secretpass_core::passkeys::create::PasskeyCreationResult;
-use secretpass_core::utils::bin_decode;
-use secretpass_core::{InternalError, InternalResult, StatusCode};
+use uuid::Uuid;
 use wasm_bindgen::JsValue;
 use web_sys::js_sys::{Array as JsArray, Object as JsObject, Reflect as JsReflect};
 use web_sys::{
@@ -23,7 +23,7 @@ pub struct PasskeyCreationRequest {
     pub exclude_keys: Vec<String>,
     pub email: String,
     pub full_name: String,
-    pub user_id: String,
+    pub user_id: Uuid,
     pub challenge: String,
 }
 
@@ -34,11 +34,11 @@ impl PasskeyCreationRequest {
 }
 
 async fn register_user(params: &PasskeyCreationRequest) -> InternalResult<PasskeyCreationResult> {
-    let rp = PublicKeyCredentialRpEntity::new("Secretpass Cybertech Ltd.");
+    let rp = PublicKeyCredentialRpEntity::new("Click Secrets Ltd.");
     rp.set_id(RP_ID);
 
     let user_id = params.user_id.clone();
-    let mut user_id_bytes: Vec<u8> = user_id.into_bytes();
+    let mut user_id_bytes: Vec<u8> = user_id.as_bytes().to_vec();
     let user = PublicKeyCredentialUserEntity::new_with_u8_slice(
         &params.email,
         &params.full_name,
@@ -76,7 +76,7 @@ async fn register_user(params: &PasskeyCreationRequest) -> InternalResult<Passke
 
     let promise = get_credentials_container()?
         .create_with_options(&options)
-        .map_err(|err| InternalError::trace(StatusCode::UNAUTHORIZED, "Error creating passkey, please retry, if the issue persists, raise a support request", err))?;
+        .map_err(|err| InternalError::trace(caller!(),StatusCode::UNAUTHORIZED, "Error creating passkey, please retry, if the issue persists, raise a support request", err))?;
 
     let credential = parse_promise(promise).await?;
 

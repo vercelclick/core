@@ -1,13 +1,11 @@
 pub mod auth;
-mod challenge;
 pub mod environments;
 pub mod projects;
 mod provider;
 pub mod secrets;
 
-pub use challenge::PendingChallenge;
+use click_core::enums::OperationMode;
 pub use provider::BackendProvider;
-use secretpass_core::enums::OperationMode;
 use std::sync::Arc;
 
 pub type ApiState = Arc<ApiStateInner>;

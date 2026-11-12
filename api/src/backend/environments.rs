@@ -1,4 +1,4 @@
-use secretpass_core::{ContributorPublicKey, Environment, SecretDefinition, SecretValue};
+use click_core::{ContributorPublicKey, Environment, SecretDefinition, SecretValue};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;

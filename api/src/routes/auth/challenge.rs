@@ -1,36 +1,18 @@
 use crate::backend::ApiState;
-use crate::backend::PendingChallenge;
-use axum::Json;
+use crate::backend::auth::WebauthnChallengeResponse;
 use axum::extract::State;
-use secretpass_core::InternalResult;
-use secretpass_core::enums::ChallengeKind;
-use serde::{Deserialize, Serialize};
-use ts_rs::TS;
-
-#[derive(Clone, Debug, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub struct WebauthnChallengeRequest {
-    pub kind: ChallengeKind,
-    pub owner: String,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub struct WebauthnChallengeResponse {
-    pub challenge: String,
-}
+use axum::{Extension, Json};
+use click_core::{AuthSession, InternalResult};
+use std::sync::Arc;
 
 #[axum::debug_handler]
 pub async fn generate_webauthn_challenge_handler(
     State(state): State<ApiState>,
-    Json(request): Json<WebauthnChallengeRequest>,
+    Extension(session): Extension<Arc<AuthSession>>,
 ) -> InternalResult<Json<WebauthnChallengeResponse>> {
-    let (challenge, pending_challenge) =
-        PendingChallenge::generate_webauthn(request.kind, request.owner);
-
-    state
+    let challenge = state
         .backend
-        .record_pending_challenge(&pending_challenge)
+        .generate_webauthn_authorization_challenge(&session.user)
         .await?;
 
     Ok(Json(WebauthnChallengeResponse { challenge }))

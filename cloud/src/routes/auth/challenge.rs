@@ -1,18 +1,19 @@
-use crate::backend::auth::challenge::attempt_email_challenge;
 use crate::backend::auth::user::get_user_by_email;
+use crate::db;
+use crate::db::workflows::{AttemptEmailChallengeWorkflow, UpsertEmailChallengeWorkflow};
+use crate::db::{Transaction, TransactionOperation};
 use crate::emails::{EmailTemplate, send_email};
+use async_trait::async_trait;
 use axum::Json;
-use axum::extract::State;
-use secretpass_api::backend::{ApiState, PendingChallenge};
-use secretpass_core::enums::ChallengeKind;
-use secretpass_core::{InternalError, InternalResult, StatusCode};
+use click_core::enums::EmailChallengeKind;
+use click_core::{EmailChallenge, InternalError, InternalResult, StatusCode, caller};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct EmailChallengeRequest {
-    pub kind: ChallengeKind,
+    pub kind: EmailChallengeKind,
     pub owner: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub name: Option<String>,
@@ -20,84 +21,102 @@ pub struct EmailChallengeRequest {
     pub operation: Option<String>,
 }
 
+struct SendEmailWorkflow {
+    recipient: String,
+    template: EmailTemplate,
+    db_workflow: UpsertEmailChallengeWorkflow,
+}
+
+#[async_trait]
+impl TransactionOperation<()> for SendEmailWorkflow {
+    async fn execute(self, tx: &mut Transaction<'_>) -> InternalResult<()> {
+        let upsert_workflow = self.db_workflow;
+        send_email(&self.recipient, self.template).await?;
+
+        upsert_workflow.execute(tx).await?;
+
+        Ok(())
+    }
+}
+
 #[axum::debug_handler]
 pub async fn send_email_challenge_handler(
-    State(state): State<ApiState>,
     Json(request): Json<EmailChallengeRequest>,
 ) -> InternalResult<()> {
-    let user = get_user_by_email(request.owner.clone()).await?;
+    let user = get_user_by_email(db::pool(), request.owner.clone()).await?;
 
-    if request.kind.is_new_user_only() && user.is_some() {
-        return Err(InternalError::new(
-            StatusCode::FORBIDDEN,
-            "You already have an account under this email address, try to sign in instead.",
-        ));
-    } else if !request.kind.is_new_user_only() && user.is_none() {
-        return Err(InternalError::new(
-            StatusCode::BAD_REQUEST,
-            "User not found",
-        ));
-    }
+    let (code, hash) = EmailChallenge::generate();
 
-    let (code, pending_challenge) =
-        PendingChallenge::generate_email_code(request.kind, request.owner.clone());
+    let template =
+        match request.kind {
+            EmailChallengeKind::EmailSignIn => {
+                user.is_some().ok_or_else(|| {
+                    InternalError::new(caller!(), StatusCode::BAD_REQUEST, "User not found")
+                })?;
 
-    let template = match request.kind {
-        ChallengeKind::EmailSignIn => EmailTemplate::Confirm {
-            subject: "Click Vault Sign in".to_string(),
-            name: user.unwrap().name,
-            code,
-            operation: "attempted to sign in".to_string(),
+                EmailTemplate::Confirm {
+                    subject: "Click Vault Sign in".to_string(),
+                    name: user.unwrap().name,
+                    code,
+                    operation: "attempted to sign in".to_string(),
+                }
+            }
+            EmailChallengeKind::EmailAuthorize => {
+                user.is_some().ok_or_else(|| {
+                    InternalError::new(caller!(), StatusCode::BAD_REQUEST, "User not found")
+                })?;
+
+                let operation = request.operation.clone().ok_or_else(|| {
+                    InternalError::new(
+                        caller!(),
+                        StatusCode::BAD_REQUEST,
+                        "Operation required for email authorize challenge",
+                    )
+                })?;
+                EmailTemplate::Confirm {
+                    subject: "Click Vault Confirm".to_string(),
+                    name: user.unwrap().name,
+                    code,
+                    operation,
+                }
+            }
+            EmailChallengeKind::EmailSignup => {
+                user.is_none().ok_or_else(|| InternalError::new(caller!(),
+                StatusCode::FORBIDDEN,
+                "You already have an account under this email address, try to sign in instead.",
+            ))?;
+
+                let name = request.name.clone().ok_or_else(|| {
+                    InternalError::new(
+                        caller!(),
+                        StatusCode::BAD_REQUEST,
+                        "Name missing for email signup challenge",
+                    )
+                })?;
+                EmailTemplate::Create {
+                    subject: "Verify your email".to_string(),
+                    name,
+                    code,
+                }
+            }
+        };
+
+    db::with_transaction(SendEmailWorkflow {
+        recipient: request.owner.clone(),
+        template,
+        db_workflow: UpsertEmailChallengeWorkflow {
+            owner: request.owner.clone(),
+            kind: request.kind,
+            hash,
         },
-        ChallengeKind::EmailAuthorize => {
-            let operation = request.operation.clone().ok_or_else(|| {
-                InternalError::new(
-                    StatusCode::BAD_REQUEST,
-                    "Operation required for email authorize challenge",
-                )
-            })?;
-            EmailTemplate::Confirm {
-                subject: "Click Vault Confirm".to_string(),
-                name: user.unwrap().name,
-                code,
-                operation,
-            }
-        }
-        ChallengeKind::EmailSignup => {
-            let name = request.name.clone().ok_or_else(|| {
-                InternalError::new(
-                    StatusCode::BAD_REQUEST,
-                    "Name missing for email signup challenge",
-                )
-            })?;
-            EmailTemplate::Create {
-                subject: "Verify your email".to_string(),
-                name,
-                code,
-            }
-        }
-        _ => {
-            return Err(InternalError::new(
-                StatusCode::BAD_REQUEST,
-                &format!("{} not supported on this endpoint", request.kind),
-            ));
-        }
-    };
-
-    send_email(&request.owner, template).await?;
-
-    state
-        .backend
-        .record_pending_challenge(&pending_challenge)
-        .await?;
-
-    Ok(())
+    })
+    .await
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct CheckChallengeRequest {
-    pub kind: ChallengeKind,
+    pub kind: EmailChallengeKind,
     pub owner: String,
     pub value: String,
 }
@@ -113,18 +132,13 @@ pub struct CheckChallengeResult {
 pub async fn check_challenge_handler(
     Json(request): Json<CheckChallengeRequest>,
 ) -> InternalResult<Json<CheckChallengeResult>> {
-    if !request.kind.is_checkable() {
-        return Err(InternalError::new(
-            StatusCode::BAD_REQUEST,
-            "Invalid challenge check request",
-        ));
-    }
+    let challenge = db::with_transaction(AttemptEmailChallengeWorkflow {
+        kind: request.kind,
+        owner: request.owner.clone(),
+    })
+    .await?;
 
-    let challenge = attempt_email_challenge(request.kind, &request.owner)
-        .await?
-        .ok_or_else(|| InternalError::new(StatusCode::NOT_FOUND, "Challenge not found"))?;
-
-    let valid = challenge.verify_challenge(request.value);
+    let valid = challenge.validate(&request.value);
 
     Ok(Json(CheckChallengeResult {
         valid,
