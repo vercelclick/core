@@ -46,7 +46,13 @@ pub async fn get_project_by_id(
         .backend
         .get_project_by_id(&session, request.project_id)
         .await?
-        .ok_or_else(|| InternalError::new(caller!(), StatusCode::NOT_FOUND, "Project not found"))?;
+        .ok_or_else(|| {
+            InternalError::new(
+                caller!(),
+                StatusCode::NOT_FOUND,
+                "Project not found, if you're targeting a local vault project, make sure the click service is running and the project is attached.",
+            )
+        })?;
 
     Ok(Json(project))
 }
