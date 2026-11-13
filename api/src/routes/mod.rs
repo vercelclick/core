@@ -24,7 +24,7 @@ fn cors_layer() -> CorsLayer {
 
     CorsLayer::new()
         .allow_origin(allowed_origin)
-        .allow_credentials(true)
+        .allow_credentials(false)
         .allow_methods([
             Method::GET,
             Method::POST,
@@ -35,6 +35,7 @@ fn cors_layer() -> CorsLayer {
         ])
         .allow_headers([
             header::ACCEPT,
+            header::AUTHORIZATION,
             header::CONTENT_TYPE,
             header::ACCEPT_ENCODING,
             header::ACCEPT_ENCODING,

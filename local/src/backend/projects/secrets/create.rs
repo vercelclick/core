@@ -1,20 +1,25 @@
+use crate::backend::auth::validate_passkey_auth;
 use crate::config::LocalServiceConfig;
 use crate::service::keys::LocalKeysConfig;
 use crate::service::secrets::LocalSecretConfig;
 use chrono::Utc;
 use click_api::backend::environments::SecretWithEncryptedValues;
 use click_api::backend::secrets::{CreateSecretRequest, ProjectEnvPathParams};
-use click_core::{InternalError, InternalResult, SecretDefinition, StatusCode, User, caller};
+use click_core::{
+    AuthSession, InternalError, InternalResult, SecretDefinition, StatusCode, caller,
+};
 
 pub async fn create_secret(
-    user: &User,
+    session: &AuthSession,
     params: ProjectEnvPathParams,
     request: CreateSecretRequest,
 ) -> InternalResult<SecretWithEncryptedValues> {
+    validate_passkey_auth(session, &request.auth_result).await?;
+
     let local_config = LocalServiceConfig::load()?;
 
     let (path, project_conf, contributor) =
-        local_config.get_project_and_contributor(params.project_id, user.id)?;
+        local_config.get_project_and_contributor(params.project_id, session.user.id)?;
 
     let access = contributor.get_access(&params.env_name).ok_or_else(|| {
         InternalError::new(

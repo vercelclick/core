@@ -22,10 +22,7 @@ pub async fn get_secret_targets(
     Extension(session): Extension<Arc<AuthSession>>,
     Path(params): Path<ProjectSecretPathParams>,
 ) -> InternalResult<Json<Vec<TargetedPublicKey>>> {
-    let targets = state
-        .backend
-        .get_secret_targets(&session.user, params)
-        .await?;
+    let targets = state.backend.get_secret_targets(&session, params).await?;
 
     Ok(Json(targets))
 }

@@ -15,7 +15,7 @@ pub async fn create_access_key_handler(
     let auth_result = request.auth_result.clone();
     let result = state
         .backend
-        .create_access_key(&session.user, params, request)
+        .create_access_key(&session, params, request)
         .await?;
 
     auth_result.assert_validation()?;

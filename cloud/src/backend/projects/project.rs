@@ -7,8 +7,8 @@ use click_api::backend::projects::{
 };
 use click_core::enums::{ContributorRole, ContributorStatus};
 use click_core::{
-    AccessKey, Contributor, Environment, EnvironmentAccess, FederatedAccessKey, InternalError,
-    InternalResult, Passkey, Project, StatusCode, User, caller,
+    AccessKey, AuthSession, Contributor, Environment, EnvironmentAccess, FederatedAccessKey,
+    InternalError, InternalResult, Passkey, Project, StatusCode, User, caller,
 };
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
@@ -17,13 +17,6 @@ use uuid::Uuid;
 const CREATE_PROJECT_QUERY: &str = r#"
     INSERT INTO "Projects" (name, description)
     VALUES ($1, $2)
-    RETURNING *
-"#;
-
-// language=sql
-const CREATE_CONTRIBUTOR_QUERY: &str = r#"
-    INSERT INTO "Contributors" (user_id, status, project_id, role, access)
-    VALUES ($1, $2, $3, $4, $5)
     RETURNING *
 "#;
 
@@ -63,22 +56,28 @@ impl TransactionOperation<Project> for CreateProjectWorkflow {
                 )
             })?;
 
-        let contributor: Contributor = sqlx::query_as(CREATE_CONTRIBUTOR_QUERY)
-            .bind(self.user.id)
-            .bind(ContributorStatus::Active)
-            .bind(project.id)
-            .bind(ContributorRole::Admin)
-            .bind(Vec::<EnvironmentAccess>::new())
-            .fetch_one(&mut **tx)
-            .await
-            .map_err(|err| {
-                InternalError::trace(
-                    caller!(),
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Internal error adding a contributor",
-                    err,
-                )
-            })?;
+        let contributor: Contributor = sqlx::query_as(
+            r#"
+            INSERT INTO "Contributors" (user_id, status, project_id, role, environments)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING *
+        "#,
+        )
+        .bind(self.user.id)
+        .bind(ContributorStatus::Active)
+        .bind(project.id)
+        .bind(ContributorRole::Admin)
+        .bind(Vec::<EnvironmentAccess>::new())
+        .fetch_one(&mut **tx)
+        .await
+        .map_err(|err| {
+            InternalError::trace(
+                caller!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal error adding a contributor",
+                err,
+            )
+        })?;
 
         contributor_public_key_insert_query_builder(self.user, contributor, self.passkeys)
             .build()
@@ -98,13 +97,12 @@ impl TransactionOperation<Project> for CreateProjectWorkflow {
 }
 
 pub async fn create_project(
-    user: &User,
-    passkeys: &[Passkey],
+    session: &AuthSession,
     request: CreateProjectRequest,
 ) -> InternalResult<Project> {
     db::with_transaction(CreateProjectWorkflow {
-        user: user.clone(),
-        passkeys: passkeys.to_vec(),
+        user: session.user.clone(),
+        passkeys: session.passkeys.to_vec(),
         request: request.clone(),
     })
     .await

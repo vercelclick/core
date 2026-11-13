@@ -67,12 +67,6 @@ pub enum AccessGrant {
     Granted,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, TS)]
-pub enum OperationMode {
-    Local,
-    Cloud,
-}
-
 #[derive(
     Debug, Clone, Copy, PartialEq, Serialize, Deserialize, EnumString, Display, TS, sqlx::Type,
 )]

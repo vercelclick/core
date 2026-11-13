@@ -9,7 +9,8 @@ use click_core::constants::RP_ORIGIN;
 use click_core::{KeyPair, PrivateKeySeed, TargetedPublicKey};
 use serde::Serialize;
 use std::collections::HashMap;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::net::SocketAddr;
+use std::str::FromStr;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Sender;
@@ -76,7 +77,7 @@ async fn get_values_from_web_async(command: Option<String>) -> (KeyPair, HashMap
         .layer(cors_layer)
         .with_state(AppState { tx });
 
-    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 0);
+    let addr = SocketAddr::from_str("127.0.0.1:0").expect("Invalid local socket address 127.0.0.1:0, please raise a support ticket with support@vercel.click");
     let listener = TcpListener::bind(addr).await.expect(
         "Unable to bind to an open port, this is required to decrypt secrets from the browser",
     );

@@ -19,7 +19,7 @@ use click_api::backend::secrets::{
 };
 use click_core::enums::WebauthnChallengeKind;
 use click_core::{
-    AccessKey, InternalResult, Passkey, Project, TargetedPublicKey, User, WebauthnChallenge,
+    AccessKey, AuthSession, InternalResult, Project, TargetedPublicKey, WebauthnChallenge,
 };
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -30,12 +30,12 @@ pub struct CloudBackendProvider();
 impl BackendProvider for CloudBackendProvider {
     async fn generate_webauthn_authorization_challenge(
         &self,
-        user: &User,
+        session: &AuthSession,
     ) -> InternalResult<String> {
         let (challenge, hash) = WebauthnChallenge::generate();
 
         db::with_transaction(UpsertWebauthnChallengeWorkflow {
-            owner: user.email.clone(),
+            owner: session.user.email.clone(),
             kind: WebauthnChallengeKind::PasskeyAuthorize,
             hash,
         })
@@ -44,42 +44,41 @@ impl BackendProvider for CloudBackendProvider {
         Ok(challenge)
     }
 
-    async fn list_projects(&self, user: &User) -> InternalResult<ListProjectsResult> {
-        list_projects(user).await
+    async fn list_projects(&self, session: &AuthSession) -> InternalResult<ListProjectsResult> {
+        list_projects(&session.user).await
     }
 
     async fn create_project(
         &self,
-        user: &User,
-        passkeys: &[Passkey],
+        session: &AuthSession,
         request: CreateProjectRequest,
     ) -> InternalResult<Project> {
-        create_project(user, passkeys, request).await
+        create_project(session, request).await
     }
 
     async fn get_project_by_id(
         &self,
-        user: &User,
+        session: &AuthSession,
         project_id: Uuid,
     ) -> InternalResult<Option<GetProjectResult>> {
-        get_project_by_id(user, project_id).await
+        get_project_by_id(&session.user, project_id).await
     }
 
     async fn get_environment_by_name(
         &self,
-        user: &User,
+        session: &AuthSession,
         request: GetEnvironmentRequest,
     ) -> InternalResult<Option<GetEnvironmentResult>> {
-        get_environment_handler(user, &request).await
+        get_environment_handler(&session.user, &request).await
     }
 
     async fn create_secret(
         &self,
-        user: &User,
+        session: &AuthSession,
         params: ProjectEnvPathParams,
         request: CreateSecretRequest,
     ) -> InternalResult<SecretWithEncryptedValues> {
-        create_secret(user, params, request).await
+        create_secret(&session.user, params, request).await
     }
 
     async fn get_access_key_secrets(
@@ -91,45 +90,45 @@ impl BackendProvider for CloudBackendProvider {
 
     async fn create_access_key(
         &self,
-        user: &User,
+        session: &AuthSession,
         params: ProjectPathParams,
         request: CreateAccessKeyRequest,
     ) -> InternalResult<AccessKey> {
-        create_access_key(user, params.project_id, request).await
+        create_access_key(&session.user, params.project_id, request).await
     }
 
     async fn update_secret(
         &self,
-        user: &User,
+        session: &AuthSession,
         params: ProjectSecretPathParams,
         request: UpdateSecretRequest,
     ) -> InternalResult<SecretWithEncryptedValues> {
-        update_secret(user, params, request).await
+        update_secret(&session.user, params, request).await
     }
 
     async fn update_secret_value(
         &self,
-        user: &User,
+        session: &AuthSession,
         params: ProjectSecretPathParams,
         request: UpdateSecretValueRequest,
     ) -> InternalResult<SecretWithEncryptedValues> {
-        update_secret_value(user, params, request).await
+        update_secret_value(&session.user, params, request).await
     }
 
     async fn get_secret_targets(
         &self,
-        user: &User,
+        session: &AuthSession,
         params: ProjectSecretPathParams,
     ) -> InternalResult<Vec<TargetedPublicKey>> {
-        get_secret_targets(user, params).await
+        get_secret_targets(&session.user, params).await
     }
 
     async fn create_federated_access_key(
         &self,
-        user: &User,
+        session: &AuthSession,
         params: ProjectPathParams,
         request: CreateFederatedAccessKeyRequest,
     ) -> InternalResult<CreateFederatedAccessKeyResult> {
-        create_federated_access_key(user, params, request).await
+        create_federated_access_key(&session.user, params, request).await
     }
 }

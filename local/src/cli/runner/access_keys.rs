@@ -101,13 +101,15 @@ pub fn get_values_from_local_project(
 }
 
 pub fn get_values_from_cloud_project(
-    endpoint: String,
+    endpoint: Option<String>,
     private_key: String,
     env_name: String,
     tag_name: String,
 ) -> (KeyPair, HashMap<String, String>) {
     let (project_id, private_key) = parse_access_key(private_key);
     let key_id = private_key.public_key().access_key_id();
+
+    let endpoint = endpoint.unwrap_or("https://api.vercel.click".to_string());
 
     let url = format!(
         "{endpoint}/api/projects/{project_id}/access-keys/{key_id}/env/{env_name}/tag/{tag_name}"

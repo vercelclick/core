@@ -1,16 +1,18 @@
+use crate::backend::auth::validate_passkey_auth;
 use crate::config::LocalServiceConfig;
 use crate::service::keys::LocalKeysConfig;
 use crate::service::secrets::LocalSecretConfig;
 use chrono::Utc;
 use click_api::backend::secrets::CreateAccessKeyRequest;
-use click_core::{AccessKey, InternalError, InternalResult, StatusCode, User, caller};
+use click_core::{AccessKey, AuthSession, InternalError, InternalResult, StatusCode, caller};
 use uuid::Uuid;
 
 pub async fn create_access_key(
-    user: &User,
+    session: &AuthSession,
     project_id: Uuid,
     request: CreateAccessKeyRequest,
 ) -> InternalResult<AccessKey> {
+    validate_passkey_auth(session, &request.auth_result).await?;
     let local_config = LocalServiceConfig::load()?;
 
     let (path, project_conf) = local_config.get_project_by_id(project_id)?.ok_or_else(|| {
@@ -22,7 +24,7 @@ pub async fn create_access_key(
     })?;
 
     project_conf
-        .get_contributor_by_user_id(user.id)
+        .get_contributor_by_user_id(session.user.id)
         .ok_or_else(|| {
             InternalError::new(
                 caller!(),
@@ -40,7 +42,7 @@ pub async fn create_access_key(
         project_id,
         public_key: request.public_key,
         access: request.access.clone(),
-        generated_by: user.email.clone(),
+        generated_by: session.user.email.clone(),
         generated_on: Utc::now(),
     };
 

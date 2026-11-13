@@ -12,7 +12,7 @@ pub async fn generate_webauthn_challenge_handler(
 ) -> InternalResult<Json<WebauthnChallengeResponse>> {
     let challenge = state
         .backend
-        .generate_webauthn_authorization_challenge(&session.user)
+        .generate_webauthn_authorization_challenge(&session)
         .await?;
 
     Ok(Json(WebauthnChallengeResponse { challenge }))

@@ -3,5 +3,5 @@ pub mod session;
 pub mod user;
 
 pub use challenge::{EmailChallenge, WebauthnChallenge};
-pub use session::{AuthSession, AuthTokenClaims, Session};
+pub use session::{AuthSession, Session};
 pub use user::User;

@@ -1,3 +1,4 @@
+use crate::backend::auth::validate_passkey_auth;
 use crate::config::LocalServiceConfig;
 use crate::service::keys::LocalKeysConfig;
 use crate::service::secrets::LocalSecretConfig;
@@ -7,7 +8,9 @@ use click_api::backend::secrets::{
     ProjectSecretPathParams, UpdateSecretRequest, UpdateSecretValueRequest,
 };
 use click_api::constants::{LATEST_SECRET_TAG, PREVIOUS_SECRET_TAG};
-use click_core::{Contributor, InternalError, InternalResult, StatusCode, User, caller};
+use click_core::{
+    AuthSession, Contributor, InternalError, InternalResult, StatusCode, caller,
+};
 
 fn get_permitted_secret(
     path: &str,
@@ -45,14 +48,14 @@ fn get_permitted_secret(
 }
 
 pub async fn update_secret(
-    user: &User,
+    session: &AuthSession,
     params: ProjectSecretPathParams,
     request: UpdateSecretRequest,
 ) -> InternalResult<SecretWithEncryptedValues> {
     let local_config = LocalServiceConfig::load()?;
 
     let (path, _, contributor) =
-        local_config.get_project_and_contributor(params.project_id, user.id)?;
+        local_config.get_project_and_contributor(params.project_id, session.user.id)?;
 
     let keys_config = LocalKeysConfig::load(&path)?;
 
@@ -69,14 +72,16 @@ pub async fn update_secret(
 }
 
 pub async fn update_secret_value(
-    user: &User,
+    session: &AuthSession,
     params: ProjectSecretPathParams,
     request: UpdateSecretValueRequest,
 ) -> InternalResult<SecretWithEncryptedValues> {
+    validate_passkey_auth(session, &request.auth_result).await?;
+
     let local_config = LocalServiceConfig::load()?;
 
     let (path, _, contributor) =
-        local_config.get_project_and_contributor(params.project_id, user.id)?;
+        local_config.get_project_and_contributor(params.project_id, session.user.id)?;
 
     let keys_config = LocalKeysConfig::load(&path)?;
 

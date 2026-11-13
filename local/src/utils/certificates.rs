@@ -15,7 +15,7 @@ fn generate_certificates(cert_path: &PathBuf, key_path: &PathBuf) {
     params.not_before = OffsetDateTime::now_utc();
     params.not_after = params.not_before + Duration::days(365);
     params.subject_alt_names = vec![
-        SanType::DnsName("localhost".to_string().try_into().unwrap()),
+        SanType::DnsName("click.localhost".to_string().try_into().unwrap()),
         SanType::IpAddress("127.0.0.1".parse().unwrap()),
     ];
 
@@ -69,6 +69,8 @@ pub fn get_certificates() -> (PathBuf, PathBuf) {
     let cert_path = CONFIG_DIR.join("cert.pem");
     let key_path = CONFIG_DIR.join("key.pem");
 
+    // TODO: Check that the certificates are valid not just that they exist
+
     if !cert_path.exists() || !key_path.exists() {
         eprintln!("Generating local TLS certificates for secure communication...");
         generate_certificates(&cert_path, &key_path);
@@ -89,8 +91,7 @@ pub fn get_certificates() -> (PathBuf, PathBuf) {
 
 #[cfg(target_os = "macos")]
 pub fn install_macos_certificates() {
-    let (cert_path, _) = get_certificates();
-    let cert_path = format!("{}", cert_path.display());
+    get_certificates();
 
     let args = vec![
         "security",
@@ -100,29 +101,37 @@ pub fn install_macos_certificates() {
         "trustRoot",
         "-k",
         "/Library/Keychains/System.keychain",
-        &cert_path,
+        "cert.pem",
     ];
 
     let command = format!("sudo {}", args.join(" "));
-    let error_message = format!(
-        "Error executing command. You can run the command below directly:\n\t{}\nIf the issue persists, please raise a support ticker with support@secretpass.cloud",
-        command
-    );
-    eprintln!("Requesting elevation to add certificate to macOS keychain...");
-    let status = Command::new("sudo")
+    let run_instructions = format!("\tcd '{}'\n\t{}", CONFIG_DIR.display(), command);
+
+    eprintln!("Requesting sudo elevation to add certificate to macOS keychain...");
+    let status = match Command::new(&command)
         .args(args)
+        .current_dir(CONFIG_DIR.as_path())
         .status()
-        .expect(&error_message);
+    {
+        Ok(status) => status,
+        Err(err) => {
+            eprintln!("Error installing certificates: {:?}", err);
+            eprintln!("You can run the command below to install the certificate");
+            eprintln!("{run_instructions}");
+            eprintln!(
+                "If the issue persists, please raise a support ticker with support@vercel.click"
+            );
+            return;
+        }
+    };
 
     if status.success() {
         eprintln!("✅ Certificate successfully added and trusted by macOs/Safari!");
         eprintln!("Please restart Safari for the certificate to take effect.");
     } else {
         eprintln!("❌ Failed to add certificate, safari may reject connections to click cli");
-        eprintln!("Try adding the certificate by running:");
-        eprintln!("\t{}", command);
-        eprintln!(
-            "If the issue persists, please raise a support ticker with support@secretpass.cloud"
-        );
+        eprintln!("You can run the command below to install the certificate");
+        eprintln!("{run_instructions}");
+        eprintln!("If the issue persists, please raise a support ticker with support@vercel.click");
     }
 }

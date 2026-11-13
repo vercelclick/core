@@ -18,8 +18,7 @@ use click_api::backend::secrets::{
 };
 use click_core::enums::WebauthnChallengeKind;
 use click_core::{
-    AccessKey, InternalError, InternalResult, Passkey, Project, StatusCode, TargetedPublicKey,
-    User, WebauthnChallenge, caller,
+    AccessKey, AuthSession, InternalError, InternalResult, Project, StatusCode, TargetedPublicKey, WebauthnChallenge, caller,
 };
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -31,13 +30,13 @@ pub struct LocalBackendProvider {}
 impl BackendProvider for LocalBackendProvider {
     async fn generate_webauthn_authorization_challenge(
         &self,
-        user: &User,
+        session: &AuthSession,
     ) -> InternalResult<String> {
         let (challenge, hash) = WebauthnChallenge::generate();
 
         save_challenge(&WebauthnChallenge {
             kind: WebauthnChallengeKind::PasskeyAuthorize,
-            owner: user.email.clone(),
+            owner: session.user.email.clone(),
             value_hash: hash,
             expires_on: Utc::now() + Duration::minutes(5),
         })
@@ -46,42 +45,41 @@ impl BackendProvider for LocalBackendProvider {
         Ok(challenge)
     }
 
-    async fn list_projects(&self, user: &User) -> InternalResult<ListProjectsResult> {
-        list_projects(user).await
+    async fn list_projects(&self, session: &AuthSession) -> InternalResult<ListProjectsResult> {
+        list_projects(&session.user).await
     }
 
     async fn create_project(
         &self,
-        user: &User,
-        passkeys: &[Passkey],
+        session: &AuthSession,
         request: CreateProjectRequest,
     ) -> InternalResult<Project> {
-        create_project(user, passkeys, request).await
+        create_project(session, request).await
     }
 
     async fn get_project_by_id(
         &self,
-        user: &User,
+        session: &AuthSession,
         project_id: Uuid,
     ) -> InternalResult<Option<GetProjectResult>> {
-        get_project_by_id(user, project_id).await
+        get_project_by_id(&session.user, project_id).await
     }
 
     async fn get_environment_by_name(
         &self,
-        user: &User,
+        session: &AuthSession,
         request: GetEnvironmentRequest,
     ) -> InternalResult<Option<GetEnvironmentResult>> {
-        get_environment_by_name(user, &request).await
+        get_environment_by_name(&session.user, &request).await
     }
 
     async fn create_secret(
         &self,
-        user: &User,
+        session: &AuthSession,
         params: ProjectEnvPathParams,
         request: CreateSecretRequest,
     ) -> InternalResult<SecretWithEncryptedValues> {
-        create_secret(user, params, request).await
+        create_secret(session, params, request).await
     }
 
     async fn get_access_key_secrets(
@@ -97,34 +95,34 @@ impl BackendProvider for LocalBackendProvider {
 
     async fn create_access_key(
         &self,
-        user: &User,
+        session: &AuthSession,
         params: ProjectPathParams,
         request: CreateAccessKeyRequest,
     ) -> InternalResult<AccessKey> {
-        create_access_key(user, params.project_id, request).await
+        create_access_key(session, params.project_id, request).await
     }
 
     async fn update_secret(
         &self,
-        user: &User,
+        session: &AuthSession,
         params: ProjectSecretPathParams,
         request: UpdateSecretRequest,
     ) -> InternalResult<SecretWithEncryptedValues> {
-        update_secret(user, params, request).await
+        update_secret(session, params, request).await
     }
 
     async fn update_secret_value(
         &self,
-        user: &User,
+        session: &AuthSession,
         params: ProjectSecretPathParams,
         request: UpdateSecretValueRequest,
     ) -> InternalResult<SecretWithEncryptedValues> {
-        update_secret_value(user, params, request).await
+        update_secret_value(session, params, request).await
     }
 
     async fn get_secret_targets(
         &self,
-        _user: &User,
+        _session: &AuthSession,
         _params: ProjectSecretPathParams,
     ) -> InternalResult<Vec<TargetedPublicKey>> {
         todo!()
@@ -132,7 +130,7 @@ impl BackendProvider for LocalBackendProvider {
 
     async fn create_federated_access_key(
         &self,
-        _user: &User,
+        _session: &AuthSession,
         _params: ProjectPathParams,
         _request: CreateFederatedAccessKeyRequest,
     ) -> InternalResult<CreateFederatedAccessKeyResult> {

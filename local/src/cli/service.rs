@@ -6,7 +6,8 @@ use click_api::backend::ApiStateInner;
 use click_api::build_api_router;
 use daemon_kit::{Daemon, DaemonConfig};
 use std::fs;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::net::SocketAddr;
+use std::str::FromStr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::runtime::Runtime;
@@ -21,14 +22,15 @@ async fn run_server() {
     let state = ApiStateInner::new(Arc::new(backend));
 
     let app = build_api_router(state, None, None);
-    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 20206);
+    let addr = SocketAddr::from_str("127.0.0.1:20206").expect("Invalid local socket address 127.0.0.1:20206, please raise a support ticket with support@vercel.click");
     let listener = TcpListener::bind(addr).await
         .expect("Unable to bind to localhost:20206, check if another service is using the port or the vault service is already running");
+
     let (cert_path, key_path) = get_certificates();
     let tls_config = RustlsConfig::from_pem_file(cert_path, key_path).await
         .expect("Error parsing TLS certificate, please raise a support ticket with support@vercel.click");
 
-    eprintln!("Starting click vault local service listening: https://localhost:20206");
+    eprintln!("Starting click vault local service listening: https://click.localhost:20206");
     axum_server::from_tcp_rustls(listener.into_std().unwrap(), tls_config)
         .unwrap()
         .serve(app.into_make_service())
@@ -57,7 +59,7 @@ pub fn start_service_command(foreground: bool, silent: bool) {
 
     if let Some(pid) = daemon.running_pid() {
         if !silent {
-            eprintln!("Click Vault Service already active({pid}) -> https://localhost:20206");
+            eprintln!("Click Vault Service already active({pid}) -> https://click.localhost:20206");
             eprintln!("You can manage secrets through https:://vault.vercel.click");
         } else {
             let _ = webbrowser::open("https://vault.vercel.click");
@@ -97,7 +99,7 @@ pub fn check_status_command() {
     let daemon = build_daemon();
 
     if let Some(pid) = daemon.running_pid() {
-        println!("🟢 Click Vault Local Service is active({pid}) -> https://localhost:20206")
+        println!("🟢 Click Vault Local Service is active({pid}) -> https://click.localhost:20206")
     } else {
         println!("Click Vault Local Service is not active")
     }

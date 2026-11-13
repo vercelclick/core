@@ -1,14 +1,30 @@
-use click_core::{AuthTokenClaims, InternalError, InternalResult, StatusCode, caller, constants};
+use click_core::{
+    InternalError, InternalResult, Passkey, Session, StatusCode, User, caller, constants,
+};
 use jsonwebtoken::{Algorithm, EncodingKey, Header, encode};
+use serde::{Deserialize, Serialize};
 use std::sync::LazyLock;
 
 static ENCODING_KEY: LazyLock<EncodingKey> =
     LazyLock::new(|| EncodingKey::from_ed_pem(env!("JWT_CLOUD_PRIVATE_KEY").as_bytes()).unwrap());
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct AuthTokenClaims {
+    sub: String,
+    iss: String,
+    aud: String, // Audience
+    exp: u64,
+    iat: u64,
+
+    // Custom claims
+    user: User,
+    passkeys: Vec<Passkey>,
+}
+
 pub fn create_backend_session_token(
-    session: click_core::Session,
-    user: click_core::User,
-    passkeys: Vec<click_core::Passkey>,
+    session: Session,
+    user: User,
+    passkeys: Vec<Passkey>,
 ) -> InternalResult<String> {
     let now = chrono::Utc::now().timestamp() as u64;
     let exp = session.expires_on.timestamp() as u64;
@@ -16,7 +32,7 @@ pub fn create_backend_session_token(
     let claims = AuthTokenClaims {
         exp,
         iat: now,
-        sub: session.id,
+        sub: session.id.to_string(),
         iss: "api.vercel.click".to_string(),
         aud: constants::RP_ORIGIN.to_string(),
 

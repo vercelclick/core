@@ -6,7 +6,7 @@ use crate::backend::secrets::{
 };
 use axum::extract::{Path, State};
 use axum::{Extension, Json};
-use click_core::{AuthSession, InternalResult, User};
+use click_core::{AuthSession, InternalResult};
 use std::sync::Arc;
 
 #[axum::debug_handler]
@@ -19,7 +19,7 @@ pub async fn create_secret(
     let auth_result = request.auth_result.clone();
     let result = state
         .backend
-        .create_secret(&session.user, params, request)
+        .create_secret(&session, params, request)
         .await?;
 
     auth_result.assert_validation()?;
@@ -30,11 +30,14 @@ pub async fn create_secret(
 #[axum::debug_handler]
 pub async fn update_secret(
     State(state): State<ApiState>,
-    Extension(user): Extension<Arc<User>>,
+    Extension(session): Extension<Arc<AuthSession>>,
     Path(params): Path<ProjectSecretPathParams>,
     Json(request): Json<UpdateSecretRequest>,
 ) -> InternalResult<Json<SecretWithEncryptedValues>> {
-    let response = state.backend.update_secret(&user, params, request).await?;
+    let response = state
+        .backend
+        .update_secret(&session, params, request)
+        .await?;
 
     Ok(Json(response))
 }
@@ -50,7 +53,7 @@ pub async fn update_secret_value(
 
     let response = state
         .backend
-        .update_secret_value(&session.user, params, request)
+        .update_secret_value(&session, params, request)
         .await?;
 
     auth_result.assert_validation()?;

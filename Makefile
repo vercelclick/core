@@ -18,7 +18,7 @@ cloud-run-dev:
 
 local-run-dev:
 	@echo "==> Run api dev"
-	RUST_BACKTRACE=1 cargo run -p click-local --bin click -- local start --foreground
+	RUST_BACKTRACE=1 cargo run -p click-local --bin click -- service start --foreground
 
 migration-create:
 	@echo "==> Create migration"

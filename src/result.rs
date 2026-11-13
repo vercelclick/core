@@ -11,9 +11,10 @@ macro_rules! caller {
         fn type_name_of<T>(_: T) -> &'static str {
             std::any::type_name::<T>()
         }
-        let name = type_name_of(f);
+        // let name = type_name_of(f);
         // Trim the trailing "::{{closure}}::{{closure}}::f" from the type name
-        &name[..name.len() - 29]
+        // &name[..name.len() - 29]
+        type_name_of(f)
     }};
 }
 

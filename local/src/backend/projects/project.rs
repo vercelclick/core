@@ -1,3 +1,4 @@
+use crate::backend::auth::validate_passkey_auth;
 use crate::config::LocalServiceConfig;
 use crate::service::keys::LocalKeysConfig;
 use crate::service::project::LocalProjectConfig;
@@ -9,7 +10,7 @@ use click_api::backend::projects::{
 use click_core::constants::APP_SLUG;
 use click_core::enums::{AccessGrant, ContributorRole, ContributorStatus};
 use click_core::{
-    Contributor, ContributorPublicKey, Environment, InternalError, InternalResult, Passkey,
+    AuthSession, Contributor, ContributorPublicKey, Environment, InternalError, InternalResult,
     Project, StatusCode, User, caller,
 };
 use uuid::Uuid;
@@ -58,10 +59,11 @@ pub async fn list_projects(user: &User) -> InternalResult<ListProjectsResult> {
 }
 
 pub async fn create_project(
-    user: &User,
-    passkeys: &[Passkey],
+    session: &AuthSession,
     request: CreateProjectRequest,
 ) -> InternalResult<Project> {
+    validate_passkey_auth(session, &request.auth_result).await?;
+
     let mut config = LocalServiceConfig::load()?;
 
     let path = request.path.ok_or_else(|| {
@@ -112,26 +114,27 @@ pub async fn create_project(
     let contributor = Contributor {
         id: Uuid::now_v7(),
         project_id: project.id,
-        user_id: user.id,
+        user_id: session.user.id,
         status: ContributorStatus::Active,
         role: ContributorRole::Admin,
         access: vec![],
         updated_at: Utc::now(),
     };
 
-    let contributors_keys = passkeys
+    let contributors_keys = session
+        .passkeys
         .iter()
         .map(|passkey| ContributorPublicKey {
             id: Uuid::now_v7(),
-            name: format!("{} - {}", user.email, passkey.name),
+            name: format!("{} - {}", session.user.email, passkey.name),
             user_id: passkey.user_id,
             cred_id: passkey.cred_id.clone(),
-            user_salt: user.key_salt.clone(),
+            user_salt: session.user.key_salt.clone(),
             passkey_salt: passkey.key_salt.clone(),
             public_key: passkey.public_key.clone(),
             contributor_id: contributor.id,
             access: AccessGrant::Granted,
-            granted_by: Some(user.email.clone()),
+            granted_by: Some(session.user.email.clone()),
             granted_on: Some(Utc::now()),
         })
         .collect();
@@ -139,7 +142,7 @@ pub async fn create_project(
     let project_conf = LocalProjectConfig {
         project: project.clone(),
         environments,
-        contributors: vec![(user.clone(), contributor)],
+        contributors: vec![(session.user.clone(), contributor)],
     };
 
     let keys_conf = LocalKeysConfig {

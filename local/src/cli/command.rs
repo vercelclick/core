@@ -1,9 +1,12 @@
 use crate::cli::attach::attach_project;
+use crate::cli::mode::{ModeArgs, OperationMode};
 use crate::cli::runner::export::export_secrets;
+use crate::cli::runner::human::get_values_from_web;
 use crate::cli::runner::run_command::run_command_with_secrets;
 use crate::cli::runner::values::{get_cloud_values, get_local_values};
 use crate::cli::service::{check_status_command, start_service_command, stop_service_command};
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
+use click_core::KeyPair;
 
 #[derive(Debug, Parser)]
 #[command(name = "click", author, version, about)]
@@ -12,123 +15,101 @@ pub struct Cli {
     command: Command,
 }
 
-#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Debug, Clone, Copy, Default, ValueEnum, PartialEq, PartialOrd, Eq, Ord)]
 pub enum ExportFormat {
+    #[value(name="json", aliases = [".json"])]
     Json,
+    #[default]
+    #[value(name="env", aliases = [".env", "dot-env"])]
     DotEnv,
 }
 
-#[derive(Debug, Clone, Subcommand)]
-pub enum LocalCommand {
-    /// Start the click local vault service
-    Start {
-        /// Start as a standard cli process instead of running it in the background, defaults to false
-        #[arg(long, default_value_t = false)]
-        foreground: bool,
-    },
-    /// Stop the click local vault service
-    Stop,
-    /// Check the status of click local vault service
-    Status,
-    /// Attach the current running directory as a local click vault project, setup can be done from the UI if not already completed
-    Attach {
-        /// Set to true to prevent opening the browser after attaching
-        #[arg(long, default_value_t = false)]
-        silent: bool,
-    },
-    /// Export exposed secrets to a file or pipe them to another command
-    Export {
-        /// (optional) click local vault project directory; defaults to the current working directory
-        #[arg(long, global = true, default_value = None)]
-        project_dir: Option<String>,
+#[derive(Args, Clone, Debug)]
+pub struct AccessArgs {
+    /// (optional) access key to use for decryption, you'll be prompted to use your passkey if not provided
+    #[arg(long, default_value = None, requires = "env")]
+    access_key: Option<String>,
 
-        /// (optional) Machine key to use for decryption, you'll be prompted to use your passkey if not provided
-        #[arg(long, default_value = None)]
-        private_key: Option<String>,
-
-        /// (optional) Secrets environment to export secrets from, required when used with a private key
-        #[arg(long, default_value = None)]
-        env: Option<String>,
-
-        /// Output format(json/dotenv); pipe stdout to the desired file
-        #[arg(long)]
-        format: ExportFormat,
-    },
-    /// Run a command with exposed secrets injected as environment variables
-    Run {
-        /// (optional) click local vault project directory; defaults to the current working directory
-        #[arg(long, global = true, default_value = None)]
-        project_dir: Option<String>,
-
-        /// (optional) Machine key to use for decryption, you'll be prompted to use your passkey if not provided
-        #[arg(long, default_value = None)]
-        private_key: Option<String>,
-
-        /// (optional) Secrets environment to inject secrets from, required when used with a private key
-        #[arg(long, default_value = None)]
-        env: Option<String>,
-
-        /// The command to inject secrets to - supports `sh` valid syntax
-        #[arg(
-            trailing_var_arg = true,
-            allow_hyphen_values = true,
-            allow_negative_numbers = true
-        )]
-        command: Vec<String>,
-    },
+    /// (optional) vault environment to use secrets from, required when used with access_key
+    #[arg(long, default_value = None, requires = "access_key")]
+    env: Option<String>,
 }
 
-#[derive(Debug, Clone, Subcommand)]
-pub enum CloudCommand {
-    /// Export exposed secrets to a file or pipe them to another command
-    Export {
-        /// (optional) Machine key to use for decryption, you'll be prompted to use your passkey if not provided
-        #[arg(long, default_value = None)]
-        private_key: Option<String>,
-
-        /// (optional) Secrets environment to export secrets from, required when used with a private key
-        #[arg(long, default_value = None)]
-        env: Option<String>,
-
-        /// Output format(json/dotenv); pipe stdout to the desired file
-        #[arg(long)]
-        format: ExportFormat,
-    },
-    /// Run a command with exposed secrets injected as environment variables
-    Run {
-        /// (optional) Machine key to use for decryption, you'll be prompted to use your passkey if not provided
-        #[arg(long, default_value = None)]
-        private_key: Option<String>,
-
-        /// (optional) Secrets environment to inject secrets from, required when used with a private key
-        #[arg(long, default_value = None)]
-        env: Option<String>,
-
-        /// The command to inject secrets to - supports `sh` valid syntax
-        #[arg(
-            trailing_var_arg = true,
-            allow_hyphen_values = true,
-            allow_negative_numbers = true
-        )]
-        command: Vec<String>,
-    },
+impl AccessArgs {
+    fn get(self) -> Option<(String, String)> {
+        if let Some(key) = self.access_key
+            && let Some(env) = self.env
+        {
+            Some((key, env))
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum Command {
-    /// Group of commands to manage and inject secrets from the local vault
-    Local {
-        #[command(subcommand)]
-        command: LocalCommand,
+    /// run a command with decrypted secrets injected as environment variables
+    ///
+    /// secrets will be automatically masked on GitHub Actions
+    Run {
+        #[command(flatten)]
+        mode_args: ModeArgs,
+
+        #[command(flatten)]
+        access_args: AccessArgs,
+
+        /// The command to inject secrets to - supports `sh` valid syntax
+        #[arg(
+            trailing_var_arg = true,
+            allow_hyphen_values = true,
+            allow_negative_numbers = true
+        )]
+        command: Vec<String>,
     },
-    /// Group of commands to inject secrets from the cloud vault
-    Cloud {
-        /// (optional) If running on an in-house cloud deployment, change this URL accordingly
-        #[arg(long, global = true, default_value = "https://api.vercel.click")]
-        endpoint: String,
-        #[command(subcommand)]
-        command: CloudCommand,
+    /// export decrypted secrets to a file or pipe them to another command
+    ///
+    /// secrets will be automatically masked on GitHub Actions
+    Export {
+        #[command(flatten)]
+        mode_args: ModeArgs,
+
+        #[command(flatten)]
+        access_args: AccessArgs,
+
+        /// (dot-env) format(json/dot-env); pipe stdout to the desired file
+        #[arg(long, default_value = "dot-env")]
+        format: ExportFormat,
     },
+    /// attach a directory as a click vault local project, setup can be completed from https://vault.vercel.click
+    Attach {
+        /// prevent cli from opening the browser after attaching
+        #[arg(long, default_value_t)]
+        silent: bool,
+
+        /// (default cwd) the path to the directory to attach
+        #[arg(long, default_value = None)]
+        target: Option<String>,
+    },
+    /// manage local vault service
+    Service {
+        #[command(subcommand)]
+        command: ServiceCommand,
+    },
+}
+
+#[derive(Debug, Clone, Subcommand)]
+pub enum ServiceCommand {
+    /// start the local vault service
+    Start {
+        /// (default false) start as a standard cli process instead of running it in the background
+        #[arg(long, default_value_t)]
+        foreground: bool,
+    },
+    /// stop the local vault service
+    Stop,
+    /// check the status of click local vault service
+    Status,
     #[cfg(target_os = "macos")]
     /// For macOS Safari blocks calls to local service from https://vault.vercel.click
     /// Install these certificates to trust the local https certificate
@@ -138,62 +119,37 @@ pub enum Command {
 impl Cli {
     pub fn execute(&self) {
         match self.command.clone() {
-            Command::Local { command } => match command {
-                LocalCommand::Run {
-                    private_key,
-                    command,
-                    env,
-                    project_dir,
-                } => {
-                    let command = parse_command(&command);
-                    let (private_key, encrypted_values) =
-                        get_local_values(project_dir, private_key, env, Some(command.clone()));
+            Command::Run {
+                access_args,
+                mode_args,
+                command,
+            } => {
+                let command = parse_command(&command);
 
-                    run_command_with_secrets(private_key, encrypted_values, command)
-                }
-                LocalCommand::Export {
-                    private_key,
-                    env,
-                    project_dir,
-                    format,
-                } => {
-                    let (private_key, encrypted_values) =
-                        get_local_values(project_dir, private_key, env, None);
+                let (private_key, encrypted_values) =
+                    get_values(mode_args, access_args, Some(command.clone()));
 
-                    export_secrets(private_key, encrypted_values, format)
-                }
-                LocalCommand::Start { foreground } => start_service_command(foreground, false),
-                LocalCommand::Stop => stop_service_command(),
-                LocalCommand::Status => check_status_command(),
-                LocalCommand::Attach { silent } => attach_project(silent),
-            },
-            Command::Cloud { command, endpoint } => match command {
-                CloudCommand::Run {
-                    private_key,
-                    env,
-                    command,
-                } => {
-                    let command = parse_command(&command);
-                    let (private_key, encrypted_values) =
-                        get_cloud_values(endpoint, private_key, env, Some(command.clone()));
-
-                    run_command_with_secrets(private_key, encrypted_values, command);
-                }
-                CloudCommand::Export {
-                    private_key,
-                    env,
-                    format,
-                } => {
-                    let (private_key, encrypted_values) =
-                        get_cloud_values(endpoint, private_key, env, None);
-
-                    export_secrets(private_key, encrypted_values, format);
-                }
-            },
-            #[cfg(target_os = "macos")]
-            Command::InstallCertificates => {
-                crate::utils::certificates::install_macos_certificates();
+                run_command_with_secrets(private_key, encrypted_values, command)
             }
+            Command::Export {
+                access_args,
+                mode_args,
+                format,
+            } => {
+                let (private_key, encrypted_values) = get_values(mode_args, access_args, None);
+
+                export_secrets(private_key, encrypted_values, format)
+            }
+            Command::Service { command } => match command {
+                ServiceCommand::Start { foreground } => start_service_command(foreground, false),
+                ServiceCommand::Stop => stop_service_command(),
+                ServiceCommand::Status => check_status_command(),
+                #[cfg(target_os = "macos")]
+                ServiceCommand::InstallCertificates => {
+                    crate::utils::certificates::install_macos_certificates();
+                }
+            },
+            Command::Attach { silent, target } => attach_project(silent, target),
         }
     }
 }
@@ -204,4 +160,22 @@ fn parse_command(args: &[String]) -> String {
     }
 
     args.join(" ")
+}
+
+fn get_values(
+    mode_args: ModeArgs,
+    access_args: AccessArgs,
+    command: Option<String>,
+) -> (KeyPair, std::collections::HashMap<String, String>) {
+    let mode = OperationMode::try_from(mode_args)
+        .unwrap_or_else(|(kind, message)| Cli::command().error(kind, message).exit());
+
+    if let Some((access_key, env)) = access_args.get() {
+        match mode {
+            OperationMode::Local { project_dir } => get_local_values(project_dir, access_key, env),
+            OperationMode::Cloud { endpoint } => get_cloud_values(endpoint, access_key, env),
+        }
+    } else {
+        get_values_from_web(command)
+    }
 }

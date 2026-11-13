@@ -7,7 +7,7 @@ use crate::backend::secrets::{
     CreateSecretRequest, ProjectAccessKeyParams, ProjectEnvPathParams, ProjectPathParams,
     ProjectSecretPathParams, UpdateSecretRequest, UpdateSecretValueRequest,
 };
-use click_core::{AccessKey, InternalResult, Passkey, Project, TargetedPublicKey, User};
+use click_core::{AccessKey, AuthSession, InternalResult, Project, TargetedPublicKey};
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -15,33 +15,32 @@ use uuid::Uuid;
 pub trait BackendProvider: Send + Sync + 'static {
     async fn generate_webauthn_authorization_challenge(
         &self,
-        user: &User,
+        session: &AuthSession,
     ) -> InternalResult<String>;
 
-    async fn list_projects(&self, user: &User) -> InternalResult<ListProjectsResult>;
+    async fn list_projects(&self, session: &AuthSession) -> InternalResult<ListProjectsResult>;
 
     async fn create_project(
         &self,
-        user: &User,
-        passkeys: &[Passkey],
+        session: &AuthSession,
         request: CreateProjectRequest,
     ) -> InternalResult<Project>;
 
     async fn get_project_by_id(
         &self,
-        user: &User,
+        session: &AuthSession,
         project_id: Uuid,
     ) -> InternalResult<Option<GetProjectResult>>;
 
     async fn get_environment_by_name(
         &self,
-        user: &User,
+        session: &AuthSession,
         request: GetEnvironmentRequest,
     ) -> InternalResult<Option<GetEnvironmentResult>>;
 
     async fn create_secret(
         &self,
-        user: &User,
+        session: &AuthSession,
         params: ProjectEnvPathParams,
         request: CreateSecretRequest,
     ) -> InternalResult<SecretWithEncryptedValues>;
@@ -53,33 +52,33 @@ pub trait BackendProvider: Send + Sync + 'static {
 
     async fn create_access_key(
         &self,
-        user: &User,
+        session: &AuthSession,
         params: ProjectPathParams,
         request: CreateAccessKeyRequest,
     ) -> InternalResult<AccessKey>;
 
     async fn update_secret(
         &self,
-        user: &User,
+        session: &AuthSession,
         params: ProjectSecretPathParams,
         request: UpdateSecretRequest,
     ) -> InternalResult<SecretWithEncryptedValues>;
 
     async fn update_secret_value(
         &self,
-        user: &User,
+        session: &AuthSession,
         params: ProjectSecretPathParams,
         request: UpdateSecretValueRequest,
     ) -> InternalResult<SecretWithEncryptedValues>;
 
     async fn get_secret_targets(
         &self,
-        user: &User,
+        session: &AuthSession,
         params: ProjectSecretPathParams,
     ) -> InternalResult<Vec<TargetedPublicKey>>;
     async fn create_federated_access_key(
         &self,
-        user: &User,
+        session: &AuthSession,
         params: ProjectPathParams,
         request: CreateFederatedAccessKeyRequest,
     ) -> InternalResult<CreateFederatedAccessKeyResult>;
