@@ -9,6 +9,7 @@ use click_core::passkeys::authorize::PasskeyAuthorizationResult;
 use click_core::passkeys::create::PasskeyCreationResult;
 use click_core::{InternalError, InternalResult, StatusCode, WebauthnChallenge, caller};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -24,7 +25,7 @@ pub struct SignupRequest {
     pub passkey_salt: String,
     pub passkey_result: PasskeyCreationResult,
     pub public_key: String,
-    pub auth_result: PasskeyAuthorizationResult,
+    pub auth_result: Arc<PasskeyAuthorizationResult>,
 }
 
 #[axum::debug_handler]

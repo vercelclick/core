@@ -5,7 +5,7 @@ use tsify::{Ts, Tsify};
 use wasm_bindgen::JsError;
 use wasm_bindgen::prelude::wasm_bindgen;
 
-#[derive(Serialize, Deserialize, Debug, Clone, Tsify)]
+#[derive(Serialize, Deserialize, Debug, Tsify)]
 pub struct PublicKeyGenerateResult {
     pub public_key: String,
     pub auth_result: PasskeyAuthorizationResult,

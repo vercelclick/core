@@ -1,6 +1,5 @@
 use crate::passkeys::helpers::{parse_auth_data, verify_client_data};
 use crate::result::{InternalError, InternalResult};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::caller;
@@ -16,20 +15,20 @@ use sha2::{Digest, Sha256};
 use ts_rs::TS;
 use uuid::Uuid;
 
-#[derive(Serialize, Deserialize, Debug, Clone, TS)]
+#[derive(Debug, Serialize, Deserialize, TS)]
 pub struct AssertionResponse {
     pub client_data_json: Vec<u8>,
     pub authenticator_data: Vec<u8>,
     pub signature: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, TS)]
+#[derive(Debug, Serialize, Deserialize, TS)]
 pub struct PasskeyAuthorizationResult {
     pub id: String,
     pub user_id: Uuid,
     pub response: AssertionResponse,
     #[serde(skip, default)]
-    validate_called: Arc<AtomicBool>,
+    validate_called: AtomicBool,
 }
 
 impl PasskeyAuthorizationResult {
@@ -75,10 +74,10 @@ impl PasskeyAuthorizationResult {
         Ok(())
     }
 
-    pub fn assert_validation(&self) -> InternalResult<()> {
+    pub fn assert_validation(&self, source: &str) -> InternalResult<()> {
         self.validate_called.load(Ordering::Acquire).ok_or_else(|| {
             InternalError::new(
-                caller!(),
+                source,
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Passkey authorization was not validated",
             )

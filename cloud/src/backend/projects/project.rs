@@ -2,10 +2,11 @@ use crate::backend::projects::environments::environments_insert_query_builder;
 use crate::backend::projects::passkeys::contributor_public_key_insert_query_builder;
 use crate::db;
 use crate::db::{Transaction, TransactionOperation};
+use crate::workfows::passkeys::PasskeyValidationWorkflow;
 use click_api::backend::projects::{
     CreateProjectRequest, GetProjectResult, ListProjectsResult, ProjectListItem,
 };
-use click_core::enums::{ContributorRole, ContributorStatus};
+use click_core::enums::{ContributorRole, ContributorStatus, WebauthnChallengeKind};
 use click_core::{
     AccessKey, AuthSession, Contributor, Environment, EnvironmentAccess, FederatedAccessKey,
     InternalError, InternalResult, Passkey, Project, StatusCode, User, caller,
@@ -29,6 +30,14 @@ struct CreateProjectWorkflow {
 #[async_trait::async_trait]
 impl TransactionOperation<Project> for CreateProjectWorkflow {
     async fn execute(self, tx: &mut Transaction<'_>) -> InternalResult<Project> {
+        PasskeyValidationWorkflow {
+            kind: WebauthnChallengeKind::PasskeyAuthorize,
+            owner: self.user.email.clone(),
+            auth_result: self.request.auth_result,
+        }
+        .execute(tx)
+        .await?;
+
         let project: Project = sqlx::query_as(CREATE_PROJECT_QUERY)
             .bind(&self.request.name)
             .bind(&self.request.description)
@@ -58,7 +67,7 @@ impl TransactionOperation<Project> for CreateProjectWorkflow {
 
         let contributor: Contributor = sqlx::query_as(
             r#"
-            INSERT INTO "Contributors" (user_id, status, project_id, role, environments)
+            INSERT INTO "Contributors" (user_id, status, project_id, role, access)
             VALUES ($1, $2, $3, $4, $5)
             RETURNING *
         "#,

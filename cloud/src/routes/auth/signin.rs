@@ -1,12 +1,10 @@
 use crate::auth_session::create_backend_session_token;
-use crate::backend::auth::passkey::retrieve_passkey_by_cred_id;
 use crate::backend::auth::user::{get_user_by_email, get_user_by_id};
 use crate::db;
 use crate::db::workflows::session::CreateSessionWorkflow;
-use crate::db::workflows::{
-    UpsertWebauthnChallengeWorkflow, UseEmailChallengeWorkflow, UseWebauthnChallengeWorkflow,
-};
+use crate::db::workflows::{UpsertWebauthnChallengeWorkflow, UseEmailChallengeWorkflow};
 use crate::db::{Transaction, TransactionOperation, with_transaction};
+use crate::workfows::passkeys::PasskeyValidationWorkflow;
 use async_trait::async_trait;
 use axum::Json;
 use axum::http::StatusCode;
@@ -16,6 +14,7 @@ use click_api::backend::auth::{
 use click_core::enums::{EmailChallengeKind, WebauthnChallengeKind};
 use click_core::passkeys::authorize::PasskeyAuthorizationResult;
 use click_core::{InternalError, InternalResult, WebauthnChallenge, caller};
+use std::sync::Arc;
 use uuid::Uuid;
 
 struct SignInWithEmailWorkflow {
@@ -57,32 +56,23 @@ pub async fn signin_with_email(
 
 struct SignInWithPasskeyWorkflow {
     owner: String,
-    auth_result: PasskeyAuthorizationResult,
+    auth_result: Arc<PasskeyAuthorizationResult>,
 }
 
 #[async_trait]
 impl TransactionOperation<String> for SignInWithPasskeyWorkflow {
     async fn execute(self, tx: &mut Transaction<'_>) -> InternalResult<String> {
-        let passkey =
-            retrieve_passkey_by_cred_id(tx, self.auth_result.id.clone(), self.auth_result.user_id)
-                .await?
-                .ok_or_else(|| {
-                    InternalError::new(caller!(), StatusCode::NOT_FOUND, "Passkey not found")
-                })?;
-        let user = get_user_by_id(&mut **tx, self.auth_result.user_id)
-            .await?
-            .ok_or_else(|| {
-                InternalError::new(caller!(), StatusCode::NOT_FOUND, "User not found")
-            })?;
-
-        UseWebauthnChallengeWorkflow {
+        let user_id = PasskeyValidationWorkflow {
             owner: self.owner,
+            auth_result: self.auth_result,
             kind: WebauthnChallengeKind::PasskeySignIn,
-            public_key: passkey.public_key,
-            result: self.auth_result,
         }
         .execute(tx)
         .await?;
+
+        let user = get_user_by_id(&mut **tx, user_id).await?.ok_or_else(|| {
+            InternalError::new(caller!(), StatusCode::NOT_FOUND, "User not found")
+        })?;
 
         let (session, user, passkeys) = CreateSessionWorkflow { user }.execute(tx).await?;
 

@@ -2,3 +2,6 @@
 .idea
 /**/.DS_Store
 .env
+
+# Local vault config during development
+/.click-dev

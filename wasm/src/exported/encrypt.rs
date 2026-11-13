@@ -21,7 +21,7 @@ pub struct EncryptSecretRequest {
     pub project_id: Uuid,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Tsify)]
+#[derive(Debug, Serialize, Deserialize, Tsify)]
 pub struct EncryptSecretResult {
     pub auth_result: PasskeyAuthorizationResult,
     pub encrypted_values: Vec<SecretValue>,

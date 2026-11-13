@@ -6,7 +6,7 @@ use crate::backend::secrets::{
 };
 use axum::extract::{Path, State};
 use axum::{Extension, Json};
-use click_core::{AuthSession, InternalResult};
+use click_core::{AuthSession, InternalResult, caller};
 use std::sync::Arc;
 
 #[axum::debug_handler]
@@ -22,7 +22,7 @@ pub async fn create_secret(
         .create_secret(&session, params, request)
         .await?;
 
-    auth_result.assert_validation()?;
+    auth_result.assert_validation(caller!())?;
 
     Ok(Json(result))
 }
@@ -56,7 +56,7 @@ pub async fn update_secret_value(
         .update_secret_value(&session, params, request)
         .await?;
 
-    auth_result.assert_validation()?;
+    auth_result.assert_validation(caller!())?;
 
     Ok(Json(response))
 }

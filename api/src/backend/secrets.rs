@@ -1,6 +1,7 @@
 use click_core::passkeys::authorize::PasskeyAuthorizationResult;
 use click_core::{EnvironmentAccess, FederatedAccessKey, SecretValue};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -30,14 +31,14 @@ pub struct ProjectPathParams {
 pub struct CreateSecretRequest {
     pub name: String,
     pub comments: String,
-    pub auth_result: PasskeyAuthorizationResult,
+    pub auth_result: Arc<PasskeyAuthorizationResult>,
     pub encrypted_values: Vec<SecretValue>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct UpdateSecretValueRequest {
-    pub auth_result: PasskeyAuthorizationResult,
+    pub auth_result: Arc<PasskeyAuthorizationResult>,
     pub encrypted_values: Vec<SecretValue>,
 }
 
@@ -63,7 +64,7 @@ pub struct CreateAccessKeyRequest {
     pub name: String,
     pub description: String,
     pub access: Vec<EnvironmentAccess>,
-    pub auth_result: PasskeyAuthorizationResult,
+    pub auth_result: Arc<PasskeyAuthorizationResult>,
     pub public_key: String,
     pub encrypted_values: Vec<SecretValue>,
 }
@@ -74,7 +75,7 @@ pub struct CreateFederatedAccessKeyRequest {
     pub name: String,
     pub description: String,
     pub access: Vec<EnvironmentAccess>,
-    pub auth_result: PasskeyAuthorizationResult,
+    pub auth_result: Arc<PasskeyAuthorizationResult>,
     pub public_key: String,
     pub contributors: Vec<Uuid>,
 }

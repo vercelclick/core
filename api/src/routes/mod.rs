@@ -70,8 +70,9 @@ pub fn build_api_router(
 
     let state = Arc::new(state);
 
-    let mut router =
-        Router::new().nest("/api/v1/projects", project_routes().layer(AuthLayer::new()));
+    let mut router = Router::new()
+        .nest("/api/v1/auth", auth_router().layer(AuthLayer::new()))
+        .nest("/api/v1/projects", project_routes().layer(AuthLayer::new()));
 
     if let Some(authenticated_router) = additional_authenticated_router {
         router = router.nest("/api/v1", authenticated_router.layer(AuthLayer::new()));
@@ -83,7 +84,6 @@ pub fn build_api_router(
 
     router
         .nest("/api/v1/projects", public_project_routes())
-        .nest("/api/v1/auth", auth_router())
         .route("/health", get(health_endpoint))
         .route("/ping", post(ping_endpoint))
         .layer(cors_layer())

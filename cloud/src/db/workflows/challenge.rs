@@ -1,11 +1,12 @@
-use async_trait::async_trait;
-
 use crate::db::{Transaction, TransactionOperation};
+use async_trait::async_trait;
 use click_core::enums::{EmailChallengeKind, WebauthnChallengeKind};
 use click_core::passkeys::authorize::PasskeyAuthorizationResult;
 use click_core::{
     EmailChallenge, InternalError, InternalResult, StatusCode, WebauthnChallenge, caller,
 };
+use std::sync::Arc;
+use uuid::Uuid;
 
 pub struct UpsertWebauthnChallengeWorkflow {
     pub owner: String,
@@ -114,12 +115,12 @@ pub struct UseWebauthnChallengeWorkflow {
     pub owner: String,
     pub kind: WebauthnChallengeKind,
     pub public_key: String,
-    pub result: PasskeyAuthorizationResult,
+    pub result: Arc<PasskeyAuthorizationResult>,
 }
 
 #[async_trait]
-impl TransactionOperation<()> for UseWebauthnChallengeWorkflow {
-    async fn execute(self, tx: &mut Transaction<'_>) -> InternalResult<()> {
+impl TransactionOperation<Uuid> for UseWebauthnChallengeWorkflow {
+    async fn execute(self, tx: &mut Transaction<'_>) -> InternalResult<Uuid> {
         let challenge: Option<WebauthnChallenge> = sqlx::query_as(
             r#"
             DELETE FROM "WebauthnChallenge"
@@ -148,7 +149,9 @@ impl TransactionOperation<()> for UseWebauthnChallengeWorkflow {
         })?;
 
         self.result
-            .validate(&self.public_key, &challenge.value_hash)
+            .validate(&self.public_key, &challenge.value_hash)?;
+
+        Ok(self.result.user_id)
     }
 }
 

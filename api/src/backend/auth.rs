@@ -1,12 +1,13 @@
 use click_core::passkeys::authorize::PasskeyAuthorizationResult;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use ts_rs::TS;
 
 #[derive(Debug, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct PasskeySignInRequest {
     pub owner: String,
-    pub auth_response: PasskeyAuthorizationResult,
+    pub auth_response: Arc<PasskeyAuthorizationResult>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

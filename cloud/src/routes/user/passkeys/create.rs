@@ -24,7 +24,7 @@ pub struct CreatePasskeyRequest {
     confirmation_code: String,
     create_result: PasskeyCreationResult,
     public_key: String,
-    auth_result: PasskeyAuthorizationResult,
+    auth_result: Arc<PasskeyAuthorizationResult>,
 }
 
 struct CreatePasskeyWorkflow {

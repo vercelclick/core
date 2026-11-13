@@ -1,3 +1,4 @@
+use crate::backend::auth::passkey::retrieve_passkey_by_cred_id;
 use crate::db::workflows::UseWebauthnChallengeWorkflow;
 use crate::db::{Transaction, TransactionOperation};
 use async_trait::async_trait;
@@ -5,6 +6,7 @@ use click_core::enums::WebauthnChallengeKind;
 use click_core::passkeys::authorize::PasskeyAuthorizationResult;
 use click_core::passkeys::create::PasskeyCreationResult;
 use click_core::{InternalError, InternalResult, StatusCode, WebauthnChallenge, caller};
+use std::sync::Arc;
 use uuid::Uuid;
 
 pub struct NewPasskeyValidationWorkflow {
@@ -12,7 +14,7 @@ pub struct NewPasskeyValidationWorkflow {
     pub user_id: Uuid,
     pub email_address: String,
     pub create_result: PasskeyCreationResult,
-    pub auth_result: PasskeyAuthorizationResult,
+    pub auth_result: Arc<PasskeyAuthorizationResult>,
 }
 
 #[async_trait]
@@ -54,5 +56,32 @@ impl TransactionOperation<(String, String)> for NewPasskeyValidationWorkflow {
         .await?;
 
         Ok((passkey_cred_id, passkey_public_key))
+    }
+}
+
+pub struct PasskeyValidationWorkflow {
+    pub owner: String,
+    pub kind: WebauthnChallengeKind,
+    pub auth_result: Arc<PasskeyAuthorizationResult>,
+}
+
+#[async_trait]
+impl TransactionOperation<Uuid> for PasskeyValidationWorkflow {
+    async fn execute(self, tx: &mut Transaction<'_>) -> InternalResult<Uuid> {
+        let passkey =
+            retrieve_passkey_by_cred_id(tx, self.auth_result.id.clone(), self.auth_result.user_id)
+                .await?
+                .ok_or_else(|| {
+                    InternalError::new(caller!(), StatusCode::NOT_FOUND, "Passkey not found")
+                })?;
+
+        UseWebauthnChallengeWorkflow {
+            kind: self.kind,
+            owner: self.owner,
+            public_key: passkey.web_public_key,
+            result: self.auth_result,
+        }
+        .execute(tx)
+        .await
     }
 }

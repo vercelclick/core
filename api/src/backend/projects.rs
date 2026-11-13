@@ -3,6 +3,7 @@ use click_core::{
     AccessKey, Contributor, Environment, FederatedAccessKey, Project, User, Workspace,
 };
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use ts_rs::TS;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -49,7 +50,7 @@ pub struct CreateProjectRequest {
     pub name: String,
     pub description: String,
     pub environments: Vec<CreateEnvironmentRequest>,
-    pub auth_result: PasskeyAuthorizationResult,
+    pub auth_result: Arc<PasskeyAuthorizationResult>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

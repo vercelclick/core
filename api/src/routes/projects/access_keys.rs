@@ -2,7 +2,7 @@ use crate::backend::ApiState;
 use crate::backend::secrets::{CreateAccessKeyRequest, ProjectPathParams};
 use axum::extract::{Path, State};
 use axum::{Extension, Json};
-use click_core::{AccessKey, AuthSession, InternalResult};
+use click_core::{AccessKey, AuthSession, InternalResult, caller};
 use std::sync::Arc;
 
 #[axum::debug_handler]
@@ -18,7 +18,7 @@ pub async fn create_access_key_handler(
         .create_access_key(&session, params, request)
         .await?;
 
-    auth_result.assert_validation()?;
+    auth_result.assert_validation(caller!())?;
 
     Ok(Json(result))
 }

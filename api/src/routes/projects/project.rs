@@ -26,7 +26,7 @@ pub async fn create_project(
     let auth_result = request.auth_result.clone();
     let project = state.backend.create_project(&session, request).await?;
 
-    auth_result.assert_validation()?;
+    auth_result.assert_validation(caller!())?;
 
     Ok(Json(project))
 }
