@@ -1,16 +1,11 @@
 use crate::cli::command::ExportFormat;
-use click_core::{InternalError, KeyPair, StatusCode, caller};
+use crate::cli::utils::get_safe_value;
+use click_core::{InternalError, StatusCode, caller};
 use std::collections::HashMap;
 
-pub fn export_secrets(
-    private_key: KeyPair,
-    encrypted_secrets: HashMap<String, String>,
-    format: ExportFormat,
-) {
-    let plain_values = private_key.decrypt_package(&encrypted_secrets).unwrap();
-
+pub fn export_secrets(plain_values: HashMap<String, String>, format: ExportFormat) {
     match format {
-        ExportFormat::DotEnv => export_env(plain_values),
+        ExportFormat::DotEnv => export_env(&plain_values),
         ExportFormat::Json => {
             let json_content = serde_json::to_string_pretty(&plain_values)
                 .map_err(|err| {
@@ -27,8 +22,8 @@ pub fn export_secrets(
     }
 }
 
-fn export_env(values: HashMap<String, String>) {
+fn export_env(values: &HashMap<String, String>) {
     for (key, value) in values {
-        println!("{}={}", key, value)
+        println!("{}={}", key, get_safe_value(value))
     }
 }

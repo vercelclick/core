@@ -28,7 +28,7 @@ struct EncryptionDetails {
     command: Option<String>,
 }
 
-async fn get_values_from_web_async(command: Option<String>) -> (KeyPair, HashMap<String, String>) {
+async fn get_values_from_web_async(command: Option<String>) -> HashMap<String, String> {
     rustls::crypto::aws_lc_rs::default_provider()
         .install_default()
         .expect("Failed to install default crypto provider");
@@ -104,10 +104,10 @@ async fn get_values_from_web_async(command: Option<String>) -> (KeyPair, HashMap
         .expect("Error decrypting secrets, please retry");
     child.abort();
 
-    (private_key, secrets)
+    private_key.decrypt_package(&secrets).unwrap()
 }
 
-pub fn get_values_from_web(command: Option<String>) -> (KeyPair, HashMap<String, String>) {
+pub fn get_values_from_web(command: Option<String>) -> HashMap<String, String> {
     let rt = tokio::runtime::Runtime::new().expect(
         "Error creating IO runtime, , please raise a support ticket through support@vercel.click",
     );

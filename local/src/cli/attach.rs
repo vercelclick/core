@@ -1,6 +1,6 @@
 use crate::config::{CONFIG_DIR, LocalServiceConfig};
 use crate::utils::short_path;
-use click_core::constants::APP_SLUG;
+use click_core::constants::{APP_SLUG, RP_ORIGIN};
 use std::path::Path;
 use std::process::exit;
 use std::{env, fs};
@@ -28,10 +28,14 @@ pub fn attach_project(silent: bool, target: Option<String>) {
 
     if config.known_projects.contains(&path_str) {
         if path.join(format!(".{}/config.json", APP_SLUG)).is_file() {
-            eprintln!("Project is already attached, you can manage on https://vault.vercel.click")
+            eprintln!(
+                "Project is already attached, you can manage on {}",
+                RP_ORIGIN
+            )
         } else {
             eprintln!(
-                "Project is already attached but not setup, you can complete the setup on https://vault.verce.click"
+                "Project is already attached but not setup, you can complete the setup on {}",
+                RP_ORIGIN
             )
         }
     } else {
@@ -44,12 +48,13 @@ pub fn attach_project(silent: bool, target: Option<String>) {
         config.write().expect(write_error);
 
         eprintln!(
-            "{} attached, you can now manage it through https://vault.vercel.click",
-            short_path(&path_str)
+            "{} attached, you can now manage it through {}",
+            short_path(&path_str),
+            RP_ORIGIN
         );
     }
 
     if !silent {
-        let _ = webbrowser::open("https://vault.vercel.click");
+        let _ = webbrowser::open(RP_ORIGIN);
     }
 }

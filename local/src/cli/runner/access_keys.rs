@@ -22,7 +22,7 @@ pub fn get_values_from_local_project(
     access_key: String,
     env: String,
     tag: String,
-) -> (KeyPair, HashMap<String, String>) {
+) -> HashMap<String, String> {
     let (project_id, private_key) = parse_access_key(access_key);
 
     let project_dir = if let Some(relative) = project_dir {
@@ -97,19 +97,25 @@ pub fn get_values_from_local_project(
         encrypted_values.insert(secret_conf.definition.name, value.encrypted_value.clone());
     }
 
-    (private_key, encrypted_values)
+    private_key.decrypt_package(&encrypted_values).unwrap()
 }
+
+#[cfg(debug_assertions)]
+const DEFAULT_ENDPOINT: &str = "http://localhost:8080";
+
+#[cfg(not(debug_assertions))]
+const DEFAULT_ENDPOINT: &str = "https://api.vercel.click";
 
 pub fn get_values_from_cloud_project(
     endpoint: Option<String>,
     private_key: String,
     env_name: String,
     tag_name: String,
-) -> (KeyPair, HashMap<String, String>) {
+) -> HashMap<String, String> {
     let (project_id, private_key) = parse_access_key(private_key);
     let key_id = private_key.public_key().access_key_id();
 
-    let endpoint = endpoint.unwrap_or("https://api.vercel.click".to_string());
+    let endpoint = endpoint.unwrap_or(DEFAULT_ENDPOINT.to_string());
 
     let url = format!(
         "{endpoint}/api/projects/{project_id}/access-keys/{key_id}/env/{env_name}/tag/{tag_name}"
@@ -143,5 +149,5 @@ pub fn get_values_from_cloud_project(
         })
         .unwrap();
 
-    (private_key, encrypted_values)
+    private_key.decrypt_package(&encrypted_values).unwrap()
 }

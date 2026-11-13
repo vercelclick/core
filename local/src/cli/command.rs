@@ -1,12 +1,14 @@
 use crate::cli::attach::attach_project;
 use crate::cli::mode::{ModeArgs, OperationMode};
+use crate::cli::runner::access_keys::{
+    get_values_from_cloud_project, get_values_from_local_project,
+};
 use crate::cli::runner::export::export_secrets;
 use crate::cli::runner::human::get_values_from_web;
 use crate::cli::runner::run_command::run_command_with_secrets;
-use crate::cli::runner::values::{get_cloud_values, get_local_values};
 use crate::cli::service::{check_status_command, start_service_command, stop_service_command};
+use crate::cli::utils::mask_if_github_actions;
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
-use click_core::KeyPair;
 
 #[derive(Debug, Parser)]
 #[command(name = "click", author, version, about)]
@@ -126,19 +128,18 @@ impl Cli {
             } => {
                 let command = parse_command(&command);
 
-                let (private_key, encrypted_values) =
-                    get_values(mode_args, access_args, Some(command.clone()));
+                let plain_values = get_values(mode_args, access_args, Some(command.clone()));
 
-                run_command_with_secrets(private_key, encrypted_values, command)
+                run_command_with_secrets(plain_values, command)
             }
             Command::Export {
                 access_args,
                 mode_args,
                 format,
             } => {
-                let (private_key, encrypted_values) = get_values(mode_args, access_args, None);
+                let plain_values = get_values(mode_args, access_args, None);
 
-                export_secrets(private_key, encrypted_values, format)
+                export_secrets(plain_values, format)
             }
             Command::Service { command } => match command {
                 ServiceCommand::Start { foreground } => start_service_command(foreground, false),
@@ -166,15 +167,23 @@ fn get_values(
     mode_args: ModeArgs,
     access_args: AccessArgs,
     command: Option<String>,
-) -> (KeyPair, std::collections::HashMap<String, String>) {
+) -> std::collections::HashMap<String, String> {
     let mode = OperationMode::try_from(mode_args)
         .unwrap_or_else(|(kind, message)| Cli::command().error(kind, message).exit());
 
     if let Some((access_key, env)) = access_args.get() {
-        match mode {
-            OperationMode::Local { project_dir } => get_local_values(project_dir, access_key, env),
-            OperationMode::Cloud { endpoint } => get_cloud_values(endpoint, access_key, env),
-        }
+        let values = match mode {
+            OperationMode::Local { project_dir } => {
+                get_values_from_local_project(project_dir, access_key, env, "latest".to_string())
+            }
+            OperationMode::Cloud { endpoint } => {
+                get_values_from_cloud_project(endpoint, access_key, env, "latest".to_string())
+            }
+        };
+
+        mask_if_github_actions(&values);
+
+        values
     } else {
         get_values_from_web(command)
     }

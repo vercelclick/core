@@ -1,17 +1,10 @@
-use click_core::KeyPair;
 use std::collections::HashMap;
 use std::process::Command;
 
-pub fn run_command_with_secrets(
-    private_key: KeyPair,
-    encrypted_secrets: HashMap<String, String>,
-    user_command: String,
-) {
-    let variables = private_key.decrypt_package(&encrypted_secrets).unwrap();
-
+pub fn run_command_with_secrets(plain_values: HashMap<String, String>, user_command: String) {
     let mut command = Command::new("sh");
 
-    command.arg("-c").arg(&user_command).envs(variables);
+    command.arg("-c").arg(&user_command).envs(plain_values);
 
     use std::os::unix::process::CommandExt;
 
