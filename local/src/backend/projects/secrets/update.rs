@@ -8,9 +8,7 @@ use click_api::backend::secrets::{
     ProjectSecretPathParams, UpdateSecretRequest, UpdateSecretValueRequest,
 };
 use click_api::constants::{LATEST_SECRET_TAG, PREVIOUS_SECRET_TAG};
-use click_core::{
-    AuthSession, Contributor, InternalError, InternalResult, StatusCode, caller,
-};
+use click_core::{AuthSession, Contributor, InternalError, InternalResult, StatusCode, caller};
 
 fn get_permitted_secret(
     path: &str,
@@ -35,13 +33,13 @@ fn get_permitted_secret(
             )
         })?;
 
-    LocalSecretConfig::load(&path, &params.env_name, &params.secret_name)?.ok_or_else(|| {
+    LocalSecretConfig::load(path, &params.env_name, &params.secret_name)?.ok_or_else(|| {
         InternalError::new(
             caller!(),
             StatusCode::NOT_FOUND,
             &format!(
                 "Secret {}/{} not found",
-                &params.env_name, &params.secret_name
+                params.env_name, params.secret_name
             ),
         )
     })
@@ -86,6 +84,13 @@ pub async fn update_secret_value(
     let keys_config = LocalKeysConfig::load(&path)?;
 
     let mut secret_config = get_permitted_secret(&path, &contributor, &params)?;
+
+    secret_config.values = secret_config
+        .values
+        .iter()
+        .filter(|value| value.tag != PREVIOUS_SECRET_TAG)
+        .cloned()
+        .collect();
 
     // Update the latest values to previous and remove all previous values
     for value in secret_config.values.iter_mut() {

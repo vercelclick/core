@@ -8,6 +8,7 @@ use click_api::backend::environments::{
 };
 
 use crate::backend::challenge::save_challenge;
+use crate::backend::projects::secrets::target::get_secret_targets;
 use chrono::{Duration, Utc};
 use click_api::backend::BackendProvider;
 use click_api::backend::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
@@ -18,7 +19,8 @@ use click_api::backend::secrets::{
 };
 use click_core::enums::WebauthnChallengeKind;
 use click_core::{
-    AccessKey, AuthSession, InternalError, InternalResult, Project, StatusCode, TargetedPublicKey, WebauthnChallenge, caller,
+    AccessKey, AuthSession, InternalError, InternalResult, Project, StatusCode, TargetedPublicKey,
+    WebauthnChallenge, caller,
 };
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -122,10 +124,10 @@ impl BackendProvider for LocalBackendProvider {
 
     async fn get_secret_targets(
         &self,
-        _session: &AuthSession,
-        _params: ProjectSecretPathParams,
+        session: &AuthSession,
+        params: ProjectSecretPathParams,
     ) -> InternalResult<Vec<TargetedPublicKey>> {
-        todo!()
+        get_secret_targets(session, params).await
     }
 
     async fn create_federated_access_key(

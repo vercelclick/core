@@ -3,9 +3,10 @@ use crate::backend::projects::project::get_contributor_by_id;
 use crate::backend::projects::secrets::read::get_secret_by_name;
 use crate::db;
 use crate::db::{Transaction, TransactionOperation};
+use crate::workfows::passkeys::PasskeyValidationWorkflow;
 use click_api::backend::environments::SecretWithEncryptedValues;
 use click_api::backend::secrets::{CreateSecretRequest, ProjectEnvPathParams};
-use click_core::enums::SecretDataType;
+use click_core::enums::{SecretDataType, WebauthnChallengeKind};
 use click_core::{
     ContributorPublicKey, InternalError, InternalResult, SecretDefinition, SecretValue, StatusCode,
     User, caller,
@@ -21,6 +22,7 @@ const CREATE_SECRET_QUERY: &str = r#"
 "#;
 
 struct CreateSecretWorkflow {
+    user: User,
     project_id: Uuid,
     env_name: String,
     request: CreateSecretRequest,
@@ -32,6 +34,14 @@ impl TransactionOperation<(SecretDefinition, Vec<SecretValue>)> for CreateSecret
         self,
         tx: &mut Transaction<'_>,
     ) -> InternalResult<(SecretDefinition, Vec<SecretValue>)> {
+        PasskeyValidationWorkflow {
+            owner: self.user.email.clone(),
+            kind: WebauthnChallengeKind::PasskeyAuthorize,
+            auth_result: self.request.auth_result.clone(),
+        }
+        .execute(tx)
+        .await?;
+
         let definition: SecretDefinition = sqlx::query_as(CREATE_SECRET_QUERY)
             .bind(self.request.name.clone())
             .bind(self.env_name.clone())
@@ -114,6 +124,7 @@ pub async fn create_secret(
         })?;
 
     let (definition, secret_values) = db::with_transaction(CreateSecretWorkflow {
+        user: user.clone(),
         env_name: environment.name.clone(),
         request: request.clone(),
         project_id: contributor.project_id,

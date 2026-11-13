@@ -2,11 +2,13 @@ use crate::backend::projects::project::get_contributor_by_id;
 use crate::backend::projects::secrets::create::secret_values_insert_query_builder;
 use crate::db;
 use crate::db::{Transaction, TransactionOperation};
+use crate::workfows::passkeys::PasskeyValidationWorkflow;
 use click_api::backend::environments::SecretWithEncryptedValues;
 use click_api::backend::secrets::{
     ProjectSecretPathParams, UpdateSecretRequest, UpdateSecretValueRequest,
 };
 use click_api::constants::{LATEST_SECRET_TAG, PREVIOUS_SECRET_TAG};
+use click_core::enums::WebauthnChallengeKind;
 use click_core::{
     ContributorPublicKey, InternalError, InternalResult, SecretDefinition, SecretValue, StatusCode,
     User, caller,
@@ -66,6 +68,7 @@ pub async fn update_secret(
 }
 
 struct UpdateSecretValueWorkflow {
+    user: User,
     params: ProjectSecretPathParams,
     request: UpdateSecretValueRequest,
 }
@@ -73,6 +76,14 @@ struct UpdateSecretValueWorkflow {
 #[async_trait::async_trait]
 impl TransactionOperation<SecretDefinition> for UpdateSecretValueWorkflow {
     async fn execute(self, tx: &mut Transaction<'_>) -> InternalResult<SecretDefinition> {
+        PasskeyValidationWorkflow {
+            owner: self.user.email,
+            kind: WebauthnChallengeKind::PasskeyAuthorize,
+            auth_result: self.request.auth_result.clone(),
+        }
+        .execute(tx)
+        .await?;
+
         let definition: SecretDefinition = sqlx::query_as(r#"UPDATE "SecretDefinitions" SET updated_at=now() WHERE project_id=$1 AND env_name=$2 AND name=$3 RETURNING *"#)
             .bind(self.params.project_id)
             .bind(&self.params.env_name)
@@ -170,6 +181,7 @@ pub async fn update_secret_value(
         })?;
 
     let definition = db::with_transaction(UpdateSecretValueWorkflow {
+        user: user.clone(),
         params,
         request: request.clone(),
     })

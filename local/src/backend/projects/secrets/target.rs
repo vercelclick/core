@@ -1,17 +1,17 @@
 use crate::config::LocalServiceConfig;
 use crate::service::keys::LocalKeysConfig;
 use click_api::backend::secrets::ProjectSecretPathParams;
-use click_core::{InternalResult, TargetedPublicKey, User};
+use click_core::{AuthSession, InternalResult, TargetedPublicKey};
 use uuid::Uuid;
 
 pub async fn get_secret_targets(
-    user: &User,
-    params: &ProjectSecretPathParams,
+    session: &AuthSession,
+    params: ProjectSecretPathParams,
 ) -> InternalResult<Vec<TargetedPublicKey>> {
     let service_config = LocalServiceConfig::load()?;
 
     let (path, project_config, _) =
-        service_config.get_project_and_contributor(params.project_id, user.id)?;
+        service_config.get_project_and_contributor(params.project_id, session.user.id)?;
 
     let keys_config = LocalKeysConfig::load(&path)?;
 
