@@ -31,3 +31,12 @@ git add package.json bun.lock
 
 git commit -m "$*"
 git tag -a "$NEXT_VERSION" -m "$*"
+
+# -- UPDATE LANDING -- #
+cd ../landing || exit 1
+yq -i ".version = \"$NEXT_VERSION\"" package.json
+bun install
+git add package.json bun.lock
+
+git commit -m "$*"
+git tag -a "$NEXT_VERSION" -m "$*"
