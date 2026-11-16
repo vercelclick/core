@@ -5,18 +5,15 @@ FROM base AS builder
 
 COPY . .
 
-ENV UI_ORIGIN "https://cloud.secretpass.cloud"
-ENV CLOUD_RP_ID "cloud.secretpass.cloud"
-ENV CLOUD_RP_ORIGIN "https://cloud.secretpass.cloud"
-ENV LOCAL_RP_ID "local.secretpass.cloud"
-ENV LOCAL_RP_ORIGIN "https://local.secretpass.cloud"
+ENV RP_ID "vercel.click"
+ENV RP_ORIGIN "https://vault.vercel.click"
 
-RUN cargo build --release -p secretpass-cloud
+RUN cargo build --release -p click-cloud
 
 
 FROM base AS runner
 
-COPY --from=builder /core/target/release/secretpass-cloud ./secretpass-cloud
+COPY --from=builder /core/target/release/click-cloud ./click-cloud
 EXPOSE 8080
 
-CMD ["./secretpass-cloud"]
+CMD ["./click-cloud"]

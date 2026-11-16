@@ -57,7 +57,6 @@ wasm-build-dev:
 wasm-build-prod:
 	@echo "==> Building WASM for production"
 	rm -r ../web-app/src/core/types || echo ""
-	RP_ID="vault.vercel.click" \
 	RUSTFLAGS='--cfg=web_sys_unstable_apis' \
 	cargo rustc -p click-wasm --release --crate-type cdylib --target wasm32-unknown-unknown
 	wasm-bindgen \

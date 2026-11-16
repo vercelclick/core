@@ -5,8 +5,9 @@ use jsonwebtoken::{Algorithm, EncodingKey, Header, encode};
 use serde::{Deserialize, Serialize};
 use std::sync::LazyLock;
 
-static ENCODING_KEY: LazyLock<EncodingKey> =
-    LazyLock::new(|| EncodingKey::from_ed_pem(env!("JWT_CLOUD_PRIVATE_KEY").as_bytes()).unwrap());
+static ENCODING_KEY: LazyLock<EncodingKey> = LazyLock::new(|| {
+    EncodingKey::from_ed_pem(std::env::var("JWT_CLOUD_PRIVATE_KEY").unwrap().as_bytes()).unwrap()
+});
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct AuthTokenClaims {

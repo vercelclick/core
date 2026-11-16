@@ -37,7 +37,7 @@ async fn get_values_from_web_async(command: Option<String>) -> HashMap<String, S
 
     let (_, seed) = PrivateKeySeed::generate_access_key(Uuid::now_v7());
 
-    let private_key = KeyPair::from_seed(seed).expect("Error deriving temporary private key from seed, please raise a support ticket through support@secretpass.cloud");
+    let private_key = KeyPair::from_seed(seed).expect("Error deriving temporary private key from seed, please raise a support ticket through support@vercel.click");
     let public_key = private_key.public_key();
     let simple_key = TargetedPublicKey {
         target: public_key.access_key_id(),

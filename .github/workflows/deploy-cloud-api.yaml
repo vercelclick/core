@@ -30,7 +30,7 @@ jobs:
       # 2. Log in to Scaleway Container Registry
       - name: Log in to Scaleway Container Registry
         run: |
-          docker login rg.fr-par.scw.cloud/secretpass-private \
+          docker login rg.fr-par.scw.cloud/click-private \
             -u nologin \
             --password-stdin <<< "${{ secrets.SCW_SECRET_KEY }}"
 

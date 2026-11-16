@@ -59,7 +59,7 @@ pub async fn send_email(recipient: &str, template: EmailTemplate) -> InternalRes
 fn get_sender() -> InternalResult<Mailbox> {
     let mbox = Mailbox::new(
         Some("Click Vault".to_string()),
-        "no-reply@vault.secretpass.cloud".parse().map_err(|err| {
+        "no-reply@vault.vercel.click".parse().map_err(|err| {
             InternalError::trace(
                 caller!(),
                 StatusCode::INTERNAL_SERVER_ERROR,

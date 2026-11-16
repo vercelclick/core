@@ -9,11 +9,10 @@ use std::path::Path;
 use uuid::Uuid;
 
 fn parse_access_key(access_key: String) -> (Uuid, KeyPair) {
-    let (project_id, seed) = PrivateKeySeed::from_access_key(access_key).expect(
-        "Error parsing private, ensure that this is a valid Secretpass Machine Private Key",
-    );
+    let (project_id, seed) = PrivateKeySeed::from_access_key(access_key)
+        .expect("Error parsing private, ensure that this is a valid Click Vault Access Key");
 
-    let private_key = KeyPair::from_seed(seed).expect("Error deriving seeding private key, please raise a support ticket through support@secretpass.cloud");
+    let private_key = KeyPair::from_seed(seed).expect("Error deriving seeding access key, please raise a support ticket through support@vercel.click");
     (project_id, private_key)
 }
 
@@ -40,7 +39,7 @@ pub fn get_values_from_local_project(
             InternalError::new(
                 caller!(),
                 StatusCode::NOT_FOUND,
-                &format!("Secretpass not found under {path}"),
+                &format!("Click Local Vault not found under {path}"),
             )
         })
         .unwrap();
