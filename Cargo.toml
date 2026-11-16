@@ -3,7 +3,7 @@ resolver = "2"
 members = ["api", "local", "cloud", "wasm"]
 
 [workspace.package]
-version = "0.2.3"
+version = "0.2.5"
 edition = "2024"
 repository = "https://github.com/clicksecrets/core"
 authors = ["Click Secrets Inc", "Billcountry Mwaniki"]
@@ -20,10 +20,9 @@ description = { workspace = true }
 homepage = { workspace = true }
 
 [features]
-default = ["trace"]
+default = ["trace", "axum"]
 trace = []
 axum = []
-
 
 [profile.release]
 opt-level = "z"
