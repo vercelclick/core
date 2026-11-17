@@ -665,6 +665,7 @@ dependencies = [
  "chrono",
  "click-api",
  "click-core",
+ "dotenvy",
  "jsonwebtoken",
  "lettre",
  "serde",

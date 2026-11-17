@@ -38,7 +38,7 @@ pub struct ListProjectsResult {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
-pub struct CreateEnvironmentRequest {
+pub struct CreateEnvironmentWithProjectRequest {
     pub name: String,
     pub description: String,
 }
@@ -49,7 +49,7 @@ pub struct CreateProjectRequest {
     pub path: Option<String>,
     pub name: String,
     pub description: String,
-    pub environments: Vec<CreateEnvironmentRequest>,
+    pub environments: Vec<CreateEnvironmentWithProjectRequest>,
     pub auth_result: Arc<PasskeyAuthorizationResult>,
 }
 

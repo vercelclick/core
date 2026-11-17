@@ -15,6 +15,9 @@ use std::sync::Arc;
 
 #[tokio::main]
 async fn main() {
+    // Load .env file if present; ignore error if missing in production
+    dotenvy::dotenv().ok();
+
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL not defined");
     let pool = sqlx::PgPool::connect(&database_url).await.unwrap();
 

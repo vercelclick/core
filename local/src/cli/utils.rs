@@ -15,7 +15,7 @@ pub fn mask_if_github_actions(values: &HashMap<String, String>) {
         return;
     }
 
-    eprintln!("::notice title=Click Vault::Github actions detected, masking secrets");
+    eprintln!("::notice title=Vercel Click Vault::Github actions detected, masking secrets");
 
     for value in values.values() {
         let value = value.trim();

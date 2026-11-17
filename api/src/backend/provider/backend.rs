@@ -1,5 +1,6 @@
 use crate::backend::environments::{
-    GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues,
+    CreateEnvironmentRequest, GetEnvironmentRequest, GetEnvironmentResult,
+    SecretWithEncryptedValues,
 };
 use crate::backend::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
 use crate::backend::secrets::{
@@ -31,6 +32,13 @@ pub trait BackendProvider: Send + Sync + 'static {
         session: &AuthSession,
         project_id: Uuid,
     ) -> InternalResult<Option<GetProjectResult>>;
+
+    async fn create_environment(
+        &self,
+        session: &AuthSession,
+        project_id: Uuid,
+        request: CreateEnvironmentRequest,
+    ) -> InternalResult<GetEnvironmentResult>;
 
     async fn get_environment_by_name(
         &self,

@@ -14,7 +14,7 @@ RUN_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 
 cloud-run-dev:
 	echo "==> Running local cloud server"
-	export $$(cat .env | xargs) && cargo run -p click-cloud
+	RUST_BACKTRACE=1 cargo run -p click-cloud
 
 local-run-dev:
 	@echo "==> Run api dev"

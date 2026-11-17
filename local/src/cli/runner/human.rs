@@ -95,7 +95,7 @@ async fn get_values_from_web_async(command: Option<String>) -> HashMap<String, S
     );
 
     let url = format!("{RP_ORIGIN}/?target={port}");
-    eprintln!("Open {url} to decrypt secrets. Use --private-key to run directly");
+    eprintln!("Open {url} to decrypt secrets. Use --access-key [KEY] --env [ENV] to run directly");
     let _ = webbrowser::open(&url);
 
     let secrets = rx

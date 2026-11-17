@@ -1,4 +1,5 @@
 use crate::config::CONFIG_DIR;
+use click_core::constants::APP_SLUG;
 use click_core::{InternalError, StatusCode, caller};
 use rcgen::{
     CertificateParams, DistinguishedName, DnType, ExtendedKeyUsagePurpose, KeyPair,
@@ -15,7 +16,7 @@ fn generate_certificates(cert_path: &PathBuf, key_path: &PathBuf) {
     params.not_before = OffsetDateTime::now_utc();
     params.not_after = params.not_before + Duration::days(365);
     params.subject_alt_names = vec![
-        SanType::DnsName("click.localhost".to_string().try_into().unwrap()),
+        SanType::DnsName(format!("{}.localhost", APP_SLUG).try_into().unwrap()),
         SanType::IpAddress("127.0.0.1".parse().unwrap()),
     ];
 
@@ -78,11 +79,11 @@ pub fn get_certificates() -> (PathBuf, PathBuf) {
 
         #[cfg(target_os = "macos")]
         {
-            eprintln!("-------- FOR MACOS USERS --------");
+            eprintln!("-------- FOR MACOS OS --------");
             eprintln!(
-                "Safari may reject connections using local certificates, use a different browser or run:"
+                "Safari and other browsers may reject connections using local certificates, you can mark the certificates as trusted by running:"
             );
-            eprintln!("\tclick install-certificates");
+            eprintln!("\tclick service install-certificates");
         }
     }
 
@@ -108,7 +109,7 @@ pub fn install_macos_certificates() {
     let run_instructions = format!("\tcd '{}'\n\t{}", CONFIG_DIR.display(), command);
 
     eprintln!("Requesting sudo elevation to add certificate to macOS keychain...");
-    let status = match Command::new(&command)
+    let status = match Command::new("sudo")
         .args(args)
         .current_dir(CONFIG_DIR.as_path())
         .status()

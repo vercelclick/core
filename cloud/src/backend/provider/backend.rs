@@ -1,5 +1,5 @@
 use crate::backend::projects::access_keys::{create_access_key, create_federated_access_key};
-use crate::backend::projects::environments::get_environment_handler;
+use crate::backend::projects::environments::{create_environment, get_environment_handler};
 use crate::backend::projects::project::{create_project, get_project_by_id, list_projects};
 use crate::backend::projects::secrets::create::create_secret;
 use crate::backend::projects::secrets::read::get_access_key_secrets;
@@ -9,7 +9,8 @@ use crate::db;
 use crate::db::workflows::UpsertWebauthnChallengeWorkflow;
 use click_api::backend::BackendProvider;
 use click_api::backend::environments::{
-    GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues,
+    CreateEnvironmentRequest, GetEnvironmentRequest, GetEnvironmentResult,
+    SecretWithEncryptedValues,
 };
 use click_api::backend::projects::{CreateProjectRequest, GetProjectResult, ListProjectsResult};
 use click_api::backend::secrets::{
@@ -62,6 +63,15 @@ impl BackendProvider for CloudBackendProvider {
         project_id: Uuid,
     ) -> InternalResult<Option<GetProjectResult>> {
         get_project_by_id(&session.user, project_id).await
+    }
+
+    async fn create_environment(
+        &self,
+        session: &AuthSession,
+        project_id: Uuid,
+        request: CreateEnvironmentRequest,
+    ) -> InternalResult<GetEnvironmentResult> {
+        create_environment(session, project_id, request).await
     }
 
     async fn get_environment_by_name(

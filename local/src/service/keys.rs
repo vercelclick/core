@@ -96,17 +96,18 @@ impl LocalKeysConfig {
     pub fn write(&self, path: &str) -> InternalResult<()> {
         let path = Path::new(path).join(format!(".{}", APP_SLUG));
 
-        let machines_content = serde_json::to_string_pretty(&self.access_keys).map_err(|err| {
-            InternalError::trace(
-                caller!(),
-                StatusCode::INTERNAL_SERVER_ERROR,
-                &format!(
-                    "Error serializing access keys config {}",
-                    path.join("machines.json").display()
-                ),
-                err,
-            )
-        })?;
+        let access_keys_content =
+            serde_json::to_string_pretty(&self.access_keys).map_err(|err| {
+                InternalError::trace(
+                    caller!(),
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    &format!(
+                        "Error serializing access keys config {}",
+                        path.join("access_keys.json").display()
+                    ),
+                    err,
+                )
+            })?;
         let contributors_content =
             serde_json::to_string_pretty(&self.contributors_keys).map_err(|err| {
                 InternalError::trace(
@@ -120,13 +121,13 @@ impl LocalKeysConfig {
                 )
             })?;
 
-        fs::write(path.join("machines.json"), machines_content).map_err(|err| {
+        fs::write(path.join("access_keys.json"), access_keys_content).map_err(|err| {
             InternalError::trace(
                 caller!(),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 &format!(
                     "Error writing access keys config {}",
-                    path.join("machines.json").display()
+                    path.join("access_keys.json").display()
                 ),
                 err,
             )
@@ -179,13 +180,13 @@ impl LocalKeysConfig {
             .cloned()
             .collect();
 
-        let machine_keys = self
+        let access_keys = self
             .access_keys
             .iter()
             .filter(|key| key.get_access(env_name).is_some())
             .cloned()
             .collect();
 
-        (contributor_keys, machine_keys)
+        (contributor_keys, access_keys)
     }
 }

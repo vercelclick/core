@@ -1,20 +1,25 @@
 use crate::backend::projects::project::get_contributor_by_id;
 use crate::db;
+use crate::db::{Transaction, TransactionOperation, with_transaction};
+use crate::workfows::passkeys::PasskeyValidationWorkflow;
+use async_trait::async_trait;
 use axum::http::StatusCode;
 use click_api::backend::environments::{
-    GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues,
+    CreateEnvironmentRequest, GetEnvironmentRequest, GetEnvironmentResult,
+    SecretWithEncryptedValues,
 };
-use click_api::backend::projects::CreateEnvironmentRequest;
+use click_api::backend::projects::CreateEnvironmentWithProjectRequest;
+use click_core::enums::WebauthnChallengeKind;
 use click_core::{
-    ContributorPublicKey, Environment, InternalError, InternalResult, Project, SecretDefinition,
-    SecretValue, User, caller,
+    AuthSession, ContributorPublicKey, Environment, InternalError, InternalResult, Project,
+    SecretDefinition, SecretValue, User, caller,
 };
 use sqlx::{Postgres, QueryBuilder};
 use uuid::Uuid;
 
 pub fn environments_insert_query_builder(
     project: &Project,
-    requests: &Vec<CreateEnvironmentRequest>,
+    requests: &Vec<CreateEnvironmentWithProjectRequest>,
 ) -> QueryBuilder<Postgres> {
     // language=sql
     let mut query_builder: QueryBuilder<Postgres> =
@@ -135,4 +140,88 @@ pub async fn get_environment_handler(
         environment,
         secrets,
     }))
+}
+
+struct CreateEnvironmentWorkflow {
+    user: User,
+    project_id: Uuid,
+    request: CreateEnvironmentRequest,
+}
+
+#[async_trait]
+impl TransactionOperation<Environment> for CreateEnvironmentWorkflow {
+    async fn execute(self, tx: &mut Transaction<'_>) -> InternalResult<Environment> {
+        get_environment_by_name(self.project_id, &self.request.name)
+            .await?
+            .is_none()
+            .ok_or_else(|| {
+                InternalError::new(
+                    caller!(),
+                    StatusCode::CONFLICT,
+                    "An environment with this name already exists",
+                )
+            })?;
+        PasskeyValidationWorkflow {
+            kind: WebauthnChallengeKind::PasskeyAuthorize,
+            owner: self.user.email,
+            auth_result: self.request.auth_result.clone(),
+        }
+        .execute(tx)
+        .await?;
+
+        let environment: Environment = sqlx::query_as(
+            r#"INSERT INTO "Environments" (name, project_id, description) VALUES ($1, $2, $3) RETURNING *"#,
+        )
+        .bind(&self.request.name)
+        .bind(self.project_id)
+        .bind(&self.request.description)
+        .fetch_one(&mut **tx)
+        .await
+        .map_err(|err| {
+            InternalError::trace(
+                caller!(),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Error creating environment, please raise a support ticket if the issue persists",
+                err,
+            )
+        })?;
+
+        Ok(environment)
+    }
+}
+
+pub async fn create_environment(
+    session: &AuthSession,
+    project_id: Uuid,
+    request: CreateEnvironmentRequest,
+) -> InternalResult<GetEnvironmentResult> {
+    let contributor = get_contributor_by_id(&session.user, project_id)
+        .await?
+        .ok_or_else(|| {
+            InternalError::new(
+                caller!(),
+                StatusCode::NOT_FOUND,
+                "Contributor not found in this project",
+            )
+        })?;
+
+    contributor.is_admin().ok_or_else(|| {
+        InternalError::new(
+            caller!(),
+            StatusCode::FORBIDDEN,
+            "You must be an admin to add new environments",
+        )
+    })?;
+
+    let environment = with_transaction(CreateEnvironmentWorkflow {
+        request,
+        project_id,
+        user: session.user.clone(),
+    })
+    .await?;
+
+    Ok(GetEnvironmentResult {
+        environment,
+        secrets: vec![],
+    })
 }

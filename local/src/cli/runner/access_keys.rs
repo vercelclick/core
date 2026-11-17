@@ -45,7 +45,7 @@ pub fn get_values_from_local_project(
         .unwrap();
 
     if local_conf.project.id != project_id {
-        panic!("Project ID mismatch, this private key does not belong in this project.")
+        panic!("Project ID mismatch, this access key does not belong in this project.")
     }
 
     let environment = local_conf
@@ -67,7 +67,7 @@ pub fn get_values_from_local_project(
         .access_keys
         .iter()
         .find(|key| key.id == key_id)
-        .expect("Private key not found in this project");
+        .expect("Access key not found in this project");
 
     if access_key.get_access(&environment.name).is_none() {
         panic!("Key does not have access to {}", env)

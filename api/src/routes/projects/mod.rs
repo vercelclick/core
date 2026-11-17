@@ -1,6 +1,6 @@
 use crate::backend::ApiState;
 use crate::routes::projects::access_keys::create_access_key_handler;
-use crate::routes::projects::environments::get_environment_by_name;
+use crate::routes::projects::environments::{create_environment, get_environment_by_name};
 use crate::routes::projects::project::{create_project, get_project_by_id, list_projects};
 use crate::routes::projects::secrets::access_keys::{get_access_key_secrets, get_secret_targets};
 use crate::routes::projects::secrets::create::{create_secret, update_secret, update_secret_value};
@@ -16,6 +16,7 @@ pub fn project_routes() -> Router<ApiState> {
     Router::new()
         .route("/", get(list_projects).post(create_project))
         .route("/{project_id}", get(get_project_by_id))
+        .route("/{project_id}/env", post(create_environment))
         .route("/{project_id}/env/{env_name}", get(get_environment_by_name))
         .route("/{project_id}/env/{env_name}/secrets", post(create_secret))
         .route(

@@ -1,5 +1,7 @@
+use click_core::passkeys::authorize::PasskeyAuthorizationResult;
 use click_core::{ContributorPublicKey, Environment, SecretDefinition, SecretValue};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -50,4 +52,12 @@ impl SecretWithEncryptedValues {
 pub struct GetEnvironmentResult {
     pub environment: Environment,
     pub secrets: Vec<SecretWithEncryptedValues>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct CreateEnvironmentRequest {
+    pub name: String,
+    pub description: String,
+    pub auth_result: Arc<PasskeyAuthorizationResult>,
 }

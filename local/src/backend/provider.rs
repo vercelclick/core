@@ -1,10 +1,11 @@
-use crate::backend::environments::get_environment_by_name;
+use crate::backend::environments::{create_environment, get_environment_by_name};
 use crate::backend::projects::access_keys::create_access_key;
 use crate::backend::projects::project::{create_project, get_project_by_id, list_projects};
 use crate::backend::projects::secrets::create::create_secret;
 use crate::backend::projects::secrets::update::{update_secret, update_secret_value};
 use click_api::backend::environments::{
-    GetEnvironmentRequest, GetEnvironmentResult, SecretWithEncryptedValues,
+    CreateEnvironmentRequest, GetEnvironmentRequest, GetEnvironmentResult,
+    SecretWithEncryptedValues,
 };
 
 use crate::backend::challenge::save_challenge;
@@ -65,6 +66,15 @@ impl BackendProvider for LocalBackendProvider {
         project_id: Uuid,
     ) -> InternalResult<Option<GetProjectResult>> {
         get_project_by_id(&session.user, project_id).await
+    }
+
+    async fn create_environment(
+        &self,
+        session: &AuthSession,
+        project_id: Uuid,
+        request: CreateEnvironmentRequest,
+    ) -> InternalResult<GetEnvironmentResult> {
+        create_environment(session, project_id, request).await
     }
 
     async fn get_environment_by_name(
