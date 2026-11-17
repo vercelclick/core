@@ -24,6 +24,8 @@ pub enum ExportFormat {
     #[default]
     #[value(name="env", aliases = [".env", "dot-env"])]
     DotEnv,
+    #[value(name="gh-actions", aliases = ["gh", "github", "github-actions"])]
+    GithubActions,
 }
 
 #[derive(Args, Clone, Debug)]

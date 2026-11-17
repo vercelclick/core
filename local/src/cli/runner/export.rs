@@ -6,6 +6,7 @@ use std::collections::HashMap;
 pub fn export_secrets(plain_values: HashMap<String, String>, format: ExportFormat) {
     match format {
         ExportFormat::DotEnv => export_env(&plain_values),
+        ExportFormat::GithubActions => export_github(&plain_values),
         ExportFormat::Json => {
             let json_content = serde_json::to_string_pretty(&plain_values)
                 .map_err(|err| {
@@ -25,5 +26,18 @@ pub fn export_secrets(plain_values: HashMap<String, String>, format: ExportForma
 fn export_env(values: &HashMap<String, String>) {
     for (key, value) in values {
         println!("{}={}", key, get_safe_value(value))
+    }
+}
+
+fn export_github(values: &HashMap<String, String>) {
+    for (key, value) in values {
+        let safe_value = get_safe_value(value);
+        println!(
+            "{}={}",
+            key,
+            safe_value
+                .strip_circumfix("\"", "\"")
+                .unwrap_or(&safe_value)
+        )
     }
 }
