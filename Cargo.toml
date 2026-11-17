@@ -3,7 +3,7 @@ resolver = "2"
 members = ["api", "local", "cloud", "wasm"]
 
 [workspace.package]
-version = "0.2.7"
+version = "0.2.8"
 edition = "2024"
 repository = "https://github.com/clicksecrets/core"
 authors = ["Click Secrets Inc", "Billcountry Mwaniki"]
